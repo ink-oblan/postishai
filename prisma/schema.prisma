@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Avatar {
+  id             String   @id @default(cuid())
+  name           String
+  prompt         String?
+  imageModel     String?
+  imagePath      String
+  heygenAssetId  String?
+  heygenAssetUrl String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  posts          Post[]
+}
+
+model Post {
+  id             String     @id @default(cuid())
+  title          String
+  platform       Platform
+  script         String
+  voiceId        String
+  avatarId       String
+  avatar         Avatar     @relation(fields: [avatarId], references: [id])
+  llmModelId     String     @default("gemini-2.0-flash")
+  status         PostStatus @default(DRAFT)
+  heygenVideoId  String?
+  videoPath      String?
+  heygenVideoUrl String?
+  metadata       String?
+  errorMessage   String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+enum Platform {
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE_SHORTS
+}
+
+enum PostStatus {
+  DRAFT
+  GENERATING
+  COMPLETED
+  FAILED
+}

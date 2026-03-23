@@ -1,0 +1,55 @@
+
+> platform@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.136:3000
+- Environments: .env
+✓ Ready in 362ms
+
+ GET /avatars/new 200 in 1537ms (next.js: 1269ms, application-code: 268ms)
+ GET /api/image-models 200 in 634ms (next.js: 620ms, application-code: 13ms)
+ POST /api/avatars 500 in 1069ms (next.js: 551ms, application-code: 518ms)
+ POST /api/avatars 500 in 628ms (next.js: 51ms, application-code: 577ms)
+ POST /api/avatars 500 in 312ms (next.js: 2ms, application-code: 310ms)
+ POST /api/avatars 201 in 42s (next.js: 51ms, application-code: 42s)
+○ Compiling /avatars/[id] ...
+ GET /avatars/cmn3fc0ze0000h1k5q9p24bfn 200 in 7.3s (next.js: 7.2s, application-code: 98ms)
+ GET /api/avatars/cmn3fc0ze0000h1k5q9p24bfn/image 200 in 1709ms (next.js: 1700ms, application-code: 10ms)
+ POST /api/avatars 200 in 25.9s (next.js: 2ms, application-code: 25.9s)
+✓ Finished filesystem cache database compaction in 10.3s
+ GET /posts 200 in 95ms (next.js: 55ms, application-code: 40ms)
+ GET /avatars 200 in 105ms (next.js: 48ms, application-code: 57ms)
+ GET /avatars 200 in 21ms (next.js: 1688µs, application-code: 19ms)
+ GET /avatars/cmn3fc0ze0000h1k5q9p24bfn 200 in 60ms (next.js: 25ms, application-code: 35ms)
+ GET /posts/new?avatarId=cmn3fc0ze0000h1k5q9p24bfn 200 in 34ms (next.js: 15ms, application-code: 19ms)
+ GET /api/avatars 200 in 21ms (next.js: 7ms, application-code: 14ms)
+ GET /api/avatars 200 in 8ms (next.js: 2ms, application-code: 6ms)
+ GET /api/llm-models 200 in 75ms (next.js: 72ms, application-code: 3ms)
+ GET /api/llm-models 200 in 5ms (next.js: 1691µs, application-code: 3ms)
+ GET /api/heygen/voices 200 in 2.5s (next.js: 98ms, application-code: 2.4s)
+ GET /api/heygen/voices 200 in 827ms (next.js: 1261µs, application-code: 826ms)
+ GET /posts 200 in 35ms (next.js: 3ms, application-code: 32ms)
+ GET /avatars 200 in 28ms (next.js: 1526µs, application-code: 27ms)
+ GET /avatars/cmn3fc0ze0000h1k5q9p24bfn 200 in 55ms (next.js: 20ms, application-code: 36ms)
+ GET /avatars 200 in 43ms (next.js: 8ms, application-code: 36ms)
+ GET /avatars/cmn3fc0ze0000h1k5q9p24bfn 200 in 66ms (next.js: 25ms, application-code: 40ms)
+ GET /posts 200 in 30ms (next.js: 1621µs, application-code: 28ms)
+ GET /posts/new 200 in 16ms (next.js: 1503µs, application-code: 15ms)
+ GET /api/avatars 200 in 4ms (next.js: 1481µs, application-code: 3ms)
+ GET /api/llm-models 200 in 10ms (next.js: 7ms, application-code: 3ms)
+ GET /api/avatars 200 in 9ms (next.js: 6ms, application-code: 4ms)
+ GET /api/llm-models 200 in 4ms (next.js: 1522µs, application-code: 3ms)
+ GET /api/heygen/voices 200 in 2.2s (next.js: 3ms, application-code: 2.2s)
+ GET /api/heygen/voices 200 in 786ms (next.js: 3ms, application-code: 783ms)
+ GET /dashboard 200 in 67ms (next.js: 18ms, application-code: 48ms)
+ GET /avatars 200 in 38ms (next.js: 3ms, application-code: 35ms)
+ GET /avatars/cmn3fc0ze0000h1k5q9p24bfn 200 in 42ms (next.js: 11ms, application-code: 30ms)
+ GET /dashboard 200 in 46ms (next.js: 2ms, application-code: 44ms)
+ GET /avatars 200 in 22ms (next.js: 1450µs, application-code: 21ms)
+ GET /dashboard 200 in 34ms (next.js: 1368µs, application-code: 33ms)
+ GET /avatars 200 in 24ms (next.js: 1482µs, application-code: 22ms)
+ GET /dashboard 200 in 33ms (next.js: 1545µs, application-code: 32ms)
+ GET /avatars 200 in 26ms (next.js: 1991µs, application-code: 24ms)
+ GET /avatars/cmn3fc0ze0000h1k5q9p24bfn 200 in 38ms (next.js: 11ms, application-code: 27ms)
