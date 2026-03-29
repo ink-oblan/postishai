@@ -1,0 +1,18 @@
+Ultra-realistic portrait photo of {{genderLabel}}, {{age}}-year-old {{ethnicity}}{{#if origin}} from {{origin}}{{/if}} {{occupation}}
+Standing straight, facing forward, in a neutral upright pose, no folded arms, no crossed arms, no hands clasped, no gestures, no text.
+
+Framing:
+- head and upper torso (top of head to upper chest visible)
+- full head visible with small top margin (~5–8%)
+- shoulders fully visible
+- face occupies ~55% of frame height
+
+Camera position: straight-on, eye-level
+Lens: 85mm portrait lens
+
+Background:
+- static indoor environment, no movement, no dynamic elements
+- no people, no animals, no screens, no vehicles, no windows showing outdoor motion
+- no text, no logos, no symbols
+- slightly blurred (shallow depth of field), subject in sharp focus
+- realistic lighting consistent with subject (soft, diffused light)

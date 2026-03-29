@@ -45,6 +45,9 @@ next-env.d.ts
 # Dev log
 *.log
 
+# Personal notes
+notes.md
+
 # Local storage
 storage/
 dev.db

@@ -7,11 +7,10 @@ function register(adapter: LLMModelAdapter) {
   adapters.set(adapter.id, adapter);
 }
 
-register(new GeminiAdapter("gemini-2.0-flash", "Gemini 2.0 Flash", "Fast and capable, ideal for content generation"));
-register(new GeminiAdapter("gemini-2.5-flash-preview-04-17", "Gemini 2.5 Flash", "Latest preview model with enhanced reasoning"));
-register(new GeminiAdapter("gemini-2.5-pro-preview-03-25", "Gemini 2.5 Pro", "Most capable Gemini model"));
+register(new GeminiAdapter("gemini-3-flash-preview", "Gemini 3 Flash", "Fast and capable, ideal for content generation"));
+register(new GeminiAdapter("gemini-3.1-pro-preview", "Gemini 3.1 Pro", "Most capable, best quality metadata"));
 
-export const DEFAULT_LLM_MODEL_ID = "gemini-2.0-flash";
+export const DEFAULT_LLM_MODEL_ID = "gemini-3-flash-preview";
 
 export function getLLMAdapter(id: string): LLMModelAdapter {
   const adapter = adapters.get(id);

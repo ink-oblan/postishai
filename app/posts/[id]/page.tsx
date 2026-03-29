@@ -9,11 +9,17 @@ import { ArrowLeft, Download } from "lucide-react";
 import { PLATFORM_LABELS, STATUS_CONFIG, formatDistanceToNow } from "@/lib/utils";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { VideoSection } from "@/components/posts/VideoSection";
+import { listVoices } from "@/lib/heygen/client";
 
 export default async function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const post = await prisma.post.findUnique({ where: { id }, include: { avatar: true } });
+  const [post, voices] = await Promise.all([
+    prisma.post.findUnique({ where: { id }, include: { avatar: true } }),
+    listVoices().catch(() => []),
+  ]);
   if (!post) notFound();
+
+  const voice = voices.find((v) => v.voice_id === post.voiceId);
 
   const metadata: PlatformMetadata | null = post.metadata ? JSON.parse(post.metadata) : null;
   const statusCfg = STATUS_CONFIG[post.status] ?? STATUS_CONFIG.DRAFT;
@@ -63,10 +69,16 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                   unoptimized
                 />
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{post.avatar.name}</p>
                 <Link href={`/avatars/${post.avatar.id}`} className="text-xs text-muted-foreground hover:underline">View avatar</Link>
               </div>
+              {voice && (
+                <div className="text-right shrink-0">
+                  <p className="text-xs text-muted-foreground">Voice</p>
+                  <p className="text-sm font-medium">{voice.name}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

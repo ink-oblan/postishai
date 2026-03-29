@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Platform } from "@prisma/client";
-import { generateMetadata } from "@/lib/metadata/generator";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
 
 export async function GET() {
   const posts = await prisma.post.findMany({
+    where: { archivedAt: null },
     orderBy: { createdAt: "desc" },
     include: { avatar: { select: { id: true, name: true, imagePath: true } } },
   });
@@ -30,9 +30,6 @@ export async function POST(req: NextRequest) {
   const avatar = await prisma.avatar.findUnique({ where: { id: avatarId } });
   if (!avatar) return NextResponse.json({ error: "Avatar not found" }, { status: 404 });
 
-  const usedLlmModel = llmModelId ?? DEFAULT_LLM_MODEL_ID;
-  const metadata = await generateMetadata(platform, script, title, usedLlmModel);
-
   const post = await prisma.post.create({
     data: {
       title,
@@ -40,8 +37,7 @@ export async function POST(req: NextRequest) {
       script,
       voiceId,
       avatarId,
-      llmModelId: usedLlmModel,
-      metadata: JSON.stringify(metadata),
+      llmModelId: llmModelId ?? DEFAULT_LLM_MODEL_ID,
     },
     include: { avatar: { select: { id: true, name: true, imagePath: true } } },
   });

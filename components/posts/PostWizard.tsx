@@ -56,8 +56,11 @@ export function PostWizard() {
     platform: "INSTAGRAM",
     script: "",
     voiceId: "",
-    llmModelId: "gemini-2.0-flash",
+    llmModelId: "gemini-3-flash-preview",
   });
+  // Local text-field state — keeps typing fast by avoiding full-tree re-renders
+  const [title, setTitle] = useState("");
+  const [script, setScript] = useState("");
   const [avatars, setAvatars] = useState<Avatar[]>([]);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
@@ -81,17 +84,27 @@ export function PostWizard() {
 
   function canNext(): boolean {
     if (step === 1) return !!data.avatarId;
-    if (step === 2) return !!(data.title && data.script && data.voiceId && data.platform);
+    if (step === 2) return !!(title && script && data.voiceId && data.platform);
     return true;
   }
 
+  function handleNext() {
+    if (step === 2) {
+      // Flush local text state into shared data before advancing
+      setData((d) => ({ ...d, title, script }));
+    }
+    setStep((s) => s + 1);
+  }
+
   async function handleSubmit() {
+    // Ensure latest text values are included (in case user submits from step 2 directly)
+    const submitData = { ...data, title, script };
     setSubmitting(true);
     try {
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(submitData),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -147,7 +160,7 @@ export function PostWizard() {
                     data.avatarId === avatar.id ? "border-primary" : "border-border hover:border-primary/40"
                   }`}
                 >
-                  <div className="aspect-square relative bg-muted">
+                  <div className="aspect-[9/16] relative bg-muted">
                     <Image
                       src={`/api/avatars/${avatar.id}/image`}
                       alt={avatar.name}
@@ -171,8 +184,8 @@ export function PostWizard() {
             <Label htmlFor="title">Post Title</Label>
             <Input
               id="title"
-              value={data.title}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => update({ title: e.target.value })}
+              value={title}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
               placeholder="e.g. Summer Sale Announcement"
             />
           </div>
@@ -198,12 +211,12 @@ export function PostWizard() {
             <Label htmlFor="script">Script (spoken text)</Label>
             <Textarea
               id="script"
-              value={data.script}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => update({ script: e.target.value })}
+              value={script}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setScript(e.target.value)}
               placeholder="What should the avatar say in the video?"
               rows={4}
             />
-            <p className="text-xs text-muted-foreground">{data.script.length} characters</p>
+            <p className="text-xs text-muted-foreground">{script.length} characters</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -254,7 +267,7 @@ export function PostWizard() {
               </div>
               <div className="flex gap-2">
                 <span className="text-muted-foreground w-28 shrink-0">Title</span>
-                <span className="font-medium">{data.title}</span>
+                <span className="font-medium">{title}</span>
               </div>
               <div className="flex gap-2">
                 <span className="text-muted-foreground w-28 shrink-0">Platform</span>
@@ -262,7 +275,7 @@ export function PostWizard() {
               </div>
               <div className="flex gap-2">
                 <span className="text-muted-foreground w-28 shrink-0">Script</span>
-                <span className="line-clamp-3">{data.script}</span>
+                <span className="line-clamp-3">{script}</span>
               </div>
               <div className="flex gap-2">
                 <span className="text-muted-foreground w-28 shrink-0">Voice</span>
@@ -286,7 +299,7 @@ export function PostWizard() {
           <ChevronLeft className="h-4 w-4 mr-1" />Back
         </Button>
         {step < 3 ? (
-          <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
+          <Button onClick={handleNext} disabled={!canNext()}>
             Next<ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         ) : (

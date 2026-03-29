@@ -12,11 +12,30 @@ model Avatar {
   prompt         String?
   imageModel     String?
   imagePath      String
+  gender         String?  // "man" | "woman" | "neutral"
+  age            Int?
+  ethnicity      String?
+  origin         String?
+  occupation     String?
+  status         String   @default("COMPLETED")  // GENERATING | COMPLETED | FAILED
+  errorMessage   String?
   heygenAssetId  String?
   heygenAssetUrl String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  archivedAt     DateTime?
   posts          Post[]
+}
+
+model Job {
+  id        String   @id @default(cuid())
+  type      String   // "avatar.generate"
+  payload   String   // JSON
+  status    String   @default("PENDING")  // PENDING | PROCESSING | COMPLETED | FAILED
+  attempts  Int      @default(0)
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Post {
@@ -36,6 +55,7 @@ model Post {
   errorMessage   String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+  archivedAt     DateTime?
 }
 
 enum Platform {

@@ -76,12 +76,7 @@ export function VideoSection({ post }: Props) {
     const filename = post.videoPath.split("/").pop()!;
     return (
       <Card className="overflow-hidden">
-        <video
-          src={`/api/storage/${filename}`}
-          controls
-          className="w-full"
-          playsInline
-        />
+        <VideoPlayer src={`/api/storage/${filename}`} />
       </Card>
     );
   }
@@ -131,5 +126,17 @@ export function VideoSection({ post }: Props) {
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+function VideoPlayer({ src }: { src: string }) {
+  return (
+    <video
+      src={src}
+      controls
+      playsInline
+      className="w-full"
+      style={{ height: "auto", display: "block" }}
+    />
   );
 }

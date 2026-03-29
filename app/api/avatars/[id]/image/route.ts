@@ -9,10 +9,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const buffer = await readFile(avatar.imagePath);
   const contentType = avatar.imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
+  const etag = `"${avatar.updatedAt.getTime()}"`;
+
+  if (_req.headers.get("if-none-match") === etag) {
+    return new NextResponse(null, { status: 304 });
+  }
+
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": contentType,
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": "public, max-age=0, must-revalidate",
+      "ETag": etag,
     },
   });
 }

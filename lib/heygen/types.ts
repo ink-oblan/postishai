@@ -11,6 +11,8 @@ export interface HeyGenCreateVideoPayload {
   script: string;
   voice_id: string;
   title?: string;
+  resolution?: "1080p" | "720p";
+  aspect_ratio?: "16:9" | "9:16";
 }
 
 export interface HeyGenCreateVideoResponse {
