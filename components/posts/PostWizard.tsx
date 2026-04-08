@@ -10,21 +10,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, ChevronLeft, Loader2, Check } from "lucide-react";
+import { ChevronRight, ChevronLeft, Loader2, Check, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
 interface Avatar {
   id: string;
   name: string;
   imagePath: string;
-}
-
-interface Voice {
-  voice_id: string;
-  name: string;
-  gender: string;
-  language: string;
+  voiceId: string;
 }
 
 interface LLMModel {
@@ -40,7 +35,6 @@ interface WizardData {
   title: string;
   platform: string;
   script: string;
-  voiceId: string;
   llmModelId: string;
 }
 
@@ -49,31 +43,22 @@ export function PostWizard() {
   const searchParams = useSearchParams();
   const preselectedAvatarId = searchParams.get("avatarId") ?? "";
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(preselectedAvatarId ? 2 : 1);
   const [data, setData] = useState<WizardData>({
     avatarId: preselectedAvatarId,
     title: "",
     platform: "INSTAGRAM",
     script: "",
-    voiceId: "",
-    llmModelId: "gemini-3-flash-preview",
+    llmModelId: DEFAULT_LLM_MODEL_ID,
   });
-  // Local text-field state — keeps typing fast by avoiding full-tree re-renders
   const [title, setTitle] = useState("");
   const [script, setScript] = useState("");
   const [avatars, setAvatars] = useState<Avatar[]>([]);
-  const [voices, setVoices] = useState<Voice[]>([]);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetch("/api/avatars").then((r) => r.json()).then(setAvatars);
-    fetch("/api/heygen/voices").then((r) => r.json()).then((v: Voice[]) => {
-      setVoices(v);
-      if (v.length > 0 && !data.voiceId) {
-        setData((d) => ({ ...d, voiceId: v[0].voice_id }));
-      }
-    });
     fetch("/api/llm-models").then((r) => r.json()).then(setLLMModels);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -84,20 +69,23 @@ export function PostWizard() {
 
   function canNext(): boolean {
     if (step === 1) return !!data.avatarId;
-    if (step === 2) return !!(title && script && data.voiceId && data.platform);
+    if (step === 2) return !!(title && script && data.platform);
     return true;
   }
 
   function handleNext() {
     if (step === 2) {
-      // Flush local text state into shared data before advancing
       setData((d) => ({ ...d, title, script }));
     }
     setStep((s) => s + 1);
   }
 
+  function handleAvatarSelect(avatarId: string) {
+    update({ avatarId });
+    setStep(2);
+  }
+
   async function handleSubmit() {
-    // Ensure latest text values are included (in case user submits from step 2 directly)
     const submitData = { ...data, title, script };
     setSubmitting(true);
     try {
@@ -120,6 +108,8 @@ export function PostWizard() {
     }
   }
 
+  const selectedAvatar = avatars.find((a) => a.id === data.avatarId);
+
   return (
     <div className="space-y-6">
       {/* Step indicator */}
@@ -134,7 +124,7 @@ export function PostWizard() {
               {s < step ? <Check className="h-3.5 w-3.5" /> : s}
             </div>
             <span className={`text-sm ${s === step ? "font-medium" : "text-muted-foreground"}`}>
-              {s === 1 ? "Avatar" : s === 2 ? "Script & Voice" : "Review"}
+              {s === 1 ? "Avatar" : s === 2 ? "Script" : "Review"}
             </span>
             {s < 3 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
           </div>
@@ -145,39 +135,46 @@ export function PostWizard() {
       {step === 1 && (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">Select the avatar for this post</p>
-          {avatars.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No avatars yet. <a href="/avatars/new" className="underline">Create one first.</a>
-            </p>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {avatars.map((avatar) => (
-                <button
-                  key={avatar.id}
-                  type="button"
-                  onClick={() => update({ avatarId: avatar.id })}
-                  className={`rounded-lg overflow-hidden border-2 transition-all text-left ${
-                    data.avatarId === avatar.id ? "border-primary" : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  <div className="aspect-[9/16] relative bg-muted">
-                    <Image
-                      src={`/api/avatars/${avatar.id}/image`}
-                      alt={avatar.name}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  </div>
-                  <p className="text-xs font-medium p-2 truncate">{avatar.name}</p>
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/avatars/new")}
+              className="rounded-lg overflow-hidden border-2 border-dashed border-border bg-muted/20 text-left transition-all hover:border-primary/40 hover:bg-muted/40"
+            >
+              <div className="aspect-[9/16] flex items-center justify-center bg-[linear-gradient(180deg,hsl(var(--muted))/0.7,transparent)]">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                  <Plus className="h-7 w-7" />
+                </div>
+              </div>
+              <p className="text-xs font-medium p-2 truncate">Add new avatar</p>
+            </button>
+
+            {avatars.map((avatar) => (
+              <button
+                key={avatar.id}
+                type="button"
+                onClick={() => handleAvatarSelect(avatar.id)}
+                className={`rounded-lg overflow-hidden border-2 transition-all text-left ${
+                  data.avatarId === avatar.id ? "border-primary" : "border-border hover:border-primary/40"
+                }`}
+              >
+                <div className="aspect-[9/16] relative bg-muted">
+                  <Image
+                    src={`/api/avatars/${avatar.id}/image`}
+                    alt={avatar.name}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+                <p className="text-xs font-medium p-2 truncate">{avatar.name}</p>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Step 2: Script, voice, platform */}
+      {/* Step 2: Script & platform */}
       {step === 2 && (
         <div className="space-y-4">
           <div className="space-y-2">
@@ -219,38 +216,20 @@ export function PostWizard() {
             <p className="text-xs text-muted-foreground">{script.length} characters</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Voice</Label>
-              <Select value={data.voiceId} onValueChange={(v: string | null) => v && update({ voiceId: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select voice..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {voices.map((v) => (
-                    <SelectItem key={v.voice_id} value={v.voice_id}>
-                      {v.name.trim()} ({v.gender})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>AI Model for Metadata</Label>
-              <Select value={data.llmModelId} onValueChange={(v: string | null) => v && update({ llmModelId: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {llmModels.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>AI Model for Metadata</Label>
+            <Select value={data.llmModelId} onValueChange={(v: string | null) => v && update({ llmModelId: v })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {llmModels.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}
@@ -263,7 +242,7 @@ export function PostWizard() {
             <CardContent className="pt-4 space-y-3 text-sm">
               <div className="flex gap-2">
                 <span className="text-muted-foreground w-28 shrink-0">Avatar</span>
-                <span className="font-medium">{avatars.find((a) => a.id === data.avatarId)?.name}</span>
+                <span className="font-medium">{selectedAvatar?.name}</span>
               </div>
               <div className="flex gap-2">
                 <span className="text-muted-foreground w-28 shrink-0">Title</span>
@@ -278,10 +257,6 @@ export function PostWizard() {
                 <span className="line-clamp-3">{script}</span>
               </div>
               <div className="flex gap-2">
-                <span className="text-muted-foreground w-28 shrink-0">Voice</span>
-                <span>{voices.find((v) => v.voice_id === data.voiceId)?.name.trim()}</span>
-              </div>
-              <div className="flex gap-2">
                 <span className="text-muted-foreground w-28 shrink-0">AI Model</span>
                 <span>{llmModels.find((m) => m.id === data.llmModelId)?.name}</span>
               </div>
@@ -294,24 +269,32 @@ export function PostWizard() {
       )}
 
       {/* Navigation */}
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled={step === 1}>
-          <ChevronLeft className="h-4 w-4 mr-1" />Back
-        </Button>
-        {step < 3 ? (
-          <Button onClick={handleNext} disabled={!canNext()}>
-            Next<ChevronRight className="h-4 w-4 ml-1" />
+      {step === 1 ? (
+        <div className="flex pt-2">
+          <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled>
+            <ChevronLeft className="h-4 w-4 mr-1" />Back
           </Button>
-        ) : (
-          <Button onClick={handleSubmit} disabled={submitting || !canNext()}>
-            {submitting ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
-            ) : (
-              "Create Post"
-            )}
+        </div>
+      ) : (
+        <div className="flex justify-between pt-2">
+          <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
+            <ChevronLeft className="h-4 w-4 mr-1" />Back
           </Button>
-        )}
-      </div>
+          {step < 3 ? (
+            <Button onClick={handleNext} disabled={!canNext()}>
+              Next<ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} disabled={submitting || !canNext()}>
+              {submitting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
+              ) : (
+                "Create Post"
+              )}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

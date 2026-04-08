@@ -15,8 +15,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const { name, gender, age, ethnicity, origin, occupation, imageModel, regenerate, imageBase64, archive } = body as {
+  const { name, voiceId, prompt, gender, age, ethnicity, origin, occupation, imageModel, regenerate, imageBase64, archive } = body as {
     name?: string;
+    voiceId?: string;
+    prompt?: string;
     gender?: "man" | "woman" | "neutral";
     age?: number;
     ethnicity?: string;
@@ -38,6 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const updateData: Record<string, unknown> = {};
   if (name) updateData.name = name;
+  if (voiceId) updateData.voiceId = voiceId;
 
   if (regenerate || imageBase64) {
     if (imageBase64) {
@@ -97,7 +100,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     updateData.prompt = prompt;
   }
 
-  const updated = await prisma.avatar.update({ where: { id }, data: updateData });
-  return NextResponse.json(updated);
+  try {
+    const updated = await prisma.avatar.update({ where: { id }, data: updateData });
+    return NextResponse.json(updated);
+  } catch (err) {
+    console.error("[PATCH avatar] update failed:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
 

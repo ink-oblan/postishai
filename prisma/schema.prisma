@@ -19,6 +19,7 @@ model Avatar {
   occupation     String?
   status         String   @default("COMPLETED")  // GENERATING | COMPLETED | FAILED
   errorMessage   String?
+  voiceId        String   @default("")
   heygenAssetId  String?
   heygenAssetUrl String?
   createdAt      DateTime @default(now())
@@ -43,11 +44,11 @@ model Post {
   title          String
   platform       Platform
   script         String
-  voiceId        String
   avatarId       String
   avatar         Avatar     @relation(fields: [avatarId], references: [id])
   llmModelId     String     @default("gemini-2.0-flash")
   status         PostStatus @default(DRAFT)
+  generationStartedAt DateTime?
   heygenVideoId  String?
   videoPath      String?
   heygenVideoUrl String?

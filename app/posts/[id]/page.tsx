@@ -2,14 +2,15 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { PLATFORM_LABELS, STATUS_CONFIG, formatDistanceToNow } from "@/lib/utils";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { VideoSection } from "@/components/posts/VideoSection";
+import { PostEditPanel } from "@/components/posts/PostEditPanel";
 import { listVoices } from "@/lib/heygen/client";
+import { isPostEditable } from "@/lib/posts";
+import { getLLMModelInfo } from "@/lib/llm-models/registry";
 
 export default async function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,43 +20,33 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   ]);
   if (!post) notFound();
 
-  const voice = voices.find((v) => v.voice_id === post.voiceId);
+  const voice = voices.find((v) => v.voice_id === post.avatar.voiceId);
+  const llmModel = getLLMModelInfo(post.llmModelId);
 
   const metadata: PlatformMetadata | null = post.metadata ? JSON.parse(post.metadata) : null;
   const statusCfg = STATUS_CONFIG[post.status] ?? STATUS_CONFIG.DRAFT;
+  const canEditPost = isPostEditable(post);
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
+    <div className="px-6 py-8 sm:px-10 space-y-6">
       <div className="flex items-center gap-3">
         <Link href="/posts" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4 mr-1" />Back
         </Link>
       </div>
 
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{post.title}</h1>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="outline">{PLATFORM_LABELS[post.platform]}</Badge>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusCfg.className}`}>
-              {statusCfg.label}
-            </span>
-            <span className="text-xs text-muted-foreground">{formatDistanceToNow(post.createdAt)}</span>
-          </div>
-        </div>
-        {post.status === "COMPLETED" && (
-          <a href={`/api/posts/${post.id}/download`} download>
-            <Button>
-              <Download className="h-4 w-4 mr-1.5" />Download Package
-            </Button>
-          </a>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="space-y-4">
           {/* Video / generation area */}
-          <VideoSection post={{ id: post.id, status: post.status, videoPath: post.videoPath, errorMessage: post.errorMessage }} />
+          <VideoSection
+            post={{
+              id: post.id,
+              status: post.status,
+              videoPath: post.videoPath,
+              errorMessage: post.errorMessage,
+              generationStartedAt: post.generationStartedAt?.toISOString() ?? null,
+            }}
+          />
 
           {/* Avatar info */}
           <Card>
@@ -83,15 +74,24 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           </Card>
         </div>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Script</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{post.script}</p>
-            </CardContent>
-          </Card>
+        <div className="md:col-span-2 space-y-4">
+          <PostEditPanel
+            editable={canEditPost}
+            post={{
+              id: post.id,
+              title: post.title,
+              platformLabel: PLATFORM_LABELS[post.platform],
+              statusLabel: statusCfg.label,
+              script: post.script,
+              llmModelId: post.llmModelId,
+              llmModelName: llmModel?.name ?? post.llmModelId,
+              avatarName: post.avatar.name,
+              voiceName: voice?.name ?? null,
+              createdAtLabel: formatDistanceToNow(post.createdAt),
+              status: post.status,
+              downloadUrl: post.status === "COMPLETED" ? `/api/posts/${post.id}/download` : null,
+            }}
+          />
 
           {metadata && (
             <Card>

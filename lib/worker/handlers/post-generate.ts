@@ -67,7 +67,7 @@ export async function handlePostGenerate(payload: PostGeneratePayload): Promise<
     heygenVideoId = await createVideo({
       image_asset_id: heygenAssetId,
       script: post.script,
-      voice_id: post.voiceId,
+      voice_id: post.avatar.voiceId,
       title: post.title,
       aspect_ratio: "9:16",
       resolution: "1080p",

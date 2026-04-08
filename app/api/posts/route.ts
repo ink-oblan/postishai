@@ -14,16 +14,15 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { title, platform, script, voiceId, avatarId, llmModelId } = body as {
+  const { title, platform, script, avatarId, llmModelId } = body as {
     title: string;
     platform: Platform;
     script: string;
-    voiceId: string;
     avatarId: string;
     llmModelId?: string;
   };
 
-  if (!title || !platform || !script || !voiceId || !avatarId) {
+  if (!title || !platform || !script || !avatarId) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
@@ -35,7 +34,6 @@ export async function POST(req: NextRequest) {
       title,
       platform,
       script,
-      voiceId,
       avatarId,
       llmModelId: llmModelId ?? DEFAULT_LLM_MODEL_ID,
     },

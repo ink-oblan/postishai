@@ -16,8 +16,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { name, gender, age, ethnicity, origin, occupation, imageModel, imageBase64 } = body as {
+  const { name, voiceId, gender, age, ethnicity, origin, occupation, imageModel, imageBase64 } = body as {
     name: string;
+    voiceId: string;
     gender?: "man" | "woman" | "neutral";
     age?: number;
     ethnicity?: string;
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
   };
 
   if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 });
+  if (!voiceId) return NextResponse.json({ error: "voiceId is required" }, { status: 400 });
 
   if (imageBase64) {
     // Upload: process synchronously
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
       : "image/png";
 
     const avatar = await prisma.avatar.create({
-      data: { name, imageModel: null, imagePath: "", status: "COMPLETED" },
+      data: { name, voiceId, imageModel: null, imagePath: "", status: "COMPLETED" },
     });
 
     const ext = mimeType === "image/jpeg" ? "jpg" : "png";
@@ -64,6 +66,7 @@ export async function POST(req: NextRequest) {
     const avatar = await prisma.avatar.create({
       data: {
         name,
+        voiceId,
         prompt,
         gender,
         age,

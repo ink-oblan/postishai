@@ -13,23 +13,36 @@ interface Props {
     status: string;
     videoPath: string | null;
     errorMessage: string | null;
+    generationStartedAt: string | null;
   };
+}
+
+function getElapsedSeconds(startedAt: string | null): number {
+  if (!startedAt) return 0;
+  const started = new Date(startedAt).getTime();
+  if (Number.isNaN(started)) return 0;
+  return Math.max(0, Math.floor((Date.now() - started) / 1000));
 }
 
 export function VideoSection({ post }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(post.status);
+  const [generationStartedAt, setGenerationStartedAt] = useState(post.generationStartedAt);
   const [generating, setGenerating] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(() => getElapsedSeconds(post.generationStartedAt));
 
   const pollStatus = useCallback(async () => {
     const res = await fetch(`/api/posts/${post.id}/status`);
-    const data = await res.json();
+    const data = await res.json() as {
+      status: string;
+      generationStartedAt: string | null;
+    };
     setStatus(data.status);
+    setGenerationStartedAt(data.generationStartedAt);
     if (data.status === "COMPLETED" || data.status === "FAILED") {
       router.refresh();
     }
-    return data.status;
+    return data;
   }, [post.id, router]);
 
   // Poll while GENERATING
@@ -39,20 +52,21 @@ export function VideoSection({ post }: Props) {
     let timer: ReturnType<typeof setInterval>;
 
     interval = setInterval(async () => {
-      const s = await pollStatus();
-      if (s === "COMPLETED" || s === "FAILED") {
+      const next = await pollStatus();
+      if (next.status === "COMPLETED" || next.status === "FAILED") {
         clearInterval(interval);
         clearInterval(timer);
       }
     }, 5000);
 
-    timer = setInterval(() => setElapsed((e) => e + 1), 1000);
+    setElapsed(getElapsedSeconds(generationStartedAt));
+    timer = setInterval(() => setElapsed(getElapsedSeconds(generationStartedAt)), 1000);
 
     return () => {
       clearInterval(interval);
       clearInterval(timer);
     };
-  }, [status, pollStatus]);
+  }, [status, pollStatus, generationStartedAt]);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -62,8 +76,10 @@ export function VideoSection({ post }: Props) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to start generation");
       }
-      setStatus("GENERATING");
-      setElapsed(0);
+      const data = await res.json() as { status: string; generationStartedAt: string | null };
+      setStatus(data.status);
+      setGenerationStartedAt(data.generationStartedAt);
+      setElapsed(getElapsedSeconds(data.generationStartedAt));
       toast.success("Video generation started!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start");

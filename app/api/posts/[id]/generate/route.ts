@@ -14,12 +14,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Video already completed" }, { status: 409 });
   }
 
-  await prisma.post.update({
+  const updated = await prisma.post.update({
     where: { id },
-    data: { status: "GENERATING", errorMessage: null },
+    data: { status: "GENERATING", errorMessage: null, generationStartedAt: new Date() },
   });
 
   await enqueueJob("post.generate", { postId: id });
 
-  return NextResponse.json({ status: "GENERATING" });
+  return NextResponse.json({
+    status: "GENERATING",
+    generationStartedAt: updated.generationStartedAt?.toISOString() ?? null,
+  });
 }

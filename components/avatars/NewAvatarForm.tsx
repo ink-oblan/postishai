@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Upload, Loader2 } from "lucide-react";
+import { Sparkles, Upload, Loader2, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 
 const ETHNICITIES = [
@@ -34,6 +34,13 @@ interface ImageModel {
   description: string;
 }
 
+interface Voice {
+  voice_id: string;
+  name: string;
+  gender: string;
+  preview_audio?: string;
+}
+
 type Mode = "generate" | "upload";
 type Gender = "man" | "woman" | "neutral";
 
@@ -41,6 +48,7 @@ export function NewAvatarForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("generate");
   const [name, setName] = useState("");
+  const [voiceId, setVoiceId] = useState("");
   const [gender, setGender] = useState<Gender>("man");
   const [age, setAge] = useState("");
   const [ethnicity, setEthnicity] = useState("");
@@ -48,13 +56,38 @@ export function NewAvatarForm() {
   const [occupation, setOccupation] = useState("");
   const [imageModel, setImageModel] = useState("nano-banana-2");
   const [models, setModels] = useState<ImageModel[]>([]);
+  const [voices, setVoices] = useState<Voice[]>([]);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    setPlayingVoiceId(null);
+  }, []);
+
+  function toggleVoicePreview(voice: Voice) {
+    if (!voice.preview_audio) return;
+    if (playingVoiceId === voice.voice_id) { stopAudio(); return; }
+    stopAudio();
+    const audio = new Audio(voice.preview_audio);
+    audio.onended = () => setPlayingVoiceId(null);
+    audio.play();
+    audioRef.current = audio;
+    setPlayingVoiceId(voice.voice_id);
+  }
+
+  useEffect(() => stopAudio, [stopAudio]);
 
   useEffect(() => {
     fetch("/api/image-models").then((r) => r.json()).then(setModels);
+    fetch("/api/heygen/voices").then((r) => r.json()).then((v: Voice[]) => {
+      setVoices(v);
+      if (v.length > 0) setVoiceId(v[0].voice_id);
+    });
   }, []);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>): void {
@@ -72,6 +105,7 @@ export function NewAvatarForm() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     if (!name.trim()) { toast.error("Name is required"); return; }
+    if (!voiceId) { toast.error("Voice is required"); return; }
     if (mode === "generate") {
       if (!age || isNaN(Number(age))) { toast.error("Valid age is required"); return; }
       if (!ethnicity) { toast.error("Ethnicity is required"); return; }
@@ -82,8 +116,8 @@ export function NewAvatarForm() {
     setLoading(true);
     try {
       const body = mode === "upload"
-        ? { name, imageBase64 }
-        : { name, gender, age: Number(age), ethnicity, origin: origin.trim() || undefined, occupation, imageModel };
+        ? { name, voiceId, imageBase64 }
+        : { name, voiceId, gender, age: Number(age), ethnicity, origin: origin.trim() || undefined, occupation, imageModel };
 
       const res = await fetch("/api/avatars", {
         method: "POST",
@@ -120,6 +154,38 @@ export function NewAvatarForm() {
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Dr. James" required />
+      </div>
+
+      {/* Voice */}
+      <div className="space-y-2">
+        <Label>Voice</Label>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 w-9 p-0 shrink-0"
+            onClick={() => { const v = voices.find((v) => v.voice_id === voiceId); if (v) toggleVoicePreview(v); }}
+            disabled={!voices.find((v) => v.voice_id === voiceId)?.preview_audio}
+            title="Preview voice"
+          >
+            {playingVoiceId === voiceId
+              ? <Square className="h-3.5 w-3.5 fill-current" />
+              : <Play className="h-3.5 w-3.5 fill-current" />}
+          </Button>
+          <Select value={voiceId} onValueChange={(v: string | null) => { if (v) { stopAudio(); setVoiceId(v); } }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select voice…" />
+            </SelectTrigger>
+            <SelectContent>
+              {voices.map((v) => (
+                <SelectItem key={v.voice_id} value={v.voice_id}>
+                  {v.name.trim()} ({v.gender})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {mode === "generate" ? (

@@ -8,6 +8,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { PLATFORM_LABELS, STATUS_CONFIG, formatDistanceToNow } from "@/lib/utils";
 import { AvatarActions } from "@/components/avatars/AvatarActions";
 import { AvatarStatusPoller } from "@/components/avatars/AvatarStatusPoller";
+import { AvatarEditPanel } from "@/components/avatars/AvatarEditPanel";
 
 export default async function AvatarDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,7 +19,7 @@ export default async function AvatarDetailPage({ params }: { params: Promise<{ i
   if (!avatar) notFound();
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
+    <div className="px-6 py-8 sm:px-10 space-y-6">
       <div className="flex items-center gap-3">
         <Link href="/avatars" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4 mr-1" />Back
@@ -37,7 +38,7 @@ export default async function AvatarDetailPage({ params }: { params: Promise<{ i
           ) : (
             <div className="aspect-[9/16] relative rounded-xl overflow-hidden bg-muted">
               <Image
-                src={`/api/avatars/${avatar.id}/image`}
+                src={`/api/avatars/${avatar.id}/image?t=${avatar.updatedAt.getTime()}`}
                 alt={avatar.name}
                 fill
                 className="object-cover"
@@ -45,34 +46,24 @@ export default async function AvatarDetailPage({ params }: { params: Promise<{ i
               />
             </div>
           )}
-          <AvatarActions avatar={{ id: avatar.id, name: avatar.name, prompt: avatar.prompt, imageModel: avatar.imageModel }} />
+          <AvatarActions avatar={{ id: avatar.id, prompt: avatar.prompt, imageModel: avatar.imageModel }} />
         </div>
 
         <div className="md:col-span-2 space-y-4">
-          <div>
-            <h1 className="text-2xl font-semibold">{avatar.name}</h1>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {avatar.gender && (
-                <Badge variant="outline" className="text-xs capitalize">{avatar.gender}</Badge>
-              )}
-              {avatar.age && (
-                <Badge variant="outline" className="text-xs">{avatar.age} yrs</Badge>
-              )}
-              {avatar.ethnicity && (
-                <Badge variant="outline" className="text-xs">{avatar.ethnicity}</Badge>
-              )}
-              {avatar.origin && (
-                <Badge variant="outline" className="text-xs">{avatar.origin}</Badge>
-              )}
-              {avatar.occupation && (
-                <Badge variant="outline" className="text-xs">{avatar.occupation}</Badge>
-              )}
-              {avatar.imageModel && (
-                <Badge variant="secondary" className="text-xs">{avatar.imageModel}</Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">Created {formatDistanceToNow(avatar.createdAt)}</p>
-          </div>
+          <AvatarEditPanel
+            avatar={{
+              id: avatar.id,
+              name: avatar.name,
+              voiceId: avatar.voiceId,
+              gender: avatar.gender,
+              age: avatar.age,
+              ethnicity: avatar.ethnicity,
+              origin: avatar.origin,
+              occupation: avatar.occupation,
+              imageModel: avatar.imageModel,
+              createdAt: avatar.createdAt.toISOString(),
+            }}
+          />
 
           <Card>
             <CardHeader className="pb-3">

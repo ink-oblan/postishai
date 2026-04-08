@@ -1,4 +1,4 @@
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeSelector } from "@/components/ThemeSelector";
 
 export default function SettingsPage() {
   return (
@@ -19,12 +19,14 @@ export default function SettingsPage() {
             <h2 className="text-sm font-semibold">Appearance</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Choose your preferred color theme</p>
           </div>
-          <div className="px-5 py-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Color theme</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Switch between light and dark mode</p>
+          <div className="px-5 py-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">Color scheme</p>
+              <p className="text-xs text-muted-foreground">Select light, dark, or system default</p>
             </div>
-            <ThemeToggle />
+            <div className="w-full sm:w-auto">
+              <ThemeSelector />
+            </div>
           </div>
         </div>
 
