@@ -226,7 +226,7 @@ export function PostWizard() {
               <SelectTrigger>
                 <SelectValue>{llmModels.find((m) => m.id === data.llmModelId)?.name ?? data.llmModelId}</SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="w-max">
                 {llmModels.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     {m.name}

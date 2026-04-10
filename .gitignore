@@ -52,4 +52,4 @@ notes.md
 storage/
 dev.db
 dev.db-shm
-dev.db-wal
+dev.db-waltmp/

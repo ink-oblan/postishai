@@ -26,7 +26,7 @@ export default async function DashboardPage() {
       <div className="px-6 py-8 sm:px-10 space-y-10">
 
         {/* ── Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
               Dashboard
@@ -34,7 +34,7 @@ export default async function DashboardPage() {
           </div>
           <Link
             href="/posts/new"
-            className="group inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity self-start sm:self-auto"
+            className="group inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity"
           >
             <Plus className="h-4 w-4" />
             New Post

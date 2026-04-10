@@ -24,7 +24,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
             href={href}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3.5 rounded-xl px-5 py-4 text-[17px] font-medium transition-all duration-150",
+              "flex items-center gap-3.5 rounded-xl px-5 py-4 text-[20px] font-semibold transition-all duration-150",
               active
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -53,15 +53,10 @@ function ProfileFooter({ pathname, onNavigate }: { pathname: string; onNavigate?
             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
         )}
       >
-        <div className={cn(
-          "h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold",
-          active ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-        )}>
-          <Settings className="h-4 w-4" />
-        </div>
+        <Settings className={cn("h-5 w-5 shrink-0", active ? "text-primary" : "")} />
         <div className="min-w-0">
-          <p className="text-[14px] font-medium leading-tight truncate">Settings</p>
-          <p className="text-[12px] text-muted-foreground leading-tight">Profile &amp; preferences</p>
+          <p className="text-[17px] font-semibold leading-tight truncate">Settings</p>
+          <p className="text-[13px] text-muted-foreground leading-tight">Profile &amp; preferences</p>
         </div>
       </Link>
     </div>

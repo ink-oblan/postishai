@@ -185,11 +185,11 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
                 <SelectTrigger className="h-8 text-sm w-full">
                   <SelectValue>{llmModels.find((m) => m.id === llmModelId)?.name ?? llmModelId}</SelectValue>
                 </SelectTrigger>
-                <SelectContent className="max-h-64">
+                <SelectContent className="max-h-64 w-max">
                   {llmModels.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       <div className="flex min-w-0 flex-1 items-baseline gap-3 pr-4">
-                        <span className="w-44 shrink-0 font-medium">{m.name}</span>
+                        <span className="shrink-0 font-medium whitespace-nowrap">{m.name}</span>
                         <span className="min-w-0 text-xs text-muted-foreground whitespace-normal break-words">
                           {m.description}
                         </span>

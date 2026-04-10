@@ -190,6 +190,7 @@
   }
   html {
     @apply font-sans;
+    font-size: 150%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
