@@ -13,7 +13,7 @@ register(new GeminiAdapter("models/gemini-pro-latest", "Gemini Pro Latest", "Fro
 register(new GeminiAdapter("gemini-3-flash-preview", "Gemini 3 Flash", "Fast and capable, ideal for content generation"));
 register(new GeminiAdapter("gemini-3.1-pro-preview", "Gemini 3.1 Pro", "Most capable, best quality metadata"));
 
-export const DEFAULT_LLM_MODEL_ID = "gemini-3-flash-preview";
+export const DEFAULT_LLM_MODEL_ID = "models/gemini-pro-latest";
 
 export function getLLMModelInfo(id: string): LLMModelInfo | undefined {
   const adapter = adapters.get(id);

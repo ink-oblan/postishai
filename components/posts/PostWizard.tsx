@@ -43,9 +43,9 @@ export function PostWizard() {
   const searchParams = useSearchParams();
   const preselectedAvatarId = searchParams.get("avatarId") ?? "";
 
-  const [step, setStep] = useState(preselectedAvatarId ? 2 : 1);
+  const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>({
-    avatarId: preselectedAvatarId,
+    avatarId: "",
     title: "",
     platform: "INSTAGRAM",
     script: "",
@@ -58,6 +58,10 @@ export function PostWizard() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (preselectedAvatarId) {
+      setData((d) => ({ ...d, avatarId: preselectedAvatarId }));
+      setStep(2);
+    }
     fetch("/api/avatars").then((r) => r.json()).then(setAvatars);
     fetch("/api/llm-models").then((r) => r.json()).then(setLLMModels);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -220,7 +224,7 @@ export function PostWizard() {
             <Label>AI Model for Metadata</Label>
             <Select value={data.llmModelId} onValueChange={(v: string | null) => v && update({ llmModelId: v })}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue>{llmModels.find((m) => m.id === data.llmModelId)?.name ?? data.llmModelId}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {llmModels.map((m) => (
@@ -269,13 +273,7 @@ export function PostWizard() {
       )}
 
       {/* Navigation */}
-      {step === 1 ? (
-        <div className="flex pt-2">
-          <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled>
-            <ChevronLeft className="h-4 w-4 mr-1" />Back
-          </Button>
-        </div>
-      ) : (
+      {step === 1 ? null : (
         <div className="flex justify-between pt-2">
           <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
             <ChevronLeft className="h-4 w-4 mr-1" />Back

@@ -28,9 +28,6 @@ export default async function DashboardPage() {
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold tracking-widest uppercase text-primary mb-1.5">
-              Content Studio
-            </p>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
               Dashboard
             </h1>

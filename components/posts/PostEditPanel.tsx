@@ -183,7 +183,7 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
             llmModels.length > 0 ? (
               <Select value={llmModelId} onValueChange={(v: string | null) => v && setLLMModelId(v)}>
                 <SelectTrigger className="h-8 text-sm w-full">
-                  <SelectValue />
+                  <SelectValue>{llmModels.find((m) => m.id === llmModelId)?.name ?? llmModelId}</SelectValue>
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
                   {llmModels.map((m) => (

@@ -4,9 +4,6 @@ export default function SettingsPage() {
   return (
     <div className="px-6 py-8 sm:px-10 space-y-8">
       <div>
-        <p className="text-xs font-semibold tracking-widest uppercase text-primary mb-1.5">
-          Account
-        </p>
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1.5">Manage your profile and preferences</p>
       </div>

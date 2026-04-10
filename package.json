@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev | tee dev.log",
+    "dev": "next dev 2>&1 | tee dev.log",
     "build": "next build",
     "start": "next start",
     "worker": "tsx watch worker.ts | tee worker.log"
