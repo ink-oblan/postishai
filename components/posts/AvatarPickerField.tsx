@@ -11,6 +11,7 @@ export interface AvatarPickerOption {
   id: string;
   name: string;
   imagePath: string;
+  voiceId: string;
 }
 
 interface AvatarPickerFieldProps {

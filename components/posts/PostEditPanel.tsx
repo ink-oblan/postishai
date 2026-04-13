@@ -22,6 +22,24 @@ interface LLMModel {
   description: string;
 }
 
+type SaveAction = "save" | "regenerate";
+
+interface VoiceOption {
+  voice_id: string;
+  name: string;
+}
+
+interface PendingPostSync {
+  title: string;
+  script: string;
+  llmModelId: string;
+  avatarId: string;
+  avatarName: string;
+  voiceName: string | null;
+  metadata: PlatformMetadata | null;
+  statusLabel: string;
+}
+
 interface PostData {
   id: string;
   title: string;
@@ -67,6 +85,7 @@ export function PostEditPanel({
   const [savedStatusLabel, setSavedStatusLabel] = useState(post.statusLabel);
   const [savedAvatarId, setSavedAvatarId] = useState(post.avatarId);
   const [savedAvatarName, setSavedAvatarName] = useState(post.avatarName);
+  const [savedVoiceName, setSavedVoiceName] = useState(post.voiceName);
   const [savedMetadata, setSavedMetadata] = useState(post.metadata);
   const [editing, setEditing] = useState(initialEditing);
   const [title, setTitle] = useState(post.title);
@@ -76,13 +95,39 @@ export function PostEditPanel({
   const [metadata, setMetadata] = useState(post.metadata);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
   const [avatars, setAvatars] = useState<AvatarPickerOption[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const [pendingSaveAction, setPendingSaveAction] = useState<SaveAction | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const loading = pendingSaveAction !== null;
   const selectedAvatar = avatars.find((avatar) => avatar.id === avatarId);
   const currentAvatarName = selectedAvatar?.name ?? savedAvatarName;
+  const currentVoiceName = selectedAvatar
+    ? voices.find((voice) => voice.voice_id === selectedAvatar.voiceId)?.name.trim() ?? savedVoiceName
+    : savedVoiceName;
   const scriptRef = useRef<HTMLTextAreaElement | null>(null);
+  const prevInitialEditingRef = useRef(initialEditing);
+  const pendingPostSyncRef = useRef<PendingPostSync | null>(null);
 
   useEffect(() => {
+    const pendingPostSync = pendingPostSyncRef.current;
+    if (pendingPostSync) {
+      const postMatchesPendingSync =
+        post.title === pendingPostSync.title &&
+        post.script === pendingPostSync.script &&
+        post.llmModelId === pendingPostSync.llmModelId &&
+        post.avatarId === pendingPostSync.avatarId &&
+        post.avatarName === pendingPostSync.avatarName &&
+        post.voiceName === pendingPostSync.voiceName &&
+        post.statusLabel === pendingPostSync.statusLabel &&
+        JSON.stringify(post.metadata) === JSON.stringify(pendingPostSync.metadata);
+
+      if (!postMatchesPendingSync) {
+        return;
+      }
+
+      pendingPostSyncRef.current = null;
+    }
+
     setSavedTitle(post.title);
     setSavedScript(post.script);
     setSavedLlmModelId(post.llmModelId);
@@ -90,19 +135,29 @@ export function PostEditPanel({
     setSavedStatusLabel(post.statusLabel);
     setSavedAvatarId(post.avatarId);
     setSavedAvatarName(post.avatarName);
+    setSavedVoiceName(post.voiceName);
     setSavedMetadata(post.metadata);
-    setTitle(post.title);
-    setScript(post.script);
-    setLLMModelId(post.llmModelId);
-    setAvatarId(initialAvatarId ?? post.avatarId);
-    setMetadata(post.metadata);
-    setEditing(initialEditing);
-  }, [initialAvatarId, initialEditing, post]);
+    if (!editing) {
+      setTitle(post.title);
+      setScript(post.script);
+      setLLMModelId(post.llmModelId);
+      setAvatarId(initialAvatarId ?? post.avatarId);
+      setMetadata(post.metadata);
+    }
+  }, [editing, initialAvatarId, post]);
+
+  useEffect(() => {
+    if (!prevInitialEditingRef.current && initialEditing) {
+      setEditing(true);
+    }
+    prevInitialEditingRef.current = initialEditing;
+  }, [initialEditing]);
 
   useEffect(() => {
     if (editing) {
       fetch("/api/llm-models").then((r) => r.json()).then(setLLMModels);
       fetch("/api/avatars").then((r) => r.json()).then(setAvatars);
+      fetch("/api/heygen/voices").then((r) => r.json()).then(setVoices);
     }
   }, [editing]);
 
@@ -137,13 +192,14 @@ export function PostEditPanel({
     setAvatarId(nextAvatar.id);
   }
 
-  async function handleSave() {
-    setLoading(true);
+  async function handleSave(regenerateMetadata = false) {
+    const saveAction: SaveAction = regenerateMetadata ? "regenerate" : "save";
+    setPendingSaveAction(saveAction);
     try {
       const res = await fetch(`/api/posts/${post.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, script, llmModelId, avatarId, metadata }),
+        body: JSON.stringify({ title, script, llmModelId, avatarId, metadata, regenerateMetadata }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -156,18 +212,31 @@ export function PostEditPanel({
         metadataRegenerated?: boolean;
       };
       const selectedModel = llmModels.find((m) => m.id === llmModelId);
+      const nextMetadata = updated.metadata ?? (updated.metadataRegenerated ? null : metadata);
+      const nextStatusLabel = updated.status === "DRAFT" ? "Draft" : savedStatusLabel;
+      const nextVoiceName = currentVoiceName;
+      const nextAvatarName = currentAvatarName;
 
       setSavedTitle(title.trim());
       setSavedScript(script.trim());
       setSavedLlmModelId(llmModelId);
       setSavedLlmModelName(selectedModel?.name ?? llmModelId);
       setSavedAvatarId(avatarId);
-      setSavedAvatarName(currentAvatarName);
-      setSavedMetadata(updated.metadata ?? (updated.metadataRegenerated ? null : metadata));
-      setMetadata(updated.metadata ?? (updated.metadataRegenerated ? null : metadata));
-      if (updated.status === "DRAFT") {
-        setSavedStatusLabel("Draft");
-      }
+      setSavedAvatarName(nextAvatarName);
+      setSavedVoiceName(nextVoiceName);
+      setSavedMetadata(nextMetadata);
+      setMetadata(nextMetadata);
+      setSavedStatusLabel(nextStatusLabel);
+      pendingPostSyncRef.current = {
+        title: title.trim(),
+        script: script.trim(),
+        llmModelId,
+        avatarId,
+        avatarName: nextAvatarName,
+        voiceName: nextVoiceName,
+        metadata: nextMetadata,
+        statusLabel: nextStatusLabel,
+      };
 
       toast.success(
         updated.metadataRegenerated
@@ -182,7 +251,7 @@ export function PostEditPanel({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update");
     } finally {
-      setLoading(false);
+      setPendingSaveAction(null);
     }
   }
 
@@ -191,7 +260,7 @@ export function PostEditPanel({
       setConfirmOpen(true);
       return;
     }
-    void handleSave();
+    void handleSave(false);
   }
 
   const content = (
@@ -292,7 +361,7 @@ export function PostEditPanel({
 
         <div>
           <PropLabel>Voice</PropLabel>
-          <PropValue>{post.voiceName}</PropValue>
+          <PropValue>{currentVoiceName}</PropValue>
         </div>
 
         <div>
@@ -382,12 +451,16 @@ export function PostEditPanel({
               <AlertDialog.Title className="text-base font-semibold">Regenerate caption and hashtags?</AlertDialog.Title>
             </div>
             <AlertDialog.Description className="text-sm text-muted-foreground mb-6 pl-12">
-              Saving these changes will wipe the current caption and hashtags and generate new ones.
+              Save to keep the current caption and hashtags, or save and regenerate to wipe them and generate new ones.
             </AlertDialog.Description>
             <div className="flex gap-2 justify-end">
               <AlertDialog.Close render={<Button variant="outline" size="sm" />}>Cancel</AlertDialog.Close>
-              <Button size="sm" onClick={() => void handleSave()} disabled={loading}>
-                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+              <Button variant="outline" size="sm" onClick={() => void handleSave(false)} disabled={loading}>
+                {pendingSaveAction === "save" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                Save
+              </Button>
+              <Button size="sm" onClick={() => void handleSave(true)} disabled={loading}>
+                {pendingSaveAction === "regenerate" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
                 Save and regenerate
               </Button>
             </div>

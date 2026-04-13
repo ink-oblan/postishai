@@ -64,13 +64,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const post = await prisma.post.findUnique({ where: { id } });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await req.json();
-  const { title, script, llmModelId, avatarId, metadata, archive } = body as {
+  const { title, script, llmModelId, avatarId, metadata, archive, regenerateMetadata } = body as {
     title?: string;
     script?: string;
     llmModelId?: string;
     avatarId?: string;
     metadata?: PlatformMetadata | null;
     archive?: boolean;
+    regenerateMetadata?: boolean;
   };
 
   if (archive) {
@@ -113,6 +114,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     trimmedScript !== post.script ||
     trimmedLlmModelId !== post.llmModelId ||
     nextAvatarId !== post.avatarId;
+  const shouldRegenerateMetadata = metadataChanged && regenerateMetadata === true;
 
   const updated = await prisma.post.update({
     where: { id },
@@ -121,7 +123,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       script: trimmedScript,
       llmModelId: trimmedLlmModelId,
       avatarId: nextAvatarId,
-      ...(metadataChanged ? {
+      ...(shouldRegenerateMetadata ? {
         status: "DRAFT",
         generationStartedAt: null,
         metadata: null,
@@ -132,13 +134,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     },
   });
 
-  if (metadataChanged) {
+  if (shouldRegenerateMetadata) {
     await enqueueJob("post.metadata", { postId: id });
   }
 
   return NextResponse.json({
     ...updated,
     metadata: updated.metadata ? JSON.parse(updated.metadata) : null,
-    metadataRegenerated: metadataChanged,
+    metadataRegenerated: shouldRegenerateMetadata,
   });
 }
