@@ -4,6 +4,13 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+<!-- BEGIN:runtime-log-files -->
+# Runtime log files
+
+- `dev.log` stores the local Next.js dev server output.
+- `worker.log` stores the local worker process output.
+<!-- END:runtime-log-files -->
+
 <!-- BEGIN:api-integration-rules -->
 # Always check API references before integrating
 

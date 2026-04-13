@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { isPostEditable } from "@/lib/posts";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
+import { enqueueJob } from "@/lib/worker/jobs";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -57,5 +58,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       heygenVideoUrl: null,
     },
   });
+
+  await enqueueJob("post.metadata", { postId: id });
+
   return NextResponse.json(updated);
 }

@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db";
 import { writeFile, readFile } from "@/lib/storage";
 import { uploadAvatarImage, createVideo, getVideoStatus, downloadVideo } from "@/lib/heygen/client";
-import { generateMetadata } from "@/lib/metadata/generator";
 import type { PostGeneratePayload } from "../jobs";
 import { spawn } from "child_process";
 import { writeFile as writeFileFs, readFile as readFileFs, unlink } from "fs/promises";
@@ -22,22 +21,7 @@ export async function handlePostGenerate(payload: PostGeneratePayload): Promise<
   const post = await prisma.post.findUnique({ where: { id: postId }, include: { avatar: true } });
   if (!post) throw new Error(`Post ${postId} not found`);
 
-  // Step 1: Generate LLM metadata
-  log(`generating metadata (model=${post.llmModelId})...`);
-  let metadata: Awaited<ReturnType<typeof generateMetadata>>;
-  try {
-    metadata = await generateMetadata(post.platform, post.script, post.title, post.llmModelId);
-    await prisma.post.update({
-      where: { id: postId },
-      data: { metadata: JSON.stringify(metadata) },
-    });
-    log(`metadata generated`);
-  } catch (err) {
-    logError(`metadata generation failed:`, err instanceof Error ? err.message : err);
-    throw err;
-  }
-
-  // Step 2: Upload avatar image to HeyGen (cached)
+  // Step 1: Upload avatar image to HeyGen (cached)
   const avatar = post.avatar;
   let heygenAssetId = avatar.heygenAssetId;
   if (!heygenAssetId) {
@@ -60,7 +44,7 @@ export async function handlePostGenerate(payload: PostGeneratePayload): Promise<
     log(`using cached heygenAssetId=${heygenAssetId}`);
   }
 
-  // Step 3: Submit HeyGen video job
+  // Step 2: Submit HeyGen video job
   log(`submitting HeyGen video job...`);
   let heygenVideoId: string;
   try {
@@ -82,7 +66,7 @@ export async function handlePostGenerate(payload: PostGeneratePayload): Promise<
     throw err;
   }
 
-  // Step 4: Poll HeyGen until completed or failed
+  // Step 3: Poll HeyGen until completed or failed
   log(`polling HeyGen status...`);
   const pollStart = Date.now();
   while (true) {

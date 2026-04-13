@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Platform } from "@prisma/client";
-import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
+import { DEFAULT_LLM_MODEL_ID, getLLMAdapter } from "@/lib/llm-models/registry";
+import { enqueueJob } from "@/lib/worker/jobs";
 
 export async function GET() {
   const posts = await prisma.post.findMany({
@@ -22,8 +23,18 @@ export async function POST(req: NextRequest) {
     llmModelId?: string;
   };
 
-  if (!title || !platform || !script || !avatarId) {
+  const trimmedTitle = title?.trim();
+  const trimmedScript = script?.trim();
+  const selectedLlmModelId = llmModelId?.trim() || DEFAULT_LLM_MODEL_ID;
+
+  if (!trimmedTitle || !platform || !trimmedScript || !avatarId) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  try {
+    getLLMAdapter(selectedLlmModelId);
+  } catch {
+    return NextResponse.json({ error: "Unknown metadata model" }, { status: 400 });
   }
 
   const avatar = await prisma.avatar.findUnique({ where: { id: avatarId } });
@@ -31,14 +42,16 @@ export async function POST(req: NextRequest) {
 
   const post = await prisma.post.create({
     data: {
-      title,
+      title: trimmedTitle,
       platform,
-      script,
+      script: trimmedScript,
       avatarId,
-      llmModelId: llmModelId ?? DEFAULT_LLM_MODEL_ID,
+      llmModelId: selectedLlmModelId,
     },
     include: { avatar: { select: { id: true, name: true, imagePath: true } } },
   });
+
+  await enqueueJob("post.metadata", { postId: post.id });
 
   return NextResponse.json(post, { status: 201 });
 }

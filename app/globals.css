@@ -190,9 +190,12 @@
   }
   html {
     @apply font-sans;
-    font-size: 150%;
+    font-size: 130%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
   }
 
   /* Smooth scrollbar — warm palette */

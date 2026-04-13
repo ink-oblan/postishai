@@ -283,7 +283,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
                     : <Play className="h-3 w-3 fill-current" />}
                 </Button>
                 <Select value={voiceId} onValueChange={(v) => { if (v) { stopAudio(); setVoiceId(v); } }}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue>{voices.find((v) => v.voice_id === voiceId)?.name.trim() ?? voiceId}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {voices.map((v) => (
                       <SelectItem key={v.voice_id} value={v.voice_id}>
@@ -310,7 +310,10 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
                     : <Play className="h-3 w-3 fill-current" />}
                 </button>
               ) : null; })()}
-              <PropValue>{voices.find((v) => v.voice_id === avatar.voiceId)?.name.trim() ?? avatar.voiceId}</PropValue>
+              {voices.length === 0
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                : <PropValue>{voices.find((v) => v.voice_id === avatar.voiceId)?.name.trim() ?? avatar.voiceId}</PropValue>
+              }
             </div>
           )}
         </div>

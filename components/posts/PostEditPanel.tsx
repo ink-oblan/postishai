@@ -1,7 +1,7 @@
 "use client";
+
 import Image from "next/image";
 import Link from "next/link";
-
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -24,9 +24,9 @@ interface PostData {
   platformLabel: string;
   statusLabel: string;
   script: string;
-  avatarId: string;
   llmModelId: string;
   llmModelName: string;
+  avatarId: string;
   avatarName: string;
   voiceName: string | null;
   createdAtLabel: string;
@@ -73,6 +73,11 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
     }
   }, [editing]);
 
+  const hasChanges =
+    title.trim() !== savedTitle ||
+    script.trim() !== savedScript ||
+    llmModelId !== savedLlmModelId;
+
   function handleCancel() {
     setTitle(savedTitle);
     setScript(savedScript);
@@ -103,7 +108,11 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
         setSavedStatusLabel("Draft");
       }
 
-      toast.success(post.status === "FAILED" ? "Post updated and reset to draft" : "Post updated");
+      toast.success(
+        post.status === "FAILED"
+          ? "Post updated, reset to draft, and metadata regeneration started"
+          : "Post updated and metadata regeneration started"
+      );
       setEditing(false);
       startTransition(() => router.refresh());
     } catch (err) {
@@ -127,7 +136,12 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
         <div className="shrink-0 mt-5">
           {editing ? (
             <div className="flex gap-2">
-              <Button type="button" size="sm" onClick={handleSave} disabled={loading || !title.trim() || !script.trim() || !llmModelId}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={loading || !title.trim() || !script.trim() || !llmModelId || !hasChanges}
+              >
                 {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
                 Save
               </Button>
@@ -155,7 +169,7 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
       {editing && post.status === "FAILED" && (
         <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          Saving changes will reset this failed post back to draft and metadata will be regenerated on the next video run.
+          Saving changes will reset this failed post back to draft and start metadata regeneration in the worker.
         </div>
       )}
 

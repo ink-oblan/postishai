@@ -2,8 +2,9 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Download, ArrowUpRight } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import { PLATFORM_LABELS, STATUS_CONFIG, formatDistanceToNow } from "@/lib/utils";
+import { TextLink } from "@/components/ui/text-link";
 
 export default async function PostsPage() {
   const posts = await prisma.post.findMany({
@@ -68,16 +69,15 @@ export default async function PostsPage() {
                       <td className="px-5 py-4">
                         <Link
                           href={`/posts/${post.id}`}
-                          className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1.5 group/link"
+                          className="font-semibold text-foreground hover:text-primary transition-colors"
                         >
                           {post.title}
-                          <ArrowUpRight className="h-3 w-3 opacity-0 group-hover/link:opacity-100 transition-opacity" />
                         </Link>
                       </td>
                       <td className="px-5 py-4 text-muted-foreground">
-                        <Link href={`/avatars/${post.avatar.id}`} className="hover:text-primary transition-colors text-sm">
+                        <TextLink href={`/avatars/${post.avatar.id}`} className="text-sm">
                           {post.avatar.name}
-                        </Link>
+                        </TextLink>
                       </td>
                       <td className="px-5 py-4">
                         <Badge variant="outline" className="text-xs font-semibold">

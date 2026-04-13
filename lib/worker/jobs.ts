@@ -10,8 +10,13 @@ export type PostGeneratePayload = {
   postId: string;
 };
 
+export type PostMetadataGeneratePayload = {
+  postId: string;
+};
+
 export type JobPayload = {
   "avatar.generate": AvatarGeneratePayload;
+  "post.metadata": PostMetadataGeneratePayload;
   "post.generate": PostGeneratePayload;
 };
 

@@ -48,8 +48,9 @@ next-env.d.ts
 # Personal notes
 notes.md
 
-# Local storage
+# Local storage and generated workspace files
 storage/
-dev.db
-dev.db-shm
-dev.db-waltmp/
+/prisma/dev.db
+/prisma/dev.db-shm
+/prisma/dev.db-wal
+/tmp/

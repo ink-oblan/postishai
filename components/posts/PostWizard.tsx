@@ -8,8 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ChevronRight, ChevronLeft, Loader2, Check, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
@@ -71,17 +69,9 @@ export function PostWizard() {
     setData((d) => ({ ...d, ...patch }));
   }
 
-  function canNext(): boolean {
+  function canSubmit(): boolean {
     if (step === 1) return !!data.avatarId;
-    if (step === 2) return !!(title && script && data.platform);
-    return true;
-  }
-
-  function handleNext() {
-    if (step === 2) {
-      setData((d) => ({ ...d, title, script }));
-    }
-    setStep((s) => s + 1);
+    return !!(title && script && data.platform);
   }
 
   function handleAvatarSelect(avatarId: string) {
@@ -103,7 +93,7 @@ export function PostWizard() {
         throw new Error(err.error ?? "Failed to create post");
       }
       const post = await res.json();
-      toast.success("Post created! Metadata generated.");
+      toast.success("Post created! Metadata generation started.");
       router.push(`/posts/${post.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create post");
@@ -112,13 +102,11 @@ export function PostWizard() {
     }
   }
 
-  const selectedAvatar = avatars.find((a) => a.id === data.avatarId);
-
   return (
     <div className="space-y-6">
       {/* Step indicator */}
       <div className="flex items-center gap-2">
-        {[1, 2, 3].map((s) => (
+        {[1, 2].map((s) => (
           <div key={s} className="flex items-center gap-2">
             <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
               s < step ? "bg-primary text-primary-foreground" :
@@ -128,9 +116,9 @@ export function PostWizard() {
               {s < step ? <Check className="h-3.5 w-3.5" /> : s}
             </div>
             <span className={`text-sm ${s === step ? "font-medium" : "text-muted-foreground"}`}>
-              {s === 1 ? "Avatar" : s === 2 ? "Script" : "Review"}
+              {s === 1 ? "Avatar" : "Script"}
             </span>
-            {s < 3 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+            {s < 2 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
           </div>
         ))}
       </div>
@@ -238,59 +226,19 @@ export function PostWizard() {
         </div>
       )}
 
-      {/* Step 3: Review */}
-      {step === 3 && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">Review your post before creating</p>
-          <Card>
-            <CardContent className="pt-4 space-y-3 text-sm">
-              <div className="flex gap-2">
-                <span className="text-muted-foreground w-28 shrink-0">Avatar</span>
-                <span className="font-medium">{selectedAvatar?.name}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="text-muted-foreground w-28 shrink-0">Title</span>
-                <span className="font-medium">{title}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="text-muted-foreground w-28 shrink-0">Platform</span>
-                <Badge variant="outline">{PLATFORM_LABELS[data.platform]}</Badge>
-              </div>
-              <div className="flex gap-2">
-                <span className="text-muted-foreground w-28 shrink-0">Script</span>
-                <span className="line-clamp-3">{script}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="text-muted-foreground w-28 shrink-0">AI Model</span>
-                <span>{llmModels.find((m) => m.id === data.llmModelId)?.name}</span>
-              </div>
-            </CardContent>
-          </Card>
-          <p className="text-xs text-muted-foreground">
-            Platform metadata (captions, hashtags, etc.) will be generated automatically when you create the post.
-          </p>
-        </div>
-      )}
-
       {/* Navigation */}
       {step === 1 ? null : (
         <div className="flex justify-between pt-2">
           <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
             <ChevronLeft className="h-4 w-4 mr-1" />Back
           </Button>
-          {step < 3 ? (
-            <Button onClick={handleNext} disabled={!canNext()}>
-              Next<ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          ) : (
-            <Button onClick={handleSubmit} disabled={submitting || !canNext()}>
-              {submitting ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
-              ) : (
-                "Create Post"
-              )}
-            </Button>
-          )}
+          <Button onClick={handleSubmit} disabled={submitting || !canSubmit()}>
+            {submitting ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
+            ) : (
+              "Create Post"
+            )}
+          </Button>
         </div>
       )}
     </div>

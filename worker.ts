@@ -1,8 +1,13 @@
 import "dotenv/config";
 import { prisma } from "./lib/db";
 import { handleAvatarGenerate } from "./lib/worker/handlers/avatar-generate";
+import { handlePostMetadataGenerate } from "./lib/worker/handlers/post-metadata-generate";
 import { handlePostGenerate } from "./lib/worker/handlers/post-generate";
-import type { AvatarGeneratePayload, PostGeneratePayload } from "./lib/worker/jobs";
+import type {
+  AvatarGeneratePayload,
+  PostGeneratePayload,
+  PostMetadataGeneratePayload,
+} from "./lib/worker/jobs";
 
 const POLL_INTERVAL_MS = 3000;
 const JOB_TIMEOUT_MS = 6 * 60 * 1000; // 6 minutes
@@ -54,6 +59,12 @@ async function processNextJob(): Promise<boolean> {
         JOB_TIMEOUT_MS,
         `avatar.generate(${(payload as AvatarGeneratePayload).avatarId})`
       );
+    } else if (job.type === "post.metadata") {
+      await withTimeout(
+        handlePostMetadataGenerate(payload as PostMetadataGeneratePayload),
+        JOB_TIMEOUT_MS,
+        `post.metadata(${(payload as PostMetadataGeneratePayload).postId})`
+      );
     } else if (job.type === "post.generate") {
       await withTimeout(
         handlePostGenerate(payload as PostGeneratePayload),
@@ -81,6 +92,9 @@ async function processNextJob(): Promise<boolean> {
         where: { id: payload.avatarId },
         data: { status: "FAILED", errorMessage: error },
       }).catch((e) => logError("failed to update avatar status:", e));
+    } else if (isExhausted && job.type === "post.metadata") {
+      const payload = JSON.parse(job.payload) as PostMetadataGeneratePayload;
+      await failPostMetadataJob(payload.postId, error);
     } else if (isExhausted && job.type === "post.generate") {
       const payload = JSON.parse(job.payload) as PostGeneratePayload;
       await prisma.post.update({
@@ -112,6 +126,9 @@ async function recoverInterruptedJobs(): Promise<void> {
         where: { id: payload.avatarId },
         data: { status: "FAILED", errorMessage: error },
       }).catch((e) => logError("failed to update avatar on recovery:", e));
+    } else if (job.type === "post.metadata") {
+      const payload = JSON.parse(job.payload) as PostMetadataGeneratePayload;
+      await failPostMetadataJob(payload.postId, error);
     } else if (job.type === "post.generate") {
       const payload = JSON.parse(job.payload) as PostGeneratePayload;
       await prisma.post.update({
@@ -121,6 +138,23 @@ async function recoverInterruptedJobs(): Promise<void> {
     }
     log(`job ${job.id} marked FAILED (interrupted)`);
   }
+}
+
+async function failPostMetadataJob(postId: string, error: string): Promise<void> {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { status: true, videoPath: true },
+  });
+  if (!post) return;
+
+  const shouldFailPost = !post.videoPath && (post.status === "DRAFT" || post.status === "FAILED");
+  await prisma.post.update({
+    where: { id: postId },
+    data: {
+      status: shouldFailPost ? "FAILED" : post.status,
+      errorMessage: error,
+    },
+  }).catch((e) => logError("failed to update post metadata status:", e));
 }
 
 async function runWorker(): Promise<void> {

@@ -14,6 +14,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Video already completed" }, { status: 409 });
   }
 
+  if (!post.metadata) {
+    await enqueueJob("post.metadata", { postId: id });
+  }
+
   const updated = await prisma.post.update({
     where: { id },
     data: { status: "GENERATING", errorMessage: null, generationStartedAt: new Date() },
