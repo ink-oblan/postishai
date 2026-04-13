@@ -6,7 +6,6 @@ import { PLATFORM_LABELS, STATUS_CONFIG, formatDistanceToNow } from "@/lib/utils
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { VideoSection } from "@/components/posts/VideoSection";
 import { PostEditPanel } from "@/components/posts/PostEditPanel";
-import { MetadataSection } from "@/components/posts/MetadataSection";
 import { listVoices } from "@/lib/heygen/client";
 import { isPostEditable } from "@/lib/posts";
 import { getLLMModelInfo } from "@/lib/llm-models/registry";
@@ -74,19 +73,11 @@ export default async function PostDetailPage({
               createdAtLabel: formatDistanceToNow(post.createdAt),
               status: post.status,
               downloadUrl: post.status === "COMPLETED" ? `/api/posts/${post.id}/download` : null,
+              metadata,
             }}
             initialEditing={edit === "1" && canEditPost}
             initialAvatarId={avatarId ?? null}
           />
-
-          {metadata && (
-            <MetadataSection
-              postId={post.id}
-              platformLabel={PLATFORM_LABELS[post.platform]}
-              metadata={metadata}
-              canRegenerate={post.status !== "COMPLETED"}
-            />
-          )}
         </div>
       </div>
     </div>

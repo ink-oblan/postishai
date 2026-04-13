@@ -3,15 +3,17 @@
 import { AlertDialog } from "@base-ui/react";
 import Link from "next/link";
 import Image from "next/image";
-import { startTransition, useEffect, useState } from "react";
+import type React from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Loader2, Pencil, AlertTriangle, RefreshCw } from "lucide-react";
 import { AvatarPickerField, type AvatarPickerOption } from "@/components/posts/AvatarPickerField";
+import { MetadataSection } from "@/components/posts/MetadataSection";
+import type { PlatformMetadata } from "@/lib/metadata/types";
 import { toast } from "sonner";
 
 interface LLMModel {
@@ -35,6 +37,7 @@ interface PostData {
   createdAtLabel: string;
   status: string;
   downloadUrl: string | null;
+  metadata: PlatformMetadata | null;
 }
 
 function PropLabel({ children }: { children: React.ReactNode }) {
@@ -64,17 +67,20 @@ export function PostEditPanel({
   const [savedStatusLabel, setSavedStatusLabel] = useState(post.statusLabel);
   const [savedAvatarId, setSavedAvatarId] = useState(post.avatarId);
   const [savedAvatarName, setSavedAvatarName] = useState(post.avatarName);
+  const [savedMetadata, setSavedMetadata] = useState(post.metadata);
   const [editing, setEditing] = useState(initialEditing);
   const [title, setTitle] = useState(post.title);
   const [script, setScript] = useState(post.script);
   const [llmModelId, setLLMModelId] = useState(post.llmModelId);
   const [avatarId, setAvatarId] = useState(initialAvatarId ?? post.avatarId);
+  const [metadata, setMetadata] = useState(post.metadata);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
   const [avatars, setAvatars] = useState<AvatarPickerOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const selectedAvatar = avatars.find((avatar) => avatar.id === avatarId);
   const currentAvatarName = selectedAvatar?.name ?? savedAvatarName;
+  const scriptRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     setSavedTitle(post.title);
@@ -84,10 +90,12 @@ export function PostEditPanel({
     setSavedStatusLabel(post.statusLabel);
     setSavedAvatarId(post.avatarId);
     setSavedAvatarName(post.avatarName);
+    setSavedMetadata(post.metadata);
     setTitle(post.title);
     setScript(post.script);
     setLLMModelId(post.llmModelId);
     setAvatarId(initialAvatarId ?? post.avatarId);
+    setMetadata(post.metadata);
     setEditing(initialEditing);
   }, [initialAvatarId, initialEditing, post]);
 
@@ -98,11 +106,19 @@ export function PostEditPanel({
     }
   }, [editing]);
 
+  useEffect(() => {
+    const element = scriptRef.current;
+    if (!element) return;
+    element.style.height = "0px";
+    element.style.height = `${element.scrollHeight}px`;
+  }, [script, editing]);
+
   const hasChanges =
     title.trim() !== savedTitle ||
     script.trim() !== savedScript ||
     llmModelId !== savedLlmModelId ||
-    avatarId !== savedAvatarId;
+    avatarId !== savedAvatarId ||
+    JSON.stringify(metadata) !== JSON.stringify(savedMetadata);
   const metadataChanges =
     script.trim() !== savedScript ||
     llmModelId !== savedLlmModelId ||
@@ -113,6 +129,7 @@ export function PostEditPanel({
     setScript(savedScript);
     setLLMModelId(savedLlmModelId);
     setAvatarId(savedAvatarId);
+    setMetadata(savedMetadata);
     setEditing(false);
   }
 
@@ -126,13 +143,18 @@ export function PostEditPanel({
       const res = await fetch(`/api/posts/${post.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, script, llmModelId, avatarId }),
+        body: JSON.stringify({ title, script, llmModelId, avatarId, metadata }),
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to update");
       }
-      const updated = await res.json() as { status?: string; llmModelId?: string; metadataRegenerated?: boolean };
+      const updated = await res.json() as {
+        status?: string;
+        llmModelId?: string;
+        metadata?: PlatformMetadata | null;
+        metadataRegenerated?: boolean;
+      };
       const selectedModel = llmModels.find((m) => m.id === llmModelId);
 
       setSavedTitle(title.trim());
@@ -141,6 +163,8 @@ export function PostEditPanel({
       setSavedLlmModelName(selectedModel?.name ?? llmModelId);
       setSavedAvatarId(avatarId);
       setSavedAvatarName(currentAvatarName);
+      setSavedMetadata(updated.metadata ?? (updated.metadataRegenerated ? null : metadata));
+      setMetadata(updated.metadata ?? (updated.metadataRegenerated ? null : metadata));
       if (updated.status === "DRAFT") {
         setSavedStatusLabel("Draft");
       }
@@ -172,45 +196,47 @@ export function PostEditPanel({
 
   const content = (
     <>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <PropLabel>Title</PropLabel>
-          {editing ? (
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} required className="h-8 text-sm" />
-          ) : (
-            <h1 className="text-xl font-semibold truncate">{savedTitle}</h1>
-          )}
-        </div>
-        <div className="shrink-0 mt-5">
-          {editing ? (
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSaveClick}
-                disabled={loading || !title.trim() || !script.trim() || !llmModelId || !hasChanges}
-              >
-                {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                Save
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={handleCancel}>Cancel</Button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              {editable && (
-                <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
+      <div className="mb-6">
+        <PropLabel>Title</PropLabel>
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            {editing ? (
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} required className="h-8 text-sm" />
+            ) : (
+              <h1 className="text-xl font-semibold truncate">{savedTitle}</h1>
+            )}
+          </div>
+          <div className="shrink-0">
+            {editing ? (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveClick}
+                  disabled={loading || !title.trim() || !script.trim() || !llmModelId || !hasChanges}
+                >
+                  {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                  Save
                 </Button>
-              )}
-              {post.downloadUrl && (
-                <a href={post.downloadUrl} download>
-                  <Button type="button" size="sm">
-                    <Download className="h-3.5 w-3.5 mr-1.5" />Download
+                <Button type="button" size="sm" variant="outline" onClick={handleCancel}>Cancel</Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                {editable && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
                   </Button>
-                </a>
-              )}
-            </div>
-          )}
+                )}
+                {post.downloadUrl && (
+                  <a href={post.downloadUrl} download>
+                    <Button type="button" size="sm">
+                      <Download className="h-3.5 w-3.5 mr-1.5" />Download
+                    </Button>
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -308,10 +334,13 @@ export function PostEditPanel({
           {editing ? (
             <div className="space-y-2">
               <Textarea
+                ref={scriptRef}
                 value={script}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setScript(e.target.value)}
-                rows={8}
+                rows={1}
                 required
+                className="min-h-9 resize-none text-sm"
+                style={{ height: "auto", overflow: "hidden" }}
               />
               <p className="text-xs text-muted-foreground">{script.length} characters</p>
             </div>
@@ -322,6 +351,19 @@ export function PostEditPanel({
           )}
         </div>
       </div>
+
+      {metadata && (
+        <div className="pt-8">
+          <MetadataSection
+            postId={post.id}
+            platformLabel={post.platformLabel}
+            metadata={metadata}
+            editing={editing}
+            onChange={setMetadata}
+            canRegenerate={post.status !== "COMPLETED"}
+          />
+        </div>
+      )}
     </>
   );
 
