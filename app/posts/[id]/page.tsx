@@ -11,8 +11,15 @@ import { listVoices } from "@/lib/heygen/client";
 import { isPostEditable } from "@/lib/posts";
 import { getLLMModelInfo } from "@/lib/llm-models/registry";
 
-export default async function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PostDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ edit?: string; avatarId?: string }>;
+}) {
   const { id } = await params;
+  const { edit, avatarId } = await searchParams;
   const [post, voices] = await Promise.all([
     prisma.post.findUnique({ where: { id }, include: { avatar: true } }),
     listVoices().catch(() => []),
@@ -62,11 +69,14 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               llmModelName: llmModel?.name ?? post.llmModelId,
               avatarId: post.avatar.id,
               avatarName: post.avatar.name,
+              avatarImageUrl: `/api/avatars/${post.avatar.id}/image?t=${post.avatar.updatedAt.getTime()}`,
               voiceName: voice?.name ?? null,
               createdAtLabel: formatDistanceToNow(post.createdAt),
               status: post.status,
               downloadUrl: post.status === "COMPLETED" ? `/api/posts/${post.id}/download` : null,
             }}
+            initialEditing={edit === "1" && canEditPost}
+            initialAvatarId={avatarId ?? null}
           />
 
           {metadata && (
@@ -74,6 +84,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               postId={post.id}
               platformLabel={PLATFORM_LABELS[post.platform]}
               metadata={metadata}
+              canRegenerate={post.status !== "COMPLETED"}
             />
           )}
         </div>

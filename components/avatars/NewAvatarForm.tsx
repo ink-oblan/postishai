@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +46,7 @@ type Gender = "man" | "woman" | "neutral";
 
 export function NewAvatarForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>("generate");
   const [name, setName] = useState("");
   const [voiceId, setVoiceId] = useState("");
@@ -130,7 +131,13 @@ export function NewAvatarForm() {
       }
       const avatar = await res.json();
       toast.success(mode === "upload" ? "Avatar created!" : "Generating image…");
-      router.push(`/avatars/${avatar.id}`);
+      const redirectTo = searchParams.get("redirectTo");
+      if (redirectTo) {
+        const separator = redirectTo.includes("?") ? "&" : "?";
+        router.push(`${redirectTo}${separator}edit=1&avatarId=${avatar.id}`);
+      } else {
+        router.push(`/avatars/${avatar.id}`);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {

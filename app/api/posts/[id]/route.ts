@@ -19,7 +19,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const post = await prisma.post.findUnique({ where: { id } });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await req.json();
-  const { title, script, llmModelId, archive } = body as { title?: string; script?: string; llmModelId?: string; archive?: boolean };
+  const { title, script, llmModelId, avatarId, archive } = body as {
+    title?: string;
+    script?: string;
+    llmModelId?: string;
+    avatarId?: string;
+    archive?: boolean;
+  };
 
   if (archive) {
     if (post.status !== "DRAFT") {
@@ -38,28 +44,50 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!llmModelId?.trim()) {
     return NextResponse.json({ error: "Metadata model is required" }, { status: 400 });
   }
+  if (!avatarId?.trim()) {
+    return NextResponse.json({ error: "Avatar is required" }, { status: 400 });
+  }
   try {
     getLLMAdapter(llmModelId.trim());
   } catch {
     return NextResponse.json({ error: "Unknown metadata model" }, { status: 400 });
   }
 
+  const avatar = await prisma.avatar.findFirst({ where: { id: avatarId.trim(), archivedAt: null } });
+  if (!avatar) {
+    return NextResponse.json({ error: "Avatar not found" }, { status: 404 });
+  }
+
+  const trimmedTitle = title.trim();
+  const trimmedScript = script.trim();
+  const trimmedLlmModelId = llmModelId.trim();
+  const nextAvatarId = avatar.id;
+  const metadataChanged =
+    trimmedScript !== post.script ||
+    trimmedLlmModelId !== post.llmModelId ||
+    nextAvatarId !== post.avatarId;
+
   const updated = await prisma.post.update({
     where: { id },
     data: {
-      title: title.trim(),
-      script: script.trim(),
-      llmModelId: llmModelId.trim(),
-      status: "DRAFT",
-      generationStartedAt: null,
-      metadata: null,
-      errorMessage: null,
-      heygenVideoId: null,
-      heygenVideoUrl: null,
+      title: trimmedTitle,
+      script: trimmedScript,
+      llmModelId: trimmedLlmModelId,
+      avatarId: nextAvatarId,
+      ...(metadataChanged ? {
+        status: "DRAFT",
+        generationStartedAt: null,
+        metadata: null,
+        errorMessage: null,
+        heygenVideoId: null,
+        heygenVideoUrl: null,
+      } : {}),
     },
   });
 
-  await enqueueJob("post.metadata", { postId: id });
+  if (metadataChanged) {
+    await enqueueJob("post.metadata", { postId: id });
+  }
 
-  return NextResponse.json(updated);
+  return NextResponse.json({ ...updated, metadataRegenerated: metadataChanged });
 }

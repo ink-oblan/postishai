@@ -1,7 +1,8 @@
 "use client";
 
-import Image from "next/image";
+import { AlertDialog } from "@base-ui/react";
 import Link from "next/link";
+import Image from "next/image";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Loader2, Pencil, AlertTriangle } from "lucide-react";
+import { Download, Loader2, Pencil, AlertTriangle, RefreshCw } from "lucide-react";
+import { AvatarPickerField, type AvatarPickerOption } from "@/components/posts/AvatarPickerField";
 import { toast } from "sonner";
 
 interface LLMModel {
@@ -29,6 +31,7 @@ interface PostData {
   avatarId: string;
   avatarName: string;
   voiceName: string | null;
+  avatarImageUrl: string;
   createdAtLabel: string;
   status: string;
   downloadUrl: string | null;
@@ -42,19 +45,36 @@ function PropValue({ children }: { children: React.ReactNode }) {
   return <p className="text-sm font-medium">{children || <span className="text-muted-foreground">—</span>}</p>;
 }
 
-export function PostEditPanel({ post, editable }: { post: PostData; editable: boolean }) {
+export function PostEditPanel({
+  post,
+  editable,
+  initialEditing = false,
+  initialAvatarId = null,
+}: {
+  post: PostData;
+  editable: boolean;
+  initialEditing?: boolean;
+  initialAvatarId?: string | null;
+}) {
   const router = useRouter();
   const [savedTitle, setSavedTitle] = useState(post.title);
   const [savedScript, setSavedScript] = useState(post.script);
   const [savedLlmModelId, setSavedLlmModelId] = useState(post.llmModelId);
   const [savedLlmModelName, setSavedLlmModelName] = useState(post.llmModelName);
   const [savedStatusLabel, setSavedStatusLabel] = useState(post.statusLabel);
-  const [editing, setEditing] = useState(false);
+  const [savedAvatarId, setSavedAvatarId] = useState(post.avatarId);
+  const [savedAvatarName, setSavedAvatarName] = useState(post.avatarName);
+  const [editing, setEditing] = useState(initialEditing);
   const [title, setTitle] = useState(post.title);
   const [script, setScript] = useState(post.script);
   const [llmModelId, setLLMModelId] = useState(post.llmModelId);
+  const [avatarId, setAvatarId] = useState(initialAvatarId ?? post.avatarId);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
+  const [avatars, setAvatars] = useState<AvatarPickerOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const selectedAvatar = avatars.find((avatar) => avatar.id === avatarId);
+  const currentAvatarName = selectedAvatar?.name ?? savedAvatarName;
 
   useEffect(() => {
     setSavedTitle(post.title);
@@ -62,27 +82,42 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
     setSavedLlmModelId(post.llmModelId);
     setSavedLlmModelName(post.llmModelName);
     setSavedStatusLabel(post.statusLabel);
+    setSavedAvatarId(post.avatarId);
+    setSavedAvatarName(post.avatarName);
     setTitle(post.title);
     setScript(post.script);
     setLLMModelId(post.llmModelId);
-  }, [post]);
+    setAvatarId(initialAvatarId ?? post.avatarId);
+    setEditing(initialEditing);
+  }, [initialAvatarId, initialEditing, post]);
 
   useEffect(() => {
     if (editing) {
       fetch("/api/llm-models").then((r) => r.json()).then(setLLMModels);
+      fetch("/api/avatars").then((r) => r.json()).then(setAvatars);
     }
   }, [editing]);
 
   const hasChanges =
     title.trim() !== savedTitle ||
     script.trim() !== savedScript ||
-    llmModelId !== savedLlmModelId;
+    llmModelId !== savedLlmModelId ||
+    avatarId !== savedAvatarId;
+  const metadataChanges =
+    script.trim() !== savedScript ||
+    llmModelId !== savedLlmModelId ||
+    avatarId !== savedAvatarId;
 
   function handleCancel() {
     setTitle(savedTitle);
     setScript(savedScript);
     setLLMModelId(savedLlmModelId);
+    setAvatarId(savedAvatarId);
     setEditing(false);
+  }
+
+  function handleAvatarSelect(nextAvatar: AvatarPickerOption) {
+    setAvatarId(nextAvatar.id);
   }
 
   async function handleSave() {
@@ -91,28 +126,33 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
       const res = await fetch(`/api/posts/${post.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, script, llmModelId }),
+        body: JSON.stringify({ title, script, llmModelId, avatarId }),
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to update");
       }
-      const updated = await res.json() as { status?: string; llmModelId?: string };
+      const updated = await res.json() as { status?: string; llmModelId?: string; metadataRegenerated?: boolean };
       const selectedModel = llmModels.find((m) => m.id === llmModelId);
 
       setSavedTitle(title.trim());
       setSavedScript(script.trim());
       setSavedLlmModelId(llmModelId);
       setSavedLlmModelName(selectedModel?.name ?? llmModelId);
+      setSavedAvatarId(avatarId);
+      setSavedAvatarName(currentAvatarName);
       if (updated.status === "DRAFT") {
         setSavedStatusLabel("Draft");
       }
 
       toast.success(
-        post.status === "FAILED"
-          ? "Post updated, reset to draft, and metadata regeneration started"
-          : "Post updated and metadata regeneration started"
+        updated.metadataRegenerated
+          ? post.status === "FAILED"
+            ? "Post updated, reset to draft, and metadata regeneration started"
+            : "Post updated and metadata regeneration started"
+          : "Post updated"
       );
+      setConfirmOpen(false);
       setEditing(false);
       startTransition(() => router.refresh());
     } catch (err) {
@@ -120,6 +160,14 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleSaveClick() {
+    if (metadataChanges) {
+      setConfirmOpen(true);
+      return;
+    }
+    void handleSave();
   }
 
   const content = (
@@ -139,7 +187,7 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
               <Button
                 type="button"
                 size="sm"
-                onClick={handleSave}
+                onClick={handleSaveClick}
                 disabled={loading || !title.trim() || !script.trim() || !llmModelId || !hasChanges}
               >
                 {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
@@ -166,7 +214,7 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
         </div>
       </div>
 
-      {editing && post.status === "FAILED" && (
+      {editing && post.status === "FAILED" && metadataChanges && (
         <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           Saving changes will reset this failed post back to draft and start metadata regeneration in the worker.
@@ -186,23 +234,34 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
 
         <div>
           <PropLabel>Avatar</PropLabel>
-          <Link
-            href={`/avatars/${post.avatarId}`}
-            className="group inline-flex items-center gap-3 rounded-lg hover:opacity-90 transition-opacity"
-          >
-            <span className="relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted">
-              <Image
-                src={`/api/avatars/${post.avatarId}/image`}
-                alt={post.avatarName}
-                fill
-                className="object-cover"
-                unoptimized
-              />
-            </span>
-            <span className="text-sm font-medium text-primary underline decoration-primary/40 underline-offset-2 transition-all duration-150 group-hover:decoration-primary">
-              {post.avatarName}
-            </span>
-          </Link>
+          {editing ? (
+            <AvatarPickerField
+              avatars={avatars}
+              value={avatarId}
+              fallbackName={savedAvatarName}
+              fallbackImageUrl={post.avatarImageUrl}
+              newAvatarHref={`/avatars/new?redirectTo=/posts/${post.id}`}
+              onChange={handleAvatarSelect}
+            />
+          ) : (
+            <Link
+              href={`/avatars/${savedAvatarId}`}
+              className="group inline-flex items-center gap-3 rounded-lg hover:opacity-90 transition-opacity"
+            >
+              <span className="relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted">
+                <Image
+                  src={selectedAvatar ? `/api/avatars/${savedAvatarId}/image` : post.avatarImageUrl}
+                  alt={currentAvatarName}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </span>
+              <span className="text-sm font-medium text-primary underline decoration-primary/40 underline-offset-2 transition-all duration-150 group-hover:decoration-primary">
+                {currentAvatarName}
+              </span>
+            </Link>
+          )}
         </div>
 
         <div>
@@ -266,5 +325,33 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
     </>
   );
 
-  return <div>{content}</div>;
+  return (
+    <>
+      <div>{content}</div>
+
+      <AlertDialog.Root open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 transition-opacity duration-200" />
+          <AlertDialog.Popup className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl p-6 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 data-[starting-style]:opacity-0 data-[starting-style]:scale-95 transition-all duration-200">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                <RefreshCw className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <AlertDialog.Title className="text-base font-semibold">Regenerate caption and hashtags?</AlertDialog.Title>
+            </div>
+            <AlertDialog.Description className="text-sm text-muted-foreground mb-6 pl-12">
+              Saving these changes will wipe the current caption and hashtags and generate new ones.
+            </AlertDialog.Description>
+            <div className="flex gap-2 justify-end">
+              <AlertDialog.Close render={<Button variant="outline" size="sm" />}>Cancel</AlertDialog.Close>
+              <Button size="sm" onClick={() => void handleSave()} disabled={loading}>
+                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                Save and regenerate
+              </Button>
+            </div>
+          </AlertDialog.Popup>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
+    </>
+  );
 }
