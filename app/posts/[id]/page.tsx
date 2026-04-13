@@ -85,6 +85,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               script: post.script,
               llmModelId: post.llmModelId,
               llmModelName: llmModel?.name ?? post.llmModelId,
+              avatarId: post.avatar.id,
               avatarName: post.avatar.name,
               voiceName: voice?.name ?? null,
               createdAtLabel: formatDistanceToNow(post.createdAt),

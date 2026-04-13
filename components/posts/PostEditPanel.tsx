@@ -1,4 +1,6 @@
 "use client";
+import Image from "next/image";
+import Link from "next/link";
 
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -22,6 +24,7 @@ interface PostData {
   platformLabel: string;
   statusLabel: string;
   script: string;
+  avatarId: string;
   llmModelId: string;
   llmModelName: string;
   avatarName: string;
@@ -169,7 +172,23 @@ export function PostEditPanel({ post, editable }: { post: PostData; editable: bo
 
         <div>
           <PropLabel>Avatar</PropLabel>
-          <PropValue>{post.avatarName}</PropValue>
+          <Link
+            href={`/avatars/${post.avatarId}`}
+            className="group inline-flex items-center gap-3 rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <span className="relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted">
+              <Image
+                src={`/api/avatars/${post.avatarId}/image`}
+                alt={post.avatarName}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            </span>
+            <span className="text-sm font-medium text-primary underline decoration-primary/40 underline-offset-2 transition-all duration-150 group-hover:decoration-primary">
+              {post.avatarName}
+            </span>
+          </Link>
         </div>
 
         <div>
