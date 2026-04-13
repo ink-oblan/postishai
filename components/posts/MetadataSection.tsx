@@ -56,7 +56,7 @@ export function MetadataSection({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{platformLabel} Metadata</CardTitle>
-        {canRegenerate && (
+        {canRegenerate && !editing && (
           <CardAction>
             <Tooltip
               content={
