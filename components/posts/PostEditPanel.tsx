@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
 import { Download, Loader2, Pencil, AlertTriangle, RefreshCw } from "lucide-react";
 import { AvatarPickerField, type AvatarPickerOption } from "@/components/posts/AvatarPickerField";
 import { MetadataSection } from "@/components/posts/MetadataSection";
@@ -157,7 +158,21 @@ export function PostEditPanel({
     if (editing) {
       fetch("/api/llm-models").then((r) => r.json()).then(setLLMModels);
       fetch("/api/avatars").then((r) => r.json()).then(setAvatars);
-      fetch("/api/heygen/voices").then((r) => r.json()).then(setVoices);
+
+      let cancelled = false;
+      fetchHeyGenVoices()
+        .then((nextVoices) => {
+          if (cancelled) return;
+          setVoices(nextVoices);
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          toast.error(error instanceof Error ? error.message : "Failed to load HeyGen voices");
+        });
+
+      return () => {
+        cancelled = true;
+      };
     }
   }, [editing]);
 

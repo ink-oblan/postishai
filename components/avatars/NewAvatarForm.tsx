@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
 import { Sparkles, Upload, Loader2, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 
@@ -85,10 +86,23 @@ export function NewAvatarForm() {
 
   useEffect(() => {
     fetch("/api/image-models").then((r) => r.json()).then(setModels);
-    fetch("/api/heygen/voices").then((r) => r.json()).then((v: Voice[]) => {
-      setVoices(v);
-      if (v.length > 0) setVoiceId(v[0].voice_id);
-    });
+
+    let cancelled = false;
+
+    fetchHeyGenVoices()
+      .then((nextVoices) => {
+        if (cancelled) return;
+        setVoices(nextVoices);
+        if (nextVoices.length > 0) setVoiceId(nextVoices[0].voice_id);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        toast.error(error instanceof Error ? error.message : "Failed to load HeyGen voices");
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>): void {

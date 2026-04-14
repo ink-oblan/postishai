@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
 import { Pencil, Loader2, AlertTriangle, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "@/lib/utils";
@@ -77,7 +78,21 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
   useEffect(() => stopAudio, [stopAudio]);
 
   useEffect(() => {
-    fetch("/api/heygen/voices").then((r) => r.json()).then(setVoices);
+    let cancelled = false;
+
+    fetchHeyGenVoices()
+      .then((nextVoices) => {
+        if (cancelled) return;
+        setVoices(nextVoices);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        toast.error(error instanceof Error ? error.message : "Failed to load HeyGen voices");
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
