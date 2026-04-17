@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { writeFile, deleteFile } from "@/lib/storage";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
-import { enqueueJob } from "@/lib/worker/jobs";
+import { enqueueJobInDb } from "@/lib/worker/jobs";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -91,9 +91,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updateData.heygenAssetId = null;
       updateData.heygenAssetUrl = null;
 
-      await prisma.avatar.update({ where: { id }, data: updateData });
-      await enqueueJob("avatar.generate", { avatarId: id, prompt: usedPrompt, imageModel: usedModel });
-      const refreshed = await prisma.avatar.findUnique({ where: { id } });
+      const refreshed = await prisma.$transaction(async (tx) => {
+        await tx.avatar.update({ where: { id }, data: updateData });
+        await enqueueJobInDb(tx, "avatar.generate", {
+          avatarId: id,
+          prompt: usedPrompt,
+          imageModel: usedModel,
+        });
+
+        return tx.avatar.findUnique({ where: { id } });
+      });
       return NextResponse.json(refreshed);
     }
   } else if (prompt) {
@@ -108,4 +115,3 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
-

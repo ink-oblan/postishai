@@ -20,6 +20,12 @@ interface Avatar {
   voiceId: string;
 }
 
+interface AvatarVariation {
+  id: string;
+  label: string;
+  status: string;
+}
+
 interface LLMModel {
   id: string;
   name: string;
@@ -30,6 +36,7 @@ const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"] as const;
 
 interface WizardData {
   avatarId: string;
+  avatarVariationId: string | null;
   title: string;
   platform: string;
   script: string;
@@ -44,6 +51,7 @@ export function PostWizard() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>({
     avatarId: "",
+    avatarVariationId: null,
     title: "",
     platform: "INSTAGRAM",
     script: "",
@@ -52,6 +60,8 @@ export function PostWizard() {
   const [title, setTitle] = useState("");
   const [script, setScript] = useState("");
   const [avatars, setAvatars] = useState<Avatar[]>([]);
+  const [avatarVariations, setAvatarVariations] = useState<AvatarVariation[]>([]);
+  const [loadingVariations, setLoadingVariations] = useState(false);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -70,13 +80,20 @@ export function PostWizard() {
   }
 
   function canSubmit(): boolean {
-    if (step === 1) return !!data.avatarId;
     return !!(title && script && data.platform);
   }
 
-  function handleAvatarSelect(avatarId: string) {
-    update({ avatarId });
-    setStep(2);
+  async function handleAvatarSelect(avatarId: string) {
+    update({ avatarId, avatarVariationId: null });
+    setAvatarVariations([]);
+    setLoadingVariations(true);
+    try {
+      const res = await fetch(`/api/avatars/${avatarId}/variations`);
+      const all: AvatarVariation[] = await res.json();
+      setAvatarVariations(all.filter((v) => v.status === "COMPLETED"));
+    } finally {
+      setLoadingVariations(false);
+    }
   }
 
   async function handleSubmit() {
@@ -152,7 +169,11 @@ export function PostWizard() {
               >
                 <div className="aspect-[9/16] relative bg-muted">
                   <Image
-                    src={`/api/avatars/${avatar.id}/image`}
+                    src={
+                      data.avatarId === avatar.id && data.avatarVariationId
+                        ? `/api/avatars/${avatar.id}/variations/${data.avatarVariationId}/image`
+                        : `/api/avatars/${avatar.id}/image`
+                    }
                     alt={avatar.name}
                     fill
                     className="object-cover"
@@ -163,6 +184,46 @@ export function PostWizard() {
               </button>
             ))}
           </div>
+
+          {data.avatarId && (loadingVariations || avatarVariations.length > 0) && (
+            <div className="space-y-1.5">
+              <p className="text-sm text-muted-foreground">Variation</p>
+              {loadingVariations ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Loading variations…
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => update({ avatarVariationId: null })}
+                    className={`h-7 px-2.5 rounded-md border text-xs font-medium transition-colors ${
+                      data.avatarVariationId === null
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border hover:bg-muted"
+                    }`}
+                  >
+                    Base
+                  </button>
+                  {avatarVariations.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => update({ avatarVariationId: v.id })}
+                      className={`h-7 px-2.5 rounded-md border text-xs font-medium transition-colors ${
+                        data.avatarVariationId === v.id
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border hover:bg-muted"
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -227,11 +288,17 @@ export function PostWizard() {
       )}
 
       {/* Navigation */}
-      {step === 1 ? null : (
-        <div className="flex justify-between pt-2">
+      <div className="flex justify-between pt-2">
+        {step > 1 ? (
           <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
             <ChevronLeft className="h-4 w-4 mr-1" />Back
           </Button>
+        ) : <div />}
+        {step === 1 ? (
+          <Button onClick={() => setStep(2)} disabled={!data.avatarId}>
+            Next<ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        ) : (
           <Button onClick={handleSubmit} disabled={submitting || !canSubmit()}>
             {submitting ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
@@ -239,8 +306,8 @@ export function PostWizard() {
               "Create Post"
             )}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

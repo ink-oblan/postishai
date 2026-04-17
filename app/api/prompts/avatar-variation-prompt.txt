@@ -1,0 +1,8 @@
+Edit this portrait photo. Keep the person's face, identity, and physical appearance exactly the same — do not change who this person is.
+
+Apply the following changes only:
+{{#if clothes}}- Clothes: {{clothes}}
+{{/if}}{{#if background}}- Background: {{background}}
+{{/if}}{{#if pose}}- Pose: {{pose}}
+{{/if}}
+Preserve the original framing (head and upper torso, face occupying ~55% of frame height), camera angle (straight-on, eye-level, 85mm portrait lens), and photographic quality (sharp subject, shallow depth of field, soft diffused lighting). No text, logos, or symbols.

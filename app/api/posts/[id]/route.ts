@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { isPostEditable } from "@/lib/posts";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { PlatformMetadata } from "@/lib/metadata/types";
-import { enqueueJob } from "@/lib/worker/jobs";
+import { enqueuePostMetadataJob } from "@/lib/worker/jobs";
 
 function normalizeTagList(values: unknown) {
   if (!Array.isArray(values)) return [];
@@ -64,11 +64,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const post = await prisma.post.findUnique({ where: { id } });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await req.json();
-  const { title, script, llmModelId, avatarId, metadata, archive, regenerateMetadata } = body as {
+  const { title, script, llmModelId, avatarId, avatarVariationId, metadata, archive, regenerateMetadata } = body as {
     title?: string;
     script?: string;
     llmModelId?: string;
     avatarId?: string;
+    avatarVariationId?: string | null;
     metadata?: PlatformMetadata | null;
     archive?: boolean;
     regenerateMetadata?: boolean;
@@ -105,11 +106,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Avatar not found" }, { status: 404 });
   }
 
+  // Validate variation if provided
+  if (avatarVariationId !== undefined && avatarVariationId !== null) {
+    const variation = await prisma.avatarVariation.findFirst({
+      where: { id: avatarVariationId, avatarId: avatarId.trim() },
+    });
+    if (!variation) {
+      return NextResponse.json({ error: "Avatar variation not found or does not belong to the selected avatar" }, { status: 404 });
+    }
+  }
+
   const trimmedTitle = title.trim();
   const trimmedScript = script.trim();
   const trimmedLlmModelId = llmModelId.trim();
   const nextAvatarId = avatar.id;
+  const nextAvatarVariationId = avatarVariationId !== undefined ? (avatarVariationId ?? null) : post.avatarVariationId;
   const nextMetadata = sanitizeMetadata(post.platform, metadata);
+  // If avatar changed, reset variation (variation belongs to the old avatar)
+  const resolvedVariationId = nextAvatarId !== post.avatarId ? null : nextAvatarVariationId;
+
   const metadataChanged =
     trimmedScript !== post.script ||
     trimmedLlmModelId !== post.llmModelId ||
@@ -123,19 +138,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       script: trimmedScript,
       llmModelId: trimmedLlmModelId,
       avatarId: nextAvatarId,
+      avatarVariationId: resolvedVariationId,
       ...(shouldRegenerateMetadata ? {
         status: "DRAFT",
         generationStartedAt: null,
         metadata: null,
-        errorMessage: null,
+        metadataStatus: "IDLE",
+        metadataErrorMessage: null,
+        metadataUpdatedAt: null,
         heygenVideoId: null,
         heygenVideoUrl: null,
-      } : nextMetadata ? { metadata: JSON.stringify(nextMetadata) } : {}),
+      } : nextMetadata ? {
+        metadata: JSON.stringify(nextMetadata),
+        metadataStatus: "COMPLETED",
+        metadataErrorMessage: null,
+        metadataUpdatedAt: new Date(),
+      } : {}),
     },
   });
 
   if (shouldRegenerateMetadata) {
-    await enqueueJob("post.metadata", { postId: id });
+    await enqueuePostMetadataJob({ postId: id });
   }
 
   return NextResponse.json({

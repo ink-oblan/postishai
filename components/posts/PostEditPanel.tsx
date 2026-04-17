@@ -38,7 +38,15 @@ interface PendingPostSync {
   avatarName: string;
   voiceName: string | null;
   metadata: PlatformMetadata | null;
+  metadataStatus: string;
   statusLabel: string;
+}
+
+interface AvatarVariationOption {
+  id: string;
+  label: string;
+  status: string;
+  updatedAt: string;
 }
 
 interface PostData {
@@ -53,10 +61,14 @@ interface PostData {
   avatarName: string;
   voiceName: string | null;
   avatarImageUrl: string;
+  avatarVariationId: string | null;
+  avatarVariationImageUrl: string | null;
   createdAtLabel: string;
   status: string;
   downloadUrl: string | null;
   metadata: PlatformMetadata | null;
+  metadataStatus: string;
+  metadataErrorMessage: string | null;
 }
 
 function PropLabel({ children }: { children: React.ReactNode }) {
@@ -78,6 +90,9 @@ export function PostEditPanel({
   initialEditing?: boolean;
   initialAvatarId?: string | null;
 }) {
+  const [avatarVariations, setAvatarVariations] = useState<AvatarVariationOption[]>([]);
+  const [avatarVariationId, setAvatarVariationId] = useState<string | null>(post.avatarVariationId);
+  const [savedAvatarVariationId, setSavedAvatarVariationId] = useState<string | null>(post.avatarVariationId);
   const router = useRouter();
   const [savedTitle, setSavedTitle] = useState(post.title);
   const [savedScript, setSavedScript] = useState(post.script);
@@ -88,6 +103,8 @@ export function PostEditPanel({
   const [savedAvatarName, setSavedAvatarName] = useState(post.avatarName);
   const [savedVoiceName, setSavedVoiceName] = useState(post.voiceName);
   const [savedMetadata, setSavedMetadata] = useState(post.metadata);
+  const [savedMetadataStatus, setSavedMetadataStatus] = useState(post.metadataStatus);
+  const [savedMetadataErrorMessage, setSavedMetadataErrorMessage] = useState(post.metadataErrorMessage);
   const [editing, setEditing] = useState(initialEditing);
   const [title, setTitle] = useState(post.title);
   const [script, setScript] = useState(post.script);
@@ -108,19 +125,60 @@ export function PostEditPanel({
   const scriptRef = useRef<HTMLTextAreaElement | null>(null);
   const prevInitialEditingRef = useRef(initialEditing);
   const pendingPostSyncRef = useRef<PendingPostSync | null>(null);
+  const savedMetadataStatusRef = useRef(post.metadataStatus);
+  savedMetadataStatusRef.current = savedMetadataStatus;
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
+
+  // Poll metadata status while generating so the spinner resolves without a manual refresh
+  useEffect(() => {
+    if (savedMetadataStatus !== "GENERATING") return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/posts/${post.id}/status`);
+        if (!res.ok) return;
+        const data = await res.json() as { metadataStatus: string; metadataErrorMessage: string | null; metadata: string | null };
+        if (savedMetadataStatusRef.current !== "GENERATING") return;
+        if (data.metadataStatus === "GENERATING") return;
+
+        setSavedMetadataStatus(data.metadataStatus);
+        setSavedMetadataErrorMessage(data.metadataErrorMessage ?? null);
+
+        if (data.metadataStatus === "COMPLETED" && data.metadata) {
+          const parsed = JSON.parse(data.metadata) as PlatformMetadata;
+          setSavedMetadata(parsed);
+          if (!editingRef.current) setMetadata(parsed);
+        }
+
+        startTransition(() => router.refresh());
+      } catch {
+        // ignore transient errors
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [savedMetadataStatus, post.id, router]);
 
   useEffect(() => {
     const pendingPostSync = pendingPostSyncRef.current;
     if (pendingPostSync) {
-      const postMatchesPendingSync =
+      const coreFieldsMatch =
         post.title === pendingPostSync.title &&
         post.script === pendingPostSync.script &&
         post.llmModelId === pendingPostSync.llmModelId &&
         post.avatarId === pendingPostSync.avatarId &&
         post.avatarName === pendingPostSync.avatarName &&
         post.voiceName === pendingPostSync.voiceName &&
-        post.statusLabel === pendingPostSync.statusLabel &&
-        JSON.stringify(post.metadata) === JSON.stringify(pendingPostSync.metadata);
+        post.statusLabel === pendingPostSync.statusLabel;
+      // Allow the server to be ahead: if we expected GENERATING, accept any
+      // resulting state (COMPLETED/FAILED) so the sync isn't permanently blocked
+      // when the job finishes before the first router.refresh() round-trip.
+      const metadataMatch =
+        pendingPostSync.metadataStatus === "GENERATING" ||
+        (post.metadataStatus === pendingPostSync.metadataStatus &&
+          JSON.stringify(post.metadata) === JSON.stringify(pendingPostSync.metadata));
+      const postMatchesPendingSync = coreFieldsMatch && metadataMatch;
 
       if (!postMatchesPendingSync) {
         return;
@@ -138,6 +196,8 @@ export function PostEditPanel({
     setSavedAvatarName(post.avatarName);
     setSavedVoiceName(post.voiceName);
     setSavedMetadata(post.metadata);
+    setSavedMetadataStatus(post.metadataStatus);
+    setSavedMetadataErrorMessage(post.metadataErrorMessage);
     if (!editing) {
       setTitle(post.title);
       setScript(post.script);
@@ -153,6 +213,20 @@ export function PostEditPanel({
     }
     prevInitialEditingRef.current = initialEditing;
   }, [initialEditing]);
+
+  // Fetch variations when editing and an avatar is selected
+  useEffect(() => {
+    if (!editing || !avatarId) {
+      setAvatarVariations([]);
+      return;
+    }
+    fetch(`/api/avatars/${avatarId}/variations`)
+      .then((r) => r.json())
+      .then((data: AvatarVariationOption[]) => {
+        setAvatarVariations(data.filter((v) => v.status === "COMPLETED"));
+      })
+      .catch(() => setAvatarVariations([]));
+  }, [editing, avatarId]);
 
   useEffect(() => {
     if (editing) {
@@ -188,6 +262,7 @@ export function PostEditPanel({
     script.trim() !== savedScript ||
     llmModelId !== savedLlmModelId ||
     avatarId !== savedAvatarId ||
+    avatarVariationId !== savedAvatarVariationId ||
     JSON.stringify(metadata) !== JSON.stringify(savedMetadata);
   const metadataChanges =
     script.trim() !== savedScript ||
@@ -199,12 +274,14 @@ export function PostEditPanel({
     setScript(savedScript);
     setLLMModelId(savedLlmModelId);
     setAvatarId(savedAvatarId);
+    setAvatarVariationId(savedAvatarVariationId);
     setMetadata(savedMetadata);
     setEditing(false);
   }
 
   function handleAvatarSelect(nextAvatar: AvatarPickerOption) {
     setAvatarId(nextAvatar.id);
+    setAvatarVariationId(null); // reset variation when avatar changes
   }
 
   async function handleSave(regenerateMetadata = false) {
@@ -214,7 +291,7 @@ export function PostEditPanel({
       const res = await fetch(`/api/posts/${post.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, script, llmModelId, avatarId, metadata, regenerateMetadata }),
+        body: JSON.stringify({ title, script, llmModelId, avatarId, avatarVariationId, metadata, regenerateMetadata }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -228,6 +305,11 @@ export function PostEditPanel({
       };
       const selectedModel = llmModels.find((m) => m.id === llmModelId);
       const nextMetadata = updated.metadata ?? (updated.metadataRegenerated ? null : metadata);
+      const nextMetadataStatus = updated.metadataRegenerated
+        ? "GENERATING"
+        : nextMetadata
+          ? "COMPLETED"
+          : savedMetadataStatus;
       const nextStatusLabel = updated.status === "DRAFT" ? "Draft" : savedStatusLabel;
       const nextVoiceName = currentVoiceName;
       const nextAvatarName = currentAvatarName;
@@ -237,9 +319,12 @@ export function PostEditPanel({
       setSavedLlmModelId(llmModelId);
       setSavedLlmModelName(selectedModel?.name ?? llmModelId);
       setSavedAvatarId(avatarId);
+      setSavedAvatarVariationId(avatarVariationId);
       setSavedAvatarName(nextAvatarName);
       setSavedVoiceName(nextVoiceName);
       setSavedMetadata(nextMetadata);
+      setSavedMetadataStatus(nextMetadataStatus);
+      setSavedMetadataErrorMessage(null);
       setMetadata(nextMetadata);
       setSavedStatusLabel(nextStatusLabel);
       pendingPostSyncRef.current = {
@@ -250,6 +335,7 @@ export function PostEditPanel({
         avatarName: nextAvatarName,
         voiceName: nextVoiceName,
         metadata: nextMetadata,
+        metadataStatus: nextMetadataStatus,
         statusLabel: nextStatusLabel,
       };
 
@@ -345,14 +431,48 @@ export function PostEditPanel({
         <div>
           <PropLabel>Avatar</PropLabel>
           {editing ? (
-            <AvatarPickerField
-              avatars={avatars}
-              value={avatarId}
-              fallbackName={savedAvatarName}
-              fallbackImageUrl={post.avatarImageUrl}
-              newAvatarHref={`/avatars/new?redirectTo=/posts/${post.id}`}
-              onChange={handleAvatarSelect}
-            />
+            <div className="space-y-2">
+              <AvatarPickerField
+                avatars={avatars}
+                value={avatarId}
+                fallbackName={savedAvatarName}
+                fallbackImageUrl={post.avatarImageUrl}
+                newAvatarHref={`/avatars/new?redirectTo=/posts/${post.id}`}
+                onChange={handleAvatarSelect}
+              />
+              {avatarVariations.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1.5">Variation</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setAvatarVariationId(null)}
+                      className={`h-7 px-2.5 rounded-md border text-xs font-medium transition-colors ${
+                        avatarVariationId === null
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border hover:bg-muted"
+                      }`}
+                    >
+                      Base
+                    </button>
+                    {avatarVariations.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setAvatarVariationId(v.id)}
+                        className={`h-7 px-2.5 rounded-md border text-xs font-medium transition-colors ${
+                          avatarVariationId === v.id
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background border-border hover:bg-muted"
+                        }`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <Link
               href={`/avatars/${savedAvatarId}`}
@@ -360,7 +480,11 @@ export function PostEditPanel({
             >
               <span className="relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted">
                 <Image
-                  src={selectedAvatar ? `/api/avatars/${savedAvatarId}/image` : post.avatarImageUrl}
+                  src={
+                    selectedAvatar
+                      ? `/api/avatars/${savedAvatarId}/image`
+                      : post.avatarVariationImageUrl ?? post.avatarImageUrl
+                  }
                   alt={currentAvatarName}
                   fill
                   className="object-cover"
@@ -436,18 +560,18 @@ export function PostEditPanel({
         </div>
       </div>
 
-      {metadata && (
-        <div className="pt-8">
-          <MetadataSection
-            postId={post.id}
-            platformLabel={post.platformLabel}
-            metadata={metadata}
-            editing={editing}
-            onChange={setMetadata}
-            canRegenerate={post.status !== "COMPLETED"}
-          />
-        </div>
-      )}
+      <div className="pt-8">
+        <MetadataSection
+          postId={post.id}
+          platformLabel={post.platformLabel}
+          metadata={metadata}
+          metadataStatus={savedMetadataStatus}
+          metadataErrorMessage={savedMetadataErrorMessage}
+          editing={editing}
+          onChange={setMetadata}
+          canRegenerate={post.status !== "COMPLETED"}
+        />
+      </div>
     </>
   );
 
@@ -463,10 +587,10 @@ export function PostEditPanel({
               <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
                 <RefreshCw className="h-4 w-4 text-muted-foreground" />
               </div>
-              <AlertDialog.Title className="text-base font-semibold">Regenerate caption and hashtags?</AlertDialog.Title>
+              <AlertDialog.Title className="text-base font-semibold">Regenerate metadata?</AlertDialog.Title>
             </div>
             <AlertDialog.Description className="text-sm text-muted-foreground mb-6 pl-12">
-              Save to keep the current caption and hashtags, or save and regenerate to wipe them and generate new ones.
+              Save to keep the current metadata, or save and regenerate to wipe it and generate new metadata.
             </AlertDialog.Description>
             <div className="flex gap-2 justify-end">
               <AlertDialog.Close render={<Button variant="outline" size="sm" />}>Cancel</AlertDialog.Close>

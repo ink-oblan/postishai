@@ -1,0 +1,204 @@
+import { spawn } from "child_process";
+import { randomBytes } from "crypto";
+import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "fs/promises";
+import { downloadVideo, createVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
+import { readFile, writeFile } from "@/lib/storage";
+import type { JobDefinition, PostGeneratePayload } from "@/workers/types";
+import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
+
+const HEYGEN_POLL_INTERVAL_MS = 5000;
+const HEYGEN_POLL_TIMEOUT_MS = 10 * 60 * 1000;
+
+type PostGenerateResult = {
+  videoPath: string;
+  heygenVideoUrl: string;
+};
+
+export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult> = {
+  type: "post.generate",
+  timeoutMs: 15 * 60 * 1000,
+  maxAttempts: 3,
+  dedupeKey: ({ postId }) => `post.generate:${postId}`,
+  parse(rawPayload) {
+    const payload = parseObjectPayload(rawPayload);
+    return {
+      postId: readRequiredString(payload, "postId"),
+    } satisfies PostGeneratePayload;
+  },
+  async onEnqueue(db, payload) {
+    await db.post.update({
+      where: { id: payload.postId },
+      data: {
+        status: "GENERATING",
+        errorMessage: null,
+        generationStartedAt: new Date(),
+      },
+    });
+  },
+  async onStart(db, payload) {
+    await db.post.update({
+      where: { id: payload.postId },
+      data: {
+        status: "GENERATING",
+        errorMessage: null,
+        generationStartedAt: new Date(),
+      },
+    });
+  },
+  async run(ctx, payload) {
+    ctx.log(`[post.generate] start postId=${payload.postId}`);
+
+    const post = await ctx.db.post.findUnique({
+      where: { id: payload.postId },
+      include: { avatar: true, avatarVariation: true },
+    });
+    if (!post) {
+      throw new Error(`Post ${payload.postId} not found`);
+    }
+
+    const useVariation = post.avatarVariation?.status === "COMPLETED";
+    let heygenAssetId = useVariation
+      ? post.avatarVariation!.heygenAssetId
+      : post.avatar.heygenAssetId;
+
+    if (!heygenAssetId) {
+      const imagePath = useVariation ? post.avatarVariation!.imagePath : post.avatar.imagePath;
+      const mimeType = imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
+      const imageBuffer = await readFile(imagePath);
+      const uploaded = await uploadAvatarImage(imageBuffer, mimeType);
+      heygenAssetId = uploaded.assetId;
+      if (useVariation) {
+        await ctx.db.avatarVariation.update({
+          where: { id: post.avatarVariation!.id },
+          data: { heygenAssetId: uploaded.assetId, heygenAssetUrl: uploaded.assetUrl },
+        });
+      } else {
+        await ctx.db.avatar.update({
+          where: { id: post.avatar.id },
+          data: { heygenAssetId: uploaded.assetId, heygenAssetUrl: uploaded.assetUrl },
+        });
+      }
+    }
+
+    const heygenVideoId = await createVideo({
+      image_asset_id: heygenAssetId,
+      script: post.script,
+      voice_id: post.avatar.voiceId,
+      title: post.title,
+      aspect_ratio: "9:16",
+      resolution: "1080p",
+    });
+
+    await ctx.db.post.update({
+      where: { id: payload.postId },
+      data: { heygenVideoId, errorMessage: null },
+    });
+
+    const pollStart = Date.now();
+    while (Date.now() - pollStart <= HEYGEN_POLL_TIMEOUT_MS) {
+      await new Promise((resolve) => setTimeout(resolve, HEYGEN_POLL_INTERVAL_MS));
+
+      const status = await getVideoStatus(heygenVideoId);
+      ctx.log(`[post.generate] HeyGen status=${status.status} postId=${payload.postId}`);
+
+      if (status.status === "completed" && status.video_url) {
+        const rawBuffer = await downloadVideo(status.video_url);
+        const cleanedBuffer = await removeEdgePillars(rawBuffer);
+        const videoPath = `videos/${payload.postId}.mp4`;
+        await writeFile(videoPath, cleanedBuffer);
+
+        return {
+          videoPath,
+          heygenVideoUrl: status.video_url,
+        };
+      }
+
+      if (status.status === "failed") {
+        const detail = typeof status.error === "string" ? status.error : JSON.stringify(status.error);
+        throw new Error(`HeyGen reported failure: ${detail ?? "unknown"}`);
+      }
+    }
+
+    throw new Error(`HeyGen polling timed out after ${HEYGEN_POLL_TIMEOUT_MS / 1000}s`);
+  },
+  async onSuccess(db, payload, result) {
+    await db.post.update({
+      where: { id: payload.postId },
+      data: {
+        status: "COMPLETED",
+        videoPath: result.videoPath,
+        heygenVideoUrl: result.heygenVideoUrl,
+        errorMessage: null,
+      },
+    });
+  },
+  async onFailure(db, payload, error) {
+    await db.post.update({
+      where: { id: payload.postId },
+      data: {
+        status: "FAILED",
+        errorMessage: error,
+      },
+    }).catch(() => {});
+  },
+  classifyError(error) {
+    return isRetryableError(error) ? "retryable" : "permanent";
+  },
+};
+
+async function removeEdgePillars(input: Buffer): Promise<Buffer> {
+  const id = randomBytes(6).toString("hex");
+  const tmpIn = `/tmp/hg_in_${id}.mp4`;
+  const tmpOut = `/tmp/hg_out_${id}.mp4`;
+
+  try {
+    await writeFileFs(tmpIn, input);
+
+    try {
+      await runFfmpeg(tmpIn, tmpOut, [
+        "-c:v", "h264_nvenc",
+        "-preset", "p1",
+        "-cq", "28",
+      ]);
+    } catch {
+      await runFfmpeg(tmpIn, tmpOut, [
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-crf", "23",
+      ]);
+    }
+
+    return await readFileFs(tmpOut);
+  } finally {
+    await Promise.all([
+      unlink(tmpIn).catch(() => {}),
+      unlink(tmpOut).catch(() => {}),
+    ]);
+  }
+}
+
+async function runFfmpeg(inputPath: string, outputPath: string, videoCodecArgs: string[]): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const proc = spawn("ffmpeg", [
+      "-i", inputPath,
+      "-vf", "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
+      ...videoCodecArgs,
+      "-c:a", "copy",
+      "-y", outputPath,
+    ]);
+
+    let stderr = "";
+    proc.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    proc.on("error", reject);
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(stderr || `ffmpeg exited with code ${code}`));
+    });
+  });
+}

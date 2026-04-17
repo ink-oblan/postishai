@@ -67,3 +67,16 @@ If deploying to a non-GPU server, replace the encoder flags:
 - Output ~9.9M (similar to input size)
 - No hardware dependency
 <!-- END:ffmpeg-video-processing -->
+
+<!-- BEGIN:prisma-schema-changes -->
+# After every Prisma schema change
+
+Run both commands before writing any code that uses the new fields:
+
+```bash
+npx prisma migrate dev --name <migration_name>
+npx prisma generate
+```
+
+`migrate dev` applies the migration to the database. `generate` regenerates the Prisma client — without it, the new fields are unknown at runtime and queries will fail.
+<!-- END:prisma-schema-changes -->

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { writeFile } from "@/lib/storage";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
-import { enqueueJob } from "@/lib/worker/jobs";
+import { enqueueAvatarGenerateJob, enqueueJobInDb } from "@/lib/worker/jobs";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
 
 export async function GET() {
@@ -63,23 +63,31 @@ export async function POST(req: NextRequest) {
     const usedModel = imageModel ?? DEFAULT_IMAGE_MODEL_ID;
     const prompt = await renderAvatarPrompt({ gender, age, ethnicity, origin, occupation });
 
-    const avatar = await prisma.avatar.create({
-      data: {
-        name,
-        voiceId,
-        prompt,
-        gender,
-        age,
-        ethnicity,
-        origin: origin ?? null,
-        occupation,
-        imageModel: usedModel,
-        imagePath: "",
-        status: "GENERATING",
-      },
-    });
+    const avatar = await prisma.$transaction(async (tx) => {
+      const createdAvatar = await tx.avatar.create({
+        data: {
+          name,
+          voiceId,
+          prompt,
+          gender,
+          age,
+          ethnicity,
+          origin: origin ?? null,
+          occupation,
+          imageModel: usedModel,
+          imagePath: "",
+          status: "GENERATING",
+        },
+      });
 
-    await enqueueJob("avatar.generate", { avatarId: avatar.id, prompt, imageModel: usedModel });
+      await enqueueJobInDb(tx, "avatar.generate", {
+        avatarId: createdAvatar.id,
+        prompt,
+        imageModel: usedModel,
+      });
+
+      return createdAvatar;
+    });
 
     return NextResponse.json(avatar, { status: 202 });
   }

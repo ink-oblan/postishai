@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { enqueueJob } from "@/lib/worker/jobs";
+import { enqueuePostGenerateJob, enqueuePostMetadataJob } from "@/lib/worker/jobs";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,18 +15,26 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (!post.metadata) {
-    await enqueueJob("post.metadata", { postId: id });
+    await enqueuePostMetadataJob({ postId: id });
   }
 
-  const updated = await prisma.post.update({
-    where: { id },
-    data: { status: "GENERATING", errorMessage: null, generationStartedAt: new Date() },
-  });
+  const queued = await enqueuePostGenerateJob({ postId: id });
+  if (!queued.created) {
+    return NextResponse.json({ error: "Video generation already queued" }, { status: 409 });
+  }
 
-  await enqueueJob("post.generate", { postId: id });
+  const updated = await prisma.post.findUnique({
+    where: { id },
+    select: { generationStartedAt: true },
+  });
+  if (!updated) {
+    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  }
+
+  const generationStartedAt = updated.generationStartedAt?.toISOString() ?? null;
 
   return NextResponse.json({
     status: "GENERATING",
-    generationStartedAt: updated.generationStartedAt?.toISOString() ?? null,
+    generationStartedAt,
   });
 }

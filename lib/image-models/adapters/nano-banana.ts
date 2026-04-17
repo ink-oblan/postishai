@@ -1,24 +1,37 @@
 import { GoogleGenAI } from "@google/genai";
 import type { ImageModelAdapter, ImageGenerationOptions, ImageGenerationResult } from "../types";
 
-const GEMINI_TIMEOUT_MS = 300_000; // 300s — under the worker's 360s job timeout
+const GEMINI_TIMEOUT_MS = 540_000; // 540s — under the worker's 600s variation job timeout
 
 async function generateWithGeminiImage(
   modelId: string,
-  prompt: string,
+  options: ImageGenerationOptions,
   aspectRatio: string = "9:16"
 ): Promise<ImageGenerationResult> {
   const client = new GoogleGenAI({
     apiKey: process.env.GOOGLE_API_KEY!,
     httpOptions: { timeout: GEMINI_TIMEOUT_MS },
   });
+
+  const contents = options.sourceImage
+    ? [
+        {
+          parts: [
+            { inlineData: { mimeType: options.sourceImage.mimeType, data: options.sourceImage.base64 } },
+            { text: options.prompt },
+          ],
+        },
+      ]
+    : options.prompt;
+
+  const config = options.sourceImage
+    ? { responseModalities: ["IMAGE"] as ["IMAGE"] }
+    : { responseModalities: ["IMAGE"] as ["IMAGE"], imageConfig: { aspectRatio } };
+
   const response = await client.models.generateContent({
     model: modelId,
-    contents: prompt,
-    config: {
-      responseModalities: ["IMAGE"],
-      imageConfig: { aspectRatio },
-    },
+    contents,
+    config,
   });
   const part = response.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
   if (!part?.inlineData?.data) throw new Error("No image returned from Gemini");
@@ -32,7 +45,7 @@ export class NanaBanana2Adapter implements ImageModelAdapter {
   readonly description = "Gemini 3.1 Flash Image — fast, high quality";
 
   async generate(options: ImageGenerationOptions): Promise<ImageGenerationResult> {
-    return generateWithGeminiImage("gemini-3.1-flash-image-preview", options.prompt, options.aspectRatio);
+    return generateWithGeminiImage("gemini-3.1-flash-image-preview", options, options.aspectRatio);
   }
 }
 
@@ -42,6 +55,6 @@ export class NanaBananaProAdapter implements ImageModelAdapter {
   readonly description = "Gemini 3 Pro Image — state-of-the-art quality";
 
   async generate(options: ImageGenerationOptions): Promise<ImageGenerationResult> {
-    return generateWithGeminiImage("gemini-3-pro-image-preview", options.prompt, options.aspectRatio);
+    return generateWithGeminiImage("gemini-3-pro-image-preview", options, options.aspectRatio);
   }
 }

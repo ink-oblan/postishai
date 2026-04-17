@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Platform } from "@prisma/client";
 import { DEFAULT_LLM_MODEL_ID, getLLMAdapter } from "@/lib/llm-models/registry";
-import { enqueueJob } from "@/lib/worker/jobs";
+import { enqueuePostMetadataJob } from "@/lib/worker/jobs";
 
 export async function GET() {
   const posts = await prisma.post.findMany({
@@ -15,11 +15,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { title, platform, script, avatarId, llmModelId } = body as {
+  const { title, platform, script, avatarId, avatarVariationId, llmModelId } = body as {
     title: string;
     platform: Platform;
     script: string;
     avatarId: string;
+    avatarVariationId?: string | null;
     llmModelId?: string;
   };
 
@@ -40,18 +41,26 @@ export async function POST(req: NextRequest) {
   const avatar = await prisma.avatar.findUnique({ where: { id: avatarId } });
   if (!avatar) return NextResponse.json({ error: "Avatar not found" }, { status: 404 });
 
+  if (avatarVariationId) {
+    const variation = await prisma.avatarVariation.findUnique({ where: { id: avatarVariationId } });
+    if (!variation || variation.avatarId !== avatarId) {
+      return NextResponse.json({ error: "Invalid avatar variation" }, { status: 400 });
+    }
+  }
+
   const post = await prisma.post.create({
     data: {
       title: trimmedTitle,
       platform,
       script: trimmedScript,
       avatarId,
+      avatarVariationId: avatarVariationId ?? null,
       llmModelId: selectedLlmModelId,
     },
     include: { avatar: { select: { id: true, name: true, imagePath: true } } },
   });
 
-  await enqueueJob("post.metadata", { postId: post.id });
+  await enqueuePostMetadataJob({ postId: post.id });
 
   return NextResponse.json(post, { status: 201 });
 }

@@ -1,20 +1,17 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus } from "lucide-react";
-import { PLATFORM_LABELS, STATUS_CONFIG, formatDistanceToNow } from "@/lib/utils";
-import { AvatarActions } from "@/components/avatars/AvatarActions";
-import { AvatarStatusPoller } from "@/components/avatars/AvatarStatusPoller";
-import { AvatarEditPanel } from "@/components/avatars/AvatarEditPanel";
+import { ArrowLeft } from "lucide-react";
+import { AvatarPageContent } from "@/components/avatars/AvatarPageContent";
 
 export default async function AvatarDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const avatar = await prisma.avatar.findUnique({
     where: { id },
-    include: { posts: { orderBy: { createdAt: "desc" } } },
+    include: {
+      posts: { orderBy: { createdAt: "desc" } },
+      variations: { where: { archivedAt: null }, orderBy: { createdAt: "asc" } },
+    },
   });
   if (!avatar) notFound();
 
@@ -26,83 +23,40 @@ export default async function AvatarDetailPage({ params }: { params: Promise<{ i
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="space-y-4">
-          {avatar.status === "GENERATING" || avatar.status === "FAILED" ? (
-            <AvatarStatusPoller
-              key={avatar.updatedAt.toISOString()}
-              avatarId={avatar.id}
-              initialStatus={avatar.status}
-              generatedAt={avatar.updatedAt.toISOString()}
-            />
-          ) : (
-            <div className="aspect-[9/16] relative rounded-xl overflow-hidden bg-muted">
-              <Image
-                src={`/api/avatars/${avatar.id}/image?t=${avatar.updatedAt.getTime()}`}
-                alt={avatar.name}
-                fill
-                className="object-cover"
-                unoptimized
-              />
-            </div>
-          )}
-          <AvatarActions avatar={{ id: avatar.id, prompt: avatar.prompt, imageModel: avatar.imageModel }} />
-        </div>
-
-        <div className="md:col-span-2 space-y-4">
-          <AvatarEditPanel
-            avatar={{
-              id: avatar.id,
-              name: avatar.name,
-              voiceId: avatar.voiceId,
-              gender: avatar.gender,
-              age: avatar.age,
-              ethnicity: avatar.ethnicity,
-              origin: avatar.origin,
-              occupation: avatar.occupation,
-              imageModel: avatar.imageModel,
-              createdAt: avatar.createdAt.toISOString(),
-            }}
-          />
-
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">Posts ({avatar.posts.length})</CardTitle>
-                <Link href={`/posts/new?avatarId=${avatar.id}`} className="inline-flex items-center rounded-lg border border-border bg-background text-sm font-medium h-7 px-2.5 gap-1 hover:bg-muted transition-colors text-[0.8rem]">
-                  <Plus className="h-3.5 w-3.5" />New Post
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {avatar.posts.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">No posts yet.</p>
-              ) : (
-                <div className="divide-y divide-border">
-                  {avatar.posts.map((post) => {
-                    const statusCfg = STATUS_CONFIG[post.status] ?? STATUS_CONFIG.DRAFT;
-                    return (
-                      <Link
-                        key={post.id}
-                        href={`/posts/${post.id}`}
-                        className="flex items-center justify-between py-2.5 hover:bg-muted/50 -mx-2 px-2 rounded transition-colors"
-                      >
-                        <p className="text-sm truncate">{post.title}</p>
-                        <div className="flex gap-2 shrink-0 ml-3">
-                          <Badge variant="outline" className="text-xs">{PLATFORM_LABELS[post.platform]}</Badge>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusCfg.className}`}>
-                            {statusCfg.label}
-                          </span>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <AvatarPageContent
+        avatar={{
+          id: avatar.id,
+          name: avatar.name,
+          status: avatar.status,
+          updatedAt: avatar.updatedAt.toISOString(),
+          prompt: avatar.prompt,
+          imageModel: avatar.imageModel,
+          voiceId: avatar.voiceId,
+          gender: avatar.gender,
+          age: avatar.age,
+          ethnicity: avatar.ethnicity,
+          origin: avatar.origin,
+          occupation: avatar.occupation,
+          createdAt: avatar.createdAt.toISOString(),
+        }}
+        initialVariations={avatar.variations.map((v) => ({
+          id: v.id,
+          label: v.label,
+          clothes: v.clothes,
+          background: v.background,
+          pose: v.pose,
+          status: v.status,
+          errorMessage: v.errorMessage,
+          imagePath: v.imagePath,
+          updatedAt: v.updatedAt.toISOString(),
+        }))}
+        posts={avatar.posts.map((p) => ({
+          id: p.id,
+          title: p.title,
+          platform: p.platform,
+          status: p.status,
+        }))}
+      />
     </div>
   );
 }

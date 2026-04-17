@@ -3,7 +3,7 @@
 import type React from "react";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TriangleAlert, Plus, X } from "lucide-react";
+import { TriangleAlert, Plus, X, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,9 @@ import { Tooltip } from "@/components/ui/tooltip";
 interface MetadataSectionProps {
   postId: string;
   platformLabel: string;
-  metadata: PlatformMetadata;
+  metadata: PlatformMetadata | null;
+  metadataStatus: string;
+  metadataErrorMessage: string | null;
   canRegenerate?: boolean;
   editing?: boolean;
   onChange?: (metadata: PlatformMetadata) => void;
@@ -27,6 +29,8 @@ export function MetadataSection({
   postId,
   platformLabel,
   metadata,
+  metadataStatus,
+  metadataErrorMessage,
   canRegenerate = true,
   editing = false,
   onChange,
@@ -81,7 +85,23 @@ export function MetadataSection({
         )}
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        <MetadataDisplay editing={editing} metadata={metadata} onChange={onChange} />
+        {metadataStatus === "GENERATING" && !metadata ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Generating metadata...</span>
+          </div>
+        ) : null}
+        {metadataStatus === "FAILED" && !metadata ? (
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{metadataErrorMessage ?? "Metadata generation failed."}</span>
+          </div>
+        ) : null}
+        {metadata ? (
+          <MetadataDisplay editing={editing} metadata={metadata} onChange={onChange} />
+        ) : metadataStatus === "IDLE" ? (
+          <p className="text-sm text-muted-foreground">No metadata yet.</p>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -102,7 +122,7 @@ function useAutosizeTextarea(value: string) {
 
 function normalizeTags(value: string) {
   return value
-    .split(/[\s,\n,]+/)
+    .split(/[\s,]+/)
     .map((item) => item.trim().replace(/^#/, ""))
     .filter(Boolean);
 }

@@ -1,0 +1,8 @@
+Edit this image. Preserve the subject's visual style, design, colors, and overall aesthetic exactly — do not alter what the subject looks like.
+
+Apply the following changes only:
+{{#if clothes}}- Outfit / accessories: {{clothes}}
+{{/if}}{{#if background}}- Background: {{background}}
+{{/if}}{{#if pose}}- Pose / position: {{pose}}
+{{/if}}
+Maintain the original composition, framing, and artistic style throughout. No text, logos, or symbols.

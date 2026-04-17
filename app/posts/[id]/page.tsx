@@ -20,7 +20,7 @@ export default async function PostDetailPage({
   const { id } = await params;
   const { edit, avatarId } = await searchParams;
   const [post, voices] = await Promise.all([
-    prisma.post.findUnique({ where: { id }, include: { avatar: true } }),
+    prisma.post.findUnique({ where: { id }, include: { avatar: true, avatarVariation: true } }),
     listVoices().catch(() => []),
   ]);
   if (!post) notFound();
@@ -69,11 +69,17 @@ export default async function PostDetailPage({
               avatarId: post.avatar.id,
               avatarName: post.avatar.name,
               avatarImageUrl: `/api/avatars/${post.avatar.id}/image?t=${post.avatar.updatedAt.getTime()}`,
+              avatarVariationId: post.avatarVariationId,
+              avatarVariationImageUrl: post.avatarVariation
+                ? `/api/avatars/${post.avatar.id}/variations/${post.avatarVariation.id}/image?t=${post.avatarVariation.updatedAt.getTime()}`
+                : null,
               voiceName: voice?.name ?? null,
               createdAtLabel: formatDistanceToNow(post.createdAt),
               status: post.status,
               downloadUrl: post.status === "COMPLETED" ? `/api/posts/${post.id}/download` : null,
               metadata,
+              metadataStatus: post.metadataStatus,
+              metadataErrorMessage: post.metadataErrorMessage,
             }}
             initialEditing={edit === "1" && canEditPost}
             initialAvatarId={avatarId ?? null}
