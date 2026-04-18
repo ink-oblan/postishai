@@ -437,6 +437,7 @@ export function PostEditPanel({
                 value={avatarId}
                 fallbackName={savedAvatarName}
                 fallbackImageUrl={post.avatarImageUrl}
+                variationImageUrl={avatarVariationId ? `/api/avatars/${avatarId}/variations/${avatarVariationId}/image` : null}
                 newAvatarHref={`/avatars/new?redirectTo=/posts/${post.id}`}
                 onChange={handleAvatarSelect}
               />
@@ -481,9 +482,11 @@ export function PostEditPanel({
               <span className="relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted">
                 <Image
                   src={
-                    selectedAvatar
-                      ? `/api/avatars/${savedAvatarId}/image`
-                      : post.avatarVariationImageUrl ?? post.avatarImageUrl
+                    savedAvatarVariationId
+                      ? `/api/avatars/${savedAvatarId}/variations/${savedAvatarVariationId}/image`
+                      : selectedAvatar
+                        ? `/api/avatars/${savedAvatarId}/image`
+                        : post.avatarVariationImageUrl ?? post.avatarImageUrl
                   }
                   alt={currentAvatarName}
                   fill

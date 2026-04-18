@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { AlertDialog } from "@base-ui/react";
-import { Plus, Trash2, AlertCircle, RefreshCw, Sparkles } from "lucide-react";
+import { Plus, Archive, AlertCircle, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface AvatarVariation {
@@ -231,7 +231,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
                         src={`/api/avatars/${avatarId}/variations/${variation.id}/image?t=${new Date(variation.updatedAt).getTime()}`}
                         alt={variation.label}
                         fill
-                        className="object-cover"
+                        className={`object-cover transition-[filter] duration-200 ${isSelected ? "blur-[2px] brightness-90" : ""}`}
                         unoptimized
                       />
                     ) : variation.status === "FAILED" ? (
@@ -248,7 +248,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
                       {variation.status === "FAILED" && (
                         <button
                           type="button"
-                          onClick={() => void handleRegenerate(variation)}
+                          onClick={(e) => { e.stopPropagation(); void handleRegenerate(variation); }}
                           className="h-6 w-6 rounded-md bg-background/80 backdrop-blur-sm border border-border flex items-center justify-center hover:bg-muted transition-colors"
                           title="Retry"
                         >
@@ -258,11 +258,11 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
                       {variation.status !== "PENDING" && variation.status !== "GENERATING" && (
                         <button
                           type="button"
-                          onClick={() => setDeleteTarget(variation)}
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(variation); }}
                           className="h-6 w-6 rounded-md bg-background/80 backdrop-blur-sm border border-border flex items-center justify-center hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
                           title="Archive"
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Archive className="h-3 w-3" />
                         </button>
                       )}
                     </div>
@@ -376,7 +376,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
           <AlertDialog.Popup className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl p-6 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 data-[starting-style]:opacity-0 data-[starting-style]:scale-95 transition-all duration-200">
             <div className="flex items-center gap-3 mb-2">
               <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                <Archive className="h-4 w-4 text-muted-foreground" />
               </div>
               <AlertDialog.Title className="text-base font-semibold">Archive variation?</AlertDialog.Title>
             </div>

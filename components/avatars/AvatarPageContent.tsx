@@ -138,10 +138,10 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium">Posts ({posts.length})</CardTitle>
               <Link
-                href={`/posts/new?avatarId=${avatar.id}`}
+                href={`/posts/new?avatarId=${avatar.id}${selectedVariation ? `&variationId=${selectedVariation.id}` : ""}`}
                 className="inline-flex items-center rounded-lg border border-border bg-background text-sm font-medium h-7 px-2.5 gap-1 hover:bg-muted transition-colors text-[0.8rem]"
               >
-                <Plus className="h-3.5 w-3.5" />New Post
+                <Plus className="h-3.5 w-3.5" />{selectedVariation ? "New Post with variation" : "New Post"}
               </Link>
             </div>
           </CardHeader>

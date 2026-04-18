@@ -47,6 +47,7 @@ export function PostWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedAvatarId = searchParams.get("avatarId") ?? "";
+  const preselectedVariationId = searchParams.get("variationId") ?? null;
 
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>({
@@ -67,8 +68,13 @@ export function PostWizard() {
 
   useEffect(() => {
     if (preselectedAvatarId) {
-      setData((d) => ({ ...d, avatarId: preselectedAvatarId }));
+      setData((d) => ({ ...d, avatarId: preselectedAvatarId, avatarVariationId: preselectedVariationId }));
       setStep(2);
+      // Fetch variations so the selection is visible if user navigates back to step 1
+      fetch(`/api/avatars/${preselectedAvatarId}/variations`)
+        .then((r) => r.json())
+        .then((all: AvatarVariation[]) => setAvatarVariations(all.filter((v) => v.status === "COMPLETED")))
+        .catch(() => {});
     }
     fetch("/api/avatars").then((r) => r.json()).then(setAvatars);
     fetch("/api/llm-models").then((r) => r.json()).then(setLLMModels);

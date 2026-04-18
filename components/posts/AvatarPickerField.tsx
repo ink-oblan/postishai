@@ -19,6 +19,7 @@ interface AvatarPickerFieldProps {
   value: string;
   fallbackName: string;
   fallbackImageUrl: string;
+  variationImageUrl?: string | null;
   newAvatarHref: string;
   onChange: (avatar: AvatarPickerOption) => void;
 }
@@ -28,6 +29,7 @@ export function AvatarPickerField({
   value,
   fallbackName,
   fallbackImageUrl,
+  variationImageUrl,
   newAvatarHref,
   onChange,
 }: AvatarPickerFieldProps) {
@@ -37,7 +39,7 @@ export function AvatarPickerField({
 
   const selectedAvatar = avatars.find((avatar) => avatar.id === value);
   const currentAvatarName = selectedAvatar?.name ?? fallbackName;
-  const currentAvatarImageUrl = selectedAvatar ? `/api/avatars/${selectedAvatar.id}/image` : fallbackImageUrl;
+  const currentAvatarImageUrl = variationImageUrl ?? (selectedAvatar ? `/api/avatars/${selectedAvatar.id}/image` : fallbackImageUrl);
   const filteredAvatars = avatars.filter((avatar) =>
     avatar.name.toLowerCase().includes(search.trim().toLowerCase())
   );
