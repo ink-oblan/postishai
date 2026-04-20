@@ -9,7 +9,7 @@ const plusJakarta = Plus_Jakarta_Sans({ variable: "--font-sans", subsets: ["lati
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "UGC AI Platform",
+  title: "PostishAI",
   description: "AI-powered social media content creation",
 };
 

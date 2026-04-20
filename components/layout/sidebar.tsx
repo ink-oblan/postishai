@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, FileVideo, Sparkles, Menu, X, Settings } from "lucide-react";
+import { LayoutDashboard, Users, FileVideo, Menu, X, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -66,10 +67,10 @@ function ProfileFooter({ pathname, onNavigate }: { pathname: string; onNavigate?
 function Logo({ onClick }: { onClick?: () => void }) {
   return (
     <Link href="/dashboard" onClick={onClick} className="flex items-center gap-2.5 group">
-      <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm group-hover:opacity-90 transition-opacity">
-        <Sparkles className="h-4 w-4 text-primary-foreground" />
+      <div className="h-12 w-12 shrink-0 group-hover:opacity-90 transition-opacity">
+        <Image src="/logo.svg" alt="Logo" width={32} height={32} className="h-full w-full object-contain" />
       </div>
-      <span className="font-bold text-[15px] tracking-tight">UGC AI</span>
+      <span className="font-bold text-[21px] tracking-tight">PostishAI</span>
     </Link>
   );
 }
