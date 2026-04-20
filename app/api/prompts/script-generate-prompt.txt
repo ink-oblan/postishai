@@ -1,0 +1,11 @@
+Write a spoken script for a {{platformLabel}} video.
+The script will be read aloud by an AI avatar, so write it as natural speech — no stage directions, no emojis, no hashtags.
+Keep it concise (30–60 seconds of speech, roughly 80–160 words).
+Open with a hook that grabs attention in the first 2 seconds.
+{{#if title}}
+The video topic/title is: "{{title}}".
+{{/if}}
+{{#if details}}
+Additional context from the user: "{{details}}".
+{{/if}}
+Return ONLY the script text, nothing else.

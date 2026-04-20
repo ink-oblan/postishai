@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronRight, ChevronLeft, Loader2, Check, Plus } from "lucide-react";
+import { ChevronRight, ChevronLeft, Loader2, Check, Plus, Sparkles } from "lucide-react";
+import { Dialog } from "@base-ui/react";
 import { toast } from "sonner";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
 import { PLATFORM_LABELS } from "@/lib/utils";
@@ -65,6 +66,9 @@ export function PostWizard() {
   const [loadingVariations, setLoadingVariations] = useState(false);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [aiScriptOpen, setAiScriptOpen] = useState(false);
+  const [aiScriptDetails, setAiScriptDetails] = useState("");
+  const [aiScriptLoading, setAiScriptLoading] = useState(false);
 
   useEffect(() => {
     if (preselectedAvatarId) {
@@ -99,6 +103,35 @@ export function PostWizard() {
       setAvatarVariations(all.filter((v) => v.status === "COMPLETED"));
     } finally {
       setLoadingVariations(false);
+    }
+  }
+
+  async function handleGenerateScript() {
+    setAiScriptLoading(true);
+    try {
+      const res = await fetch("/api/posts/generate-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          platform: data.platform,
+          details: aiScriptDetails.trim() || undefined,
+          llmModelId: data.llmModelId,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Failed to generate script");
+      }
+      const { script: generated } = await res.json();
+      setScript(generated);
+      setAiScriptOpen(false);
+      setAiScriptDetails("");
+      toast.success("Script generated!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate script");
+    } finally {
+      setAiScriptLoading(false);
     }
   }
 
@@ -264,7 +297,17 @@ export function PostWizard() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="script">Script (spoken text)</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="script">Script (spoken text)</Label>
+              <button
+                type="button"
+                onClick={() => setAiScriptOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Write with AI
+              </button>
+            </div>
             <Textarea
               id="script"
               value={script}
@@ -274,6 +317,43 @@ export function PostWizard() {
             />
             <p className="text-xs text-muted-foreground">{script.length} characters</p>
           </div>
+
+          {/* AI Script Generation Modal */}
+          <Dialog.Root open={aiScriptOpen} onOpenChange={setAiScriptOpen}>
+            <Dialog.Portal>
+              <Dialog.Backdrop className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 transition-opacity duration-200" />
+              <Dialog.Popup className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl p-6 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 data-[starting-style]:opacity-0 data-[starting-style]:scale-95 transition-all duration-200">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                  </div>
+                  <Dialog.Title className="text-base font-semibold">Generate Script with AI</Dialog.Title>
+                </div>
+                <Dialog.Description className="text-sm text-muted-foreground mb-4">
+                  Describe what the script should be about, or leave empty to generate based on the post title and platform.
+                </Dialog.Description>
+                <Textarea
+                  value={aiScriptDetails}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAiScriptDetails(e.target.value)}
+                  placeholder="e.g. Promote our summer sale, mention 30% off all items, upbeat tone..."
+                  rows={3}
+                  disabled={aiScriptLoading}
+                />
+                <div className="flex gap-2 justify-end mt-4">
+                  <Dialog.Close render={<Button variant="outline" size="sm" disabled={aiScriptLoading} />}>
+                    Cancel
+                  </Dialog.Close>
+                  <Button size="sm" onClick={handleGenerateScript} disabled={aiScriptLoading}>
+                    {aiScriptLoading ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Generating...</>
+                    ) : (
+                      <><Sparkles className="h-3.5 w-3.5 mr-1.5" />Generate</>
+                    )}
+                  </Button>
+                </div>
+              </Dialog.Popup>
+            </Dialog.Portal>
+          </Dialog.Root>
 
           <div className="space-y-2">
             <Label>AI Model for Metadata</Label>
