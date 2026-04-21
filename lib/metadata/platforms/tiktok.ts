@@ -1,17 +1,5 @@
-export function buildTikTokPrompt(script: string, title: string): string {
-  return `You are a TikTok content strategist. Generate TikTok metadata for the following video script.
+import { renderPromptTemplate } from "@/lib/prompts";
 
-Video title: ${title}
-Video script: ${script}
-
-Return ONLY a valid JSON object (no markdown, no explanation) with this exact structure:
-{
-  "caption": "short punchy caption up to 150 characters with 2-3 hashtags inline",
-  "hashtags": ["hashtag1", "hashtag2", "hashtag3", "hashtag4", "hashtag5"]
-}
-
-Rules:
-- Caption must be punchy and hook-driven, keep it under 150 characters
-- Hashtags should include trending TikTok tags relevant to the content (no # prefix in the array)
-- 5-15 hashtags total`;
+export function buildTikTokPrompt(script: string, title: string): Promise<string> {
+  return renderPromptTemplate("metadata-tiktok-prompt.txt", { script, title });
 }

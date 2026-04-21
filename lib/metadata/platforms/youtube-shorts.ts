@@ -1,19 +1,5 @@
-export function buildYouTubeShortsPrompt(script: string, title: string): string {
-  return `You are a YouTube content strategist. Generate YouTube Shorts metadata for the following video script.
+import { renderPromptTemplate } from "@/lib/prompts";
 
-Video title: ${title}
-Video script: ${script}
-
-Return ONLY a valid JSON object (no markdown, no explanation) with this exact structure:
-{
-  "title": "SEO-optimized title under 60 characters",
-  "description": "description up to 200 characters with call-to-action",
-  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]
-}
-
-Rules:
-- Title should be keyword-rich and under 60 characters for full display
-- Description should summarize the video and include a CTA (like/subscribe/comment)
-- Tags should be relevant search terms (no # prefix, plain words/phrases)
-- 5-15 tags total`;
+export function buildYouTubeShortsPrompt(script: string, title: string): Promise<string> {
+  return renderPromptTemplate("metadata-youtube-shorts-prompt.txt", { script, title });
 }

@@ -26,6 +26,12 @@ Known API references for this project:
 - **Google GenAI SDK**: `node_modules/@google/genai/dist/genai.d.ts`
 <!-- END:api-integration-rules -->
 
+<!-- BEGIN:ai-prompt-location -->
+# AI prompts belong in app/api/prompts
+
+Always store prompt text sent to AI services or models in `app/api/prompts`. Do not inline AI prompt prose in route handlers, libraries, workers, or components; load and render a prompt template from `app/api/prompts` instead.
+<!-- END:ai-prompt-location -->
+
 <!-- BEGIN:ffmpeg-video-processing -->
 # Video post-processing with ffmpeg
 

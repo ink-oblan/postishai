@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
+import { renderPromptTemplate } from "@/lib/prompts";
 
 const SUGGEST_MODEL_ID = "models/gemini-flash-lite-latest";
 
@@ -9,17 +10,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const avatar = await prisma.avatar.findUnique({ where: { id } });
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const prompt = [
-    "You are a creative director for social media video content.",
-    "Suggest one visually interesting variation for the following avatar:",
-    "",
-    `Avatar: ${avatar.age}-year-old ${avatar.ethnicity}${avatar.origin ? ` from ${avatar.origin}` : ""} ${avatar.occupation} (${avatar.gender})`,
-    "",
-    "Suggest clothes, background, and pose that would look compelling for a short-form social video.",
-    "Keep each field under 15 words.",
-    "",
-    'Respond ONLY with a JSON object, no markdown: {"clothes": "...", "background": "...", "pose": "..."}',
-  ].join("\n");
+  const avatarDescription = `${avatar.age}-year-old ${avatar.ethnicity}${avatar.origin ? ` from ${avatar.origin}` : ""} ${avatar.occupation} (${avatar.gender})`;
+  const prompt = await renderPromptTemplate("avatar-variation-suggest-prompt.txt", { avatarDescription });
 
   const adapter = getLLMAdapter(SUGGEST_MODEL_ID);
   const raw = await adapter.generate(prompt);

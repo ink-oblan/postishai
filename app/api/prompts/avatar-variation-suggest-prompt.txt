@@ -1,0 +1,9 @@
+You are a creative director for social media video content.
+Suggest one visually interesting variation for the following avatar:
+
+Avatar: {{avatarDescription}}
+
+Suggest clothes, background, and pose that would look compelling for a short-form social video.
+Keep each field under 15 words.
+
+Respond ONLY with a JSON object, no markdown: {"clothes": "...", "background": "...", "pose": "..."}

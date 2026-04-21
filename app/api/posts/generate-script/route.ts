@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
-import Handlebars from "handlebars";
-import fs from "node:fs/promises";
-import path from "node:path";
-
-let compiled: HandlebarsTemplateDelegate | null = null;
-
-async function getTemplate(): Promise<HandlebarsTemplateDelegate> {
-  if (!compiled) {
-    const templatePath = path.join(process.cwd(), "app/api/prompts/script-generate-prompt.txt");
-    const source = await fs.readFile(templatePath, "utf-8");
-    compiled = Handlebars.compile(source);
-  }
-  return compiled;
-}
+import { renderPromptTemplate } from "@/lib/prompts";
 
 export async function POST(req: NextRequest) {
   const { title, platform, details, llmModelId } = await req.json();
@@ -28,8 +15,11 @@ export async function POST(req: NextRequest) {
     platform === "YOUTUBE_SHORTS" ? "YouTube Shorts" :
     "short-form video";
 
-  const template = await getTemplate();
-  const prompt = template({ platformLabel, title, details: details?.trim() });
+  const prompt = await renderPromptTemplate("script-generate-prompt.txt", {
+    platformLabel,
+    title,
+    details: details?.trim(),
+  });
 
   try {
     const adapter = getLLMAdapter(llmModelId);

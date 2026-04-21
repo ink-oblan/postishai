@@ -5,7 +5,7 @@ import { buildInstagramPrompt } from "./platforms/instagram";
 import { buildTikTokPrompt } from "./platforms/tiktok";
 import { buildYouTubeShortsPrompt } from "./platforms/youtube-shorts";
 
-function buildPrompt(platform: Platform, script: string, title: string): string {
+function buildPrompt(platform: Platform, script: string, title: string): Promise<string> {
   switch (platform) {
     case "INSTAGRAM": return buildInstagramPrompt(script, title);
     case "TIKTOK": return buildTikTokPrompt(script, title);
@@ -40,7 +40,7 @@ export async function generateMetadata(
   llmModelId: string
 ): Promise<PlatformMetadata> {
   const adapter = getLLMAdapter(llmModelId);
-  const prompt = buildPrompt(platform, script, title);
+  const prompt = await buildPrompt(platform, script, title);
   const raw = await adapter.generate(prompt);
   return parseResponse(platform, raw);
 }
