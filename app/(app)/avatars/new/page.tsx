@@ -3,12 +3,14 @@ import { NewAvatarForm } from "@/components/avatars/NewAvatarForm";
 
 export default function NewAvatarPage() {
   return (
-    <div className="px-6 py-8 sm:px-10 max-w-2xl space-y-8">
+    <div className="max-w-2xl space-y-8 px-6 py-8 sm:px-10">
       <div>
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">New Avatar</h1>
-        <p className="text-sm text-muted-foreground mt-1.5">Generate with AI or upload your own image</p>
+        <h1 className="font-bold text-3xl tracking-tight sm:text-4xl">New Avatar</h1>
+        <p className="mt-1.5 text-muted-foreground text-sm">
+          Generate with AI or upload your own image
+        </p>
       </div>
-      <Suspense fallback={<div className="text-sm text-muted-foreground">Loading form…</div>}>
+      <Suspense fallback={<div className="text-muted-foreground text-sm">Loading form…</div>}>
         <NewAvatarForm />
       </Suspense>
     </div>

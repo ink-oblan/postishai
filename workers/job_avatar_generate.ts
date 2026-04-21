@@ -1,7 +1,7 @@
-import { readFile, writeFile } from "@/lib/storage";
 import { getImageAdapter } from "@/lib/image-models/registry";
-import type { AvatarGeneratePayload, JobDefinition } from "@/workers/types";
+import { readFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
+import type { JobDefinition } from "@/workers/types";
 
 type AvatarGenerateResult = {
   imagePath: string;
@@ -76,13 +76,15 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     });
   },
   async onFailure(db, payload, error) {
-    await db.avatar.update({
-      where: { id: payload.avatarId },
-      data: {
-        status: "FAILED",
-        errorMessage: error,
-      },
-    }).catch(() => {});
+    await db.avatar
+      .update({
+        where: { id: payload.avatarId },
+        data: {
+          status: "FAILED",
+          errorMessage: error,
+        },
+      })
+      .catch(() => {});
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";

@@ -1,10 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { prisma } from "@/lib/db";
 
 type Params = { params: Promise<{ id: string; variationId: string }> };
 
-export const DELETE = withAuth(async function DELETE(_req: NextRequest, { params }: Params, { userId }) {
+export const DELETE = withAuth(async function DELETE(
+  _req: NextRequest,
+  { params }: Params,
+  { userId },
+) {
   const { id, variationId } = await params;
 
   const avatar = await prisma.avatar.findFirst({ where: { id, userId } });

@@ -1,5 +1,5 @@
-import type { LLMModelAdapter, LLMModelInfo } from "./types";
 import { GeminiAdapter } from "./adapters/gemini";
+import type { LLMModelAdapter, LLMModelInfo } from "./types";
 
 const adapters = new Map<string, LLMModelAdapter>();
 
@@ -7,11 +7,41 @@ function register(adapter: LLMModelAdapter) {
   adapters.set(adapter.id, adapter);
 }
 
-register(new GeminiAdapter("models/gemini-flash-lite-latest", "Gemini Flash Lite Latest", "Lowest-latency Gemini alias for lightweight text generation"));
-register(new GeminiAdapter("models/gemini-flash-latest", "Gemini Flash Latest", "Fast general-purpose Gemini alias for text generation"));
-register(new GeminiAdapter("models/gemini-pro-latest", "Gemini Pro Latest", "Frontier Gemini alias for high-quality text generation"));
-register(new GeminiAdapter("gemini-3-flash-preview", "Gemini 3 Flash", "Fast and capable, ideal for content generation"));
-register(new GeminiAdapter("gemini-3.1-pro-preview", "Gemini 3.1 Pro", "Most capable, best quality metadata"));
+register(
+  new GeminiAdapter(
+    "models/gemini-flash-lite-latest",
+    "Gemini Flash Lite Latest",
+    "Lowest-latency Gemini alias for lightweight text generation",
+  ),
+);
+register(
+  new GeminiAdapter(
+    "models/gemini-flash-latest",
+    "Gemini Flash Latest",
+    "Fast general-purpose Gemini alias for text generation",
+  ),
+);
+register(
+  new GeminiAdapter(
+    "models/gemini-pro-latest",
+    "Gemini Pro Latest",
+    "Frontier Gemini alias for high-quality text generation",
+  ),
+);
+register(
+  new GeminiAdapter(
+    "gemini-3-flash-preview",
+    "Gemini 3 Flash",
+    "Fast and capable, ideal for content generation",
+  ),
+);
+register(
+  new GeminiAdapter(
+    "gemini-3.1-pro-preview",
+    "Gemini 3.1 Pro",
+    "Most capable, best quality metadata",
+  ),
+);
 
 export const DEFAULT_LLM_MODEL_ID = "models/gemini-pro-latest";
 

@@ -1,10 +1,10 @@
-import { spawn } from "child_process";
-import { randomBytes } from "crypto";
-import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "fs/promises";
-import { downloadVideo, createVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
+import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:fs/promises";
+import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
 import { readFile, writeFile } from "@/lib/storage";
-import type { JobDefinition, PostGeneratePayload } from "@/workers/types";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
+import type { JobDefinition, PostGeneratePayload } from "@/workers/types";
 
 const HEYGEN_POLL_INTERVAL_MS = 5000;
 const HEYGEN_POLL_TIMEOUT_MS = 10 * 60 * 1000;
@@ -58,18 +58,18 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
 
     const useVariation = post.avatarVariation?.status === "COMPLETED";
     let heygenAssetId = useVariation
-      ? post.avatarVariation!.heygenAssetId
+      ? post.avatarVariation?.heygenAssetId
       : post.avatar.heygenAssetId;
 
     if (!heygenAssetId) {
-      const imagePath = useVariation ? post.avatarVariation!.imagePath : post.avatar.imagePath;
+      const imagePath = useVariation ? post.avatarVariation?.imagePath : post.avatar.imagePath;
       const mimeType = imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
       const imageBuffer = await readFile(imagePath);
       const uploaded = await uploadAvatarImage(imageBuffer, mimeType);
       heygenAssetId = uploaded.assetId;
       if (useVariation) {
         await ctx.db.avatarVariation.update({
-          where: { id: post.avatarVariation!.id },
+          where: { id: post.avatarVariation?.id },
           data: { heygenAssetId: uploaded.assetId, heygenAssetUrl: uploaded.assetUrl },
         });
       } else {
@@ -114,7 +114,8 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
       }
 
       if (status.status === "failed") {
-        const detail = typeof status.error === "string" ? status.error : JSON.stringify(status.error);
+        const detail =
+          typeof status.error === "string" ? status.error : JSON.stringify(status.error);
         throw new Error(`HeyGen reported failure: ${detail ?? "unknown"}`);
       }
     }
@@ -133,13 +134,15 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     });
   },
   async onFailure(db, payload, error) {
-    await db.post.update({
-      where: { id: payload.postId },
-      data: {
-        status: "FAILED",
-        errorMessage: error,
-      },
-    }).catch(() => {});
+    await db.post
+      .update({
+        where: { id: payload.postId },
+        data: {
+          status: "FAILED",
+          errorMessage: error,
+        },
+      })
+      .catch(() => {});
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";
@@ -155,36 +158,33 @@ async function removeEdgePillars(input: Buffer): Promise<Buffer> {
     await writeFileFs(tmpIn, input);
 
     try {
-      await runFfmpeg(tmpIn, tmpOut, [
-        "-c:v", "h264_nvenc",
-        "-preset", "p1",
-        "-cq", "28",
-      ]);
+      await runFfmpeg(tmpIn, tmpOut, ["-c:v", "h264_nvenc", "-preset", "p1", "-cq", "28"]);
     } catch {
-      await runFfmpeg(tmpIn, tmpOut, [
-        "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-crf", "23",
-      ]);
+      await runFfmpeg(tmpIn, tmpOut, ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23"]);
     }
 
     return await readFileFs(tmpOut);
   } finally {
-    await Promise.all([
-      unlink(tmpIn).catch(() => {}),
-      unlink(tmpOut).catch(() => {}),
-    ]);
+    await Promise.all([unlink(tmpIn).catch(() => {}), unlink(tmpOut).catch(() => {})]);
   }
 }
 
-async function runFfmpeg(inputPath: string, outputPath: string, videoCodecArgs: string[]): Promise<void> {
+async function runFfmpeg(
+  inputPath: string,
+  outputPath: string,
+  videoCodecArgs: string[],
+): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const proc = spawn("ffmpeg", [
-      "-i", inputPath,
-      "-vf", "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
+      "-i",
+      inputPath,
+      "-vf",
+      "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
       ...videoCodecArgs,
-      "-c:a", "copy",
-      "-y", outputPath,
+      "-c:a",
+      "copy",
+      "-y",
+      outputPath,
     ]);
 
     let stderr = "";

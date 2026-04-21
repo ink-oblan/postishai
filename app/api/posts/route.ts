@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { Platform } from "@prisma/client";
+import { type NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
-import { Platform } from "@prisma/client";
 import { DEFAULT_LLM_MODEL_ID, getLLMAdapter } from "@/lib/llm-models/registry";
 import { enqueuePostMetadataJob } from "@/lib/worker/jobs";
-import { withAuth } from "@/lib/auth/dal";
 
 export const GET = withAuth(async function GET(_req: NextRequest, _ctx: unknown, { userId }) {
   const posts = await prisma.post.findMany({
@@ -39,7 +39,9 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
     return NextResponse.json({ error: "Unknown metadata model" }, { status: 400 });
   }
 
-  const avatar = await prisma.avatar.findFirst({ where: { id: avatarId, userId, archivedAt: null } });
+  const avatar = await prisma.avatar.findFirst({
+    where: { id: avatarId, userId, archivedAt: null },
+  });
   if (!avatar) return NextResponse.json({ error: "Avatar not found" }, { status: 404 });
 
   if (avatarVariationId) {

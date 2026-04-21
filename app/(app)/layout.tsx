@@ -1,6 +1,6 @@
+import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { verifySession } from "@/lib/auth/dal";
-import { redirect } from "next/navigation";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await verifySession();
@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { user } = session;
 
   return (
-    <div className="h-full flex">
+    <div className="flex h-full">
       <Sidebar user={{ name: user.name, email: user.email, avatarUrl: user.avatarUrl }} />
       <main className="flex-1 overflow-y-auto pt-14 md:pt-0">{children}</main>
     </div>

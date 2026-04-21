@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/db";
+import { type NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens, verifyGoogleIdToken } from "@/lib/auth/google";
 import { createSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;

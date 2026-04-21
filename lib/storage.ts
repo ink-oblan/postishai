@@ -1,5 +1,5 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 function storageRoot(): string {
   const configuredPath = process.env.STORAGE_PATH ?? "storage";

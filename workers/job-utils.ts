@@ -34,14 +34,14 @@ export function isRetryableError(error: unknown): boolean {
     normalized.includes("currently experiencing high demand") ||
     normalized.includes("unavailable") ||
     normalized.includes("rate limit") ||
-    normalized.includes("\"status\":\"unavailable\"") ||
-    normalized.includes("\"status\":\"deadline_exceeded\"") ||
-    normalized.includes("\"status\":\"resource_exhausted\"") ||
-    normalized.includes("\"code\":429") ||
-    normalized.includes("\"code\":500") ||
-    normalized.includes("\"code\":502") ||
-    normalized.includes("\"code\":503") ||
-    normalized.includes("\"code\":504")
+    normalized.includes('"status":"unavailable"') ||
+    normalized.includes('"status":"deadline_exceeded"') ||
+    normalized.includes('"status":"resource_exhausted"') ||
+    normalized.includes('"code":429') ||
+    normalized.includes('"code":500') ||
+    normalized.includes('"code":502') ||
+    normalized.includes('"code":503') ||
+    normalized.includes('"code":504')
   ) {
     return true;
   }

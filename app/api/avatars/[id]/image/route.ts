@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { readFile } from "@/lib/storage";
-import { withAuth } from "@/lib/auth/dal";
 
 export const GET = withAuth(async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-  { userId }
+  { userId },
 ) {
   const { id } = await params;
   const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
-  if (!avatar || !avatar.imagePath) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!avatar?.imagePath) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const buffer = await readFile(avatar.imagePath);
   const contentType = avatar.imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
@@ -24,7 +24,7 @@ export const GET = withAuth(async function GET(
     headers: {
       "Content-Type": contentType,
       "Cache-Control": "public, max-age=0, must-revalidate",
-      "ETag": etag,
+      ETag: etag,
     },
   });
 });

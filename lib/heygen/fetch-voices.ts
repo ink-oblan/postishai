@@ -12,9 +12,10 @@ export async function fetchHeyGenVoices(): Promise<HeyGenVoice[]> {
     : null;
 
   if (!res.ok) {
-    const message = payload && typeof payload === "object" && "error" in payload
-      ? (payload as VoiceErrorResponse).error
-      : null;
+    const message =
+      payload && typeof payload === "object" && "error" in payload
+        ? (payload as VoiceErrorResponse).error
+        : null;
     throw new Error(message ?? "Failed to load HeyGen voices");
   }
 

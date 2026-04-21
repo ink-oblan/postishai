@@ -2,24 +2,25 @@ import { ThemeSelector } from "@/components/ThemeSelector";
 
 export default function SettingsPage() {
   return (
-    <div className="px-6 py-8 sm:px-10 space-y-8">
+    <div className="space-y-8 px-6 py-8 sm:px-10">
       <div>
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1.5">Manage your profile and preferences</p>
+        <h1 className="font-bold text-3xl tracking-tight sm:text-4xl">Settings</h1>
+        <p className="mt-1.5 text-muted-foreground text-sm">Manage your profile and preferences</p>
       </div>
 
-      <div className="space-y-4 max-w-xl">
-
+      <div className="max-w-xl space-y-4">
         {/* Appearance */}
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="px-5 py-4 border-b border-border">
-            <h2 className="text-sm font-semibold">Appearance</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Choose your preferred color theme</p>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="border-border border-b px-5 py-4">
+            <h2 className="font-semibold text-sm">Appearance</h2>
+            <p className="mt-0.5 text-muted-foreground text-xs">
+              Choose your preferred color theme
+            </p>
           </div>
-          <div className="px-5 py-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col items-start gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-0.5">
-              <p className="text-sm font-medium">Color scheme</p>
-              <p className="text-xs text-muted-foreground">Select light, dark, or system default</p>
+              <p className="font-medium text-sm">Color scheme</p>
+              <p className="text-muted-foreground text-xs">Select light, dark, or system default</p>
             </div>
             <div className="w-full sm:w-auto">
               <ThemeSelector />
@@ -28,16 +29,15 @@ export default function SettingsPage() {
         </div>
 
         {/* Profile placeholder */}
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="px-5 py-4 border-b border-border">
-            <h2 className="text-sm font-semibold">Profile</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Your account information</p>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="border-border border-b px-5 py-4">
+            <h2 className="font-semibold text-sm">Profile</h2>
+            <p className="mt-0.5 text-muted-foreground text-xs">Your account information</p>
           </div>
-          <div className="px-5 py-4 text-sm text-muted-foreground">
+          <div className="px-5 py-4 text-muted-foreground text-sm">
             Profile settings coming soon.
           </div>
         </div>
-
       </div>
     </div>
   );

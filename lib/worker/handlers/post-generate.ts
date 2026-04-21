@@ -1,10 +1,10 @@
+import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import { prisma } from "@/lib/db";
-import { writeFile, readFile } from "@/lib/storage";
-import { uploadAvatarImage, createVideo, getVideoStatus, downloadVideo } from "@/lib/heygen/client";
+import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
+import { readFile, writeFile } from "@/lib/storage";
 import type { PostGeneratePayload } from "../jobs";
-import { spawn } from "child_process";
-import { writeFile as writeFileFs, readFile as readFileFs, unlink } from "fs/promises";
-import { randomBytes } from "crypto";
 
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -96,7 +96,12 @@ export async function handlePostGenerate(payload: PostGeneratePayload): Promise<
 
       await prisma.post.update({
         where: { id: postId },
-        data: { status: "COMPLETED", videoPath, heygenVideoUrl: data.video_url, errorMessage: null },
+        data: {
+          status: "COMPLETED",
+          videoPath,
+          heygenVideoUrl: data.video_url,
+          errorMessage: null,
+        },
       });
       log(`done postId=${postId}`);
       return;
@@ -120,15 +125,24 @@ async function removeEdgePillars(input: Buffer): Promise<Buffer> {
     await writeFileFs(tmpIn, input);
     await new Promise<void>((resolve, reject) => {
       const proc = spawn("ffmpeg", [
-        "-i", tmpIn,
-        "-vf", "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
-        "-c:v", "h264_nvenc", "-preset", "p1", "-cq", "28",
-        "-c:a", "copy",
-        "-y", tmpOut,
+        "-i",
+        tmpIn,
+        "-vf",
+        "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
+        "-c:v",
+        "h264_nvenc",
+        "-preset",
+        "p1",
+        "-cq",
+        "28",
+        "-c:a",
+        "copy",
+        "-y",
+        tmpOut,
       ]);
       proc.stderr.on("data", () => {});
       proc.on("close", (code) =>
-        code === 0 ? resolve() : reject(new Error(`ffmpeg exited with code ${code}`))
+        code === 0 ? resolve() : reject(new Error(`ffmpeg exited with code ${code}`)),
       );
     });
     return await readFileFs(tmpOut);

@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/dal";
+import { renderAvatarVariationPrompt } from "@/lib/avatar-variation-prompt";
 import { prisma } from "@/lib/db";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
-import { enqueueAvatarVariationGenerateJob, enqueueJobInDb } from "@/lib/worker/jobs";
-import { renderAvatarVariationPrompt } from "@/lib/avatar-variation-prompt";
-import { withAuth } from "@/lib/auth/dal";
+import { enqueueJobInDb } from "@/lib/worker/jobs";
 
 export const GET = withAuth(async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-  { userId }
+  { userId },
 ) {
   const { id } = await params;
   const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
@@ -24,7 +24,7 @@ export const GET = withAuth(async function GET(
 export const POST = withAuth(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-  { userId }
+  { userId },
 ) {
   const { id } = await params;
   const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
@@ -44,11 +44,14 @@ export const POST = withAuth(async function POST(
   }
 
   const usedModel = imageModel ?? avatar.imageModel ?? DEFAULT_IMAGE_MODEL_ID;
-  const prompt = await renderAvatarVariationPrompt({
-    clothes: clothes?.trim() || undefined,
-    background: background?.trim() || undefined,
-    pose: pose?.trim() || undefined,
-  }, !avatar.prompt);
+  const prompt = await renderAvatarVariationPrompt(
+    {
+      clothes: clothes?.trim() || undefined,
+      background: background?.trim() || undefined,
+      pose: pose?.trim() || undefined,
+    },
+    !avatar.prompt,
+  );
 
   const variation = await prisma.$transaction(async (tx) => {
     const created = await tx.avatarVariation.create({

@@ -1,5 +1,5 @@
-import type { ImageModelAdapter, ImageModelInfo } from "./types";
 import { NanaBanana2Adapter, NanaBananaProAdapter } from "./adapters/nano-banana";
+import type { ImageModelAdapter, ImageModelInfo } from "./types";
 
 const adapters = new Map<string, ImageModelAdapter>();
 

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/dal";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import { renderPromptTemplate } from "@/lib/prompts";
-import { withAuth } from "@/lib/auth/dal";
 
 export const POST = withAuth(async function POST(req: NextRequest) {
   const { title, platform, details, llmModelId } = await req.json();
@@ -11,10 +11,13 @@ export const POST = withAuth(async function POST(req: NextRequest) {
   }
 
   const platformLabel =
-    platform === "INSTAGRAM" ? "Instagram Reels" :
-    platform === "TIKTOK" ? "TikTok" :
-    platform === "YOUTUBE_SHORTS" ? "YouTube Shorts" :
-    "short-form video";
+    platform === "INSTAGRAM"
+      ? "Instagram Reels"
+      : platform === "TIKTOK"
+        ? "TikTok"
+        : platform === "YOUTUBE_SHORTS"
+          ? "YouTube Shorts"
+          : "short-form video";
 
   const prompt = await renderPromptTemplate("script-generate-prompt.txt", {
     platformLabel,
@@ -30,7 +33,7 @@ export const POST = withAuth(async function POST(req: NextRequest) {
     console.error("Script generation failed:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Script generation failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });

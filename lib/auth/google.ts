@@ -13,7 +13,7 @@ function getRedirectUri() {
 
 export function getGoogleAuthUrl(state: string): string {
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+    client_id: process.env.GOOGLE_OAUTH_CLIENT_ID as string,
     redirect_uri: getRedirectUri(),
     response_type: "code",
     scope: "openid email profile",
@@ -31,8 +31,8 @@ export async function exchangeCodeForTokens(code: string) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
+      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID as string,
+      client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET as string,
       redirect_uri: getRedirectUri(),
       grant_type: "authorization_code",
     }),
@@ -60,7 +60,7 @@ export type GoogleUser = {
 export async function verifyGoogleIdToken(idToken: string): Promise<GoogleUser> {
   const { payload } = await jwtVerify(idToken, googleJWKS, {
     issuer: ["https://accounts.google.com", "accounts.google.com"],
-    audience: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+    audience: process.env.GOOGLE_OAUTH_CLIENT_ID as string,
   });
 
   const { sub, email, email_verified, name, picture } = payload as Record<string, unknown>;

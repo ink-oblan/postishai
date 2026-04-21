@@ -1,26 +1,31 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import { renderPromptTemplate } from "@/lib/prompts";
-import { withAuth } from "@/lib/auth/dal";
 
 const SUGGEST_MODEL_ID = "models/gemini-flash-lite-latest";
 
 export const POST = withAuth(async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-  { userId }
+  { userId },
 ) {
   const { id } = await params;
   const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const avatarDescription = `${avatar.age}-year-old ${avatar.ethnicity}${avatar.origin ? ` from ${avatar.origin}` : ""} ${avatar.occupation} (${avatar.gender})`;
-  const prompt = await renderPromptTemplate("avatar-variation-suggest-prompt.txt", { avatarDescription });
+  const prompt = await renderPromptTemplate("avatar-variation-suggest-prompt.txt", {
+    avatarDescription,
+  });
 
   const adapter = getLLMAdapter(SUGGEST_MODEL_ID);
   const raw = await adapter.generate(prompt);
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  const cleaned = raw
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
 
   let suggestion: { clothes: string; background: string; pose: string };
   try {

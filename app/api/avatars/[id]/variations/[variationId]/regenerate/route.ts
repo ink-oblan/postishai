@@ -1,12 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { enqueueJobInDb } from "@/lib/worker/jobs";
-import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
+import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { prisma } from "@/lib/db";
+import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
+import { enqueueJobInDb } from "@/lib/worker/jobs";
 
 type Params = { params: Promise<{ id: string; variationId: string }> };
 
-export const POST = withAuth(async function POST(_req: NextRequest, { params }: Params, { userId }) {
+export const POST = withAuth(async function POST(
+  _req: NextRequest,
+  { params }: Params,
+  { userId },
+) {
   const { id, variationId } = await params;
 
   const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
@@ -16,7 +20,11 @@ export const POST = withAuth(async function POST(_req: NextRequest, { params }: 
     where: { id: variationId, avatarId: id },
   });
   if (!variation) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!variation.prompt) return NextResponse.json({ error: "Variation has no prompt to regenerate from" }, { status: 422 });
+  if (!variation.prompt)
+    return NextResponse.json(
+      { error: "Variation has no prompt to regenerate from" },
+      { status: 422 },
+    );
 
   const usedModel = variation.imageModel ?? DEFAULT_IMAGE_MODEL_ID;
 
@@ -33,7 +41,7 @@ export const POST = withAuth(async function POST(_req: NextRequest, { params }: 
 
     await enqueueJobInDb(tx, "avatar.variation.generate", {
       variationId,
-      prompt: variation.prompt!,
+      prompt: variation.prompt as string,
       imageModel: usedModel,
     });
 

@@ -1,18 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { writeFile, deleteFile } from "@/lib/storage";
-import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
-import { enqueueJobInDb } from "@/lib/worker/jobs";
-import { renderAvatarPrompt } from "@/lib/avatar-prompt";
+import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { renderAvatarPrompt } from "@/lib/avatar-prompt";
+import { prisma } from "@/lib/db";
+import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
+import { deleteFile, writeFile } from "@/lib/storage";
+import { enqueueJobInDb } from "@/lib/worker/jobs";
 
 export const GET = withAuth(async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-  { userId }
+  { userId },
 ) {
   const { id } = await params;
-  const avatar = await prisma.avatar.findFirst({ where: { id, userId }, include: { posts: { orderBy: { createdAt: "desc" } } } });
+  const avatar = await prisma.avatar.findFirst({
+    where: { id, userId },
+    include: { posts: { orderBy: { createdAt: "desc" } } },
+  });
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(avatar);
 });
@@ -20,11 +23,24 @@ export const GET = withAuth(async function GET(
 export const PATCH = withAuth(async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-  { userId }
+  { userId },
 ) {
   const { id } = await params;
   const body = await req.json();
-  const { name, voiceId, prompt, gender, age, ethnicity, origin, occupation, imageModel, regenerate, imageBase64, archive } = body as {
+  const {
+    name,
+    voiceId,
+    prompt,
+    gender,
+    age,
+    ethnicity,
+    origin,
+    occupation,
+    imageModel,
+    regenerate,
+    imageBase64,
+    archive,
+  } = body as {
     name?: string;
     voiceId?: string;
     prompt?: string;
@@ -95,7 +111,8 @@ export const PATCH = withAuth(async function PATCH(
         updateData.prompt = usedPrompt;
       }
 
-      if (!usedPrompt) return NextResponse.json({ error: "prompt required for regeneration" }, { status: 400 });
+      if (!usedPrompt)
+        return NextResponse.json({ error: "prompt required for regeneration" }, { status: 400 });
 
       updateData.status = "GENERATING";
       updateData.imageModel = usedModel;

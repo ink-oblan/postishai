@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
-import { writeFile, readFile } from "@/lib/storage";
 import { getImageAdapter } from "@/lib/image-models/registry";
+import { readFile, writeFile } from "@/lib/storage";
 import type { AvatarGeneratePayload } from "../jobs";
 
 const log = (...args: unknown[]) =>
@@ -21,9 +21,7 @@ export async function handleAvatarGenerate(payload: AvatarGeneratePayload): Prom
     result = await adapter.generate({ prompt, aspectRatio: "9:16" });
     log(`API returned mimeType=${result.mimeType} base64Length=${result.base64.length}`);
   } catch (err) {
-    const detail = err instanceof Error
-      ? `${err.name}: ${err.message}`
-      : JSON.stringify(err);
+    const detail = err instanceof Error ? `${err.name}: ${err.message}` : JSON.stringify(err);
     logError(`API call failed: ${detail}`);
     throw err;
   }

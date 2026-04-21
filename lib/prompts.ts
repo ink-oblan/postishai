@@ -18,7 +18,7 @@ async function getPromptTemplate(file: string): Promise<HandlebarsTemplateDelega
 
 export async function renderPromptTemplate(
   file: string,
-  vars: Record<string, unknown> = {}
+  vars: Record<string, unknown> = {},
 ): Promise<string> {
   const template = await getPromptTemplate(file);
   return template(vars).trim();

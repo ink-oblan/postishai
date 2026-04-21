@@ -1,8 +1,8 @@
-import { cache } from "react";
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getSessionCookie, verifySessionToken } from "./session";
+import { NextResponse } from "next/server";
+import { cache } from "react";
 import { prisma } from "@/lib/db";
+import { getSessionCookie, verifySessionToken } from "./session";
 
 export class AuthError extends Error {
   constructor() {
@@ -48,8 +48,8 @@ export function withAuth<TContext = unknown>(
   handler: (
     request: NextRequest,
     context: TContext,
-    session: AuthSession
-  ) => Response | Promise<Response>
+    session: AuthSession,
+  ) => Response | Promise<Response>,
 ) {
   return async (request: NextRequest, context: TContext): Promise<Response> => {
     const session = await verifySession();

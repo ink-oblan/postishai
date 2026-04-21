@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { SESSION_SECRET } from "@/lib/auth/secret";
 
 const PUBLIC_PATHS = ["/login", "/api/auth"];
@@ -8,7 +8,7 @@ const STATIC_PATHS = ["/_next", "/favicon.ico", "/logo.svg", "/logo-dark.svg"];
 
 function isPublicPath(pathname: string): boolean {
   return (
-    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
+    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
     STATIC_PATHS.some((p) => pathname.startsWith(p))
   );
 }

@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/db";
-import { notFound } from "next/navigation";
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import { AvatarPageContent } from "@/components/avatars/AvatarPageContent";
+import { prisma } from "@/lib/db";
 
 export default async function AvatarDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,10 +16,14 @@ export default async function AvatarDetailPage({ params }: { params: Promise<{ i
   if (!avatar) notFound();
 
   return (
-    <div className="px-6 py-8 sm:px-10 space-y-6">
+    <div className="space-y-6 px-6 py-8 sm:px-10">
       <div className="flex items-center gap-3">
-        <Link href="/avatars" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4 mr-1" />Back
+        <Link
+          href="/avatars"
+          className="inline-flex items-center text-muted-foreground text-sm hover:text-foreground"
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back
         </Link>
       </div>
 
