@@ -4,17 +4,18 @@ import { writeFile } from "@/lib/storage";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
 import { enqueueAvatarGenerateJob, enqueueJobInDb } from "@/lib/worker/jobs";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
+import { withAuth } from "@/lib/auth/dal";
 
-export async function GET() {
+export const GET = withAuth(async function GET(_req: NextRequest, _ctx: unknown, { userId }) {
   const avatars = await prisma.avatar.findMany({
-    where: { archivedAt: null },
+    where: { archivedAt: null, userId },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { posts: true } } },
   });
   return NextResponse.json(avatars);
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown, { userId }) {
   const body = await req.json();
   const { name, voiceId, gender, age, ethnicity, origin, occupation, imageModel, imageBase64 } = body as {
     name: string;
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
       : "image/png";
 
     const avatar = await prisma.avatar.create({
-      data: { name, voiceId, imageModel: null, imagePath: "", status: "COMPLETED" },
+      data: { name, voiceId, imageModel: null, imagePath: "", status: "COMPLETED", userId },
     });
 
     const ext = mimeType === "image/jpeg" ? "jpg" : "png";
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
           imageModel: usedModel,
           imagePath: "",
           status: "GENERATING",
+          userId,
         },
       });
 
@@ -91,4 +93,4 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(avatar, { status: 202 });
   }
-}
+});

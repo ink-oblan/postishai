@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import { readFile } from "@/lib/storage";
+import { withAuth } from "@/lib/auth/dal";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ filename: string }> }) {
+export const GET = withAuth(async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ filename: string }> },
+  { userId }
+) {
   const { filename } = await params;
   // Only serve .mp4 files from the videos directory
   if (!filename.endsWith(".mp4")) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const postId = filename.slice(0, -".mp4".length);
+  const post = await prisma.post.findFirst({
+    where: { id: postId, userId, videoPath: `videos/${filename}` },
+    select: { id: true },
+  });
+  if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   const buffer = await readFile(`videos/${filename}`);
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
@@ -12,4 +25,4 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ fil
       "Cache-Control": "public, max-age=3600",
     },
   });
-}
+});

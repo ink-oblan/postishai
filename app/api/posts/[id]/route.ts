@@ -4,6 +4,7 @@ import { isPostEditable } from "@/lib/posts";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { enqueuePostMetadataJob } from "@/lib/worker/jobs";
+import { withAuth } from "@/lib/auth/dal";
 
 function normalizeTagList(values: unknown) {
   if (!Array.isArray(values)) return [];
@@ -49,19 +50,27 @@ function sanitizeMetadata(platform: string, metadata: unknown): PlatformMetadata
   return null;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withAuth(async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+  { userId }
+) {
   const { id } = await params;
-  const post = await prisma.post.findUnique({
-    where: { id },
+  const post = await prisma.post.findFirst({
+    where: { id, userId },
     include: { avatar: true },
   });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(post);
-}
+});
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withAuth(async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+  { userId }
+) {
   const { id } = await params;
-  const post = await prisma.post.findUnique({ where: { id } });
+  const post = await prisma.post.findFirst({ where: { id, userId } });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await req.json();
   const { title, script, llmModelId, avatarId, avatarVariationId, metadata, archive, regenerateMetadata } = body as {
@@ -101,7 +110,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Unknown metadata model" }, { status: 400 });
   }
 
-  const avatar = await prisma.avatar.findFirst({ where: { id: avatarId.trim(), archivedAt: null } });
+  const avatar = await prisma.avatar.findFirst({ where: { id: avatarId.trim(), userId, archivedAt: null } });
   if (!avatar) {
     return NextResponse.json({ error: "Avatar not found" }, { status: 404 });
   }
@@ -109,7 +118,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Validate variation if provided
   if (avatarVariationId !== undefined && avatarVariationId !== null) {
     const variation = await prisma.avatarVariation.findFirst({
-      where: { id: avatarVariationId, avatarId: avatarId.trim() },
+      where: { id: avatarVariationId, avatarId: avatar.id, archivedAt: null },
     });
     if (!variation) {
       return NextResponse.json({ error: "Avatar variation not found or does not belong to the selected avatar" }, { status: 404 });
@@ -166,4 +175,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     metadata: updated.metadata ? JSON.parse(updated.metadata) : null,
     metadataRegenerated: shouldRegenerateMetadata,
   });
-}
+});

@@ -3,10 +3,15 @@ import { prisma } from "@/lib/db";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
 import { enqueueAvatarVariationGenerateJob, enqueueJobInDb } from "@/lib/worker/jobs";
 import { renderAvatarVariationPrompt } from "@/lib/avatar-variation-prompt";
+import { withAuth } from "@/lib/auth/dal";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withAuth(async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+  { userId }
+) {
   const { id } = await params;
-  const avatar = await prisma.avatar.findUnique({ where: { id } });
+  const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const variations = await prisma.avatarVariation.findMany({
@@ -14,11 +19,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     orderBy: { createdAt: "asc" },
   });
   return NextResponse.json(variations);
-}
+});
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withAuth(async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+  { userId }
+) {
   const { id } = await params;
-  const avatar = await prisma.avatar.findUnique({ where: { id } });
+  const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
@@ -65,4 +74,4 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   return NextResponse.json(variation, { status: 202 });
-}
+});

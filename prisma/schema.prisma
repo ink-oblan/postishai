@@ -6,6 +6,39 @@ datasource db {
   provider = "sqlite"
 }
 
+model User {
+  id           String    @id @default(cuid())
+  name         String?
+  email        String    @unique
+  passwordHash String?
+  avatarUrl    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  accounts     Account[]
+  sessions     Session[]
+  avatars      Avatar[]
+  posts        Post[]
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String
+  providerAccountId String
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
 model Avatar {
   id             String            @id @default(cuid())
   name           String
@@ -22,6 +55,8 @@ model Avatar {
   voiceId        String            @default("")
   heygenAssetId  String?
   heygenAssetUrl String?
+  userId         String?
+  user           User?             @relation(fields: [userId], references: [id])
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   archivedAt     DateTime?
@@ -76,6 +111,8 @@ model Post {
   avatar              Avatar           @relation(fields: [avatarId], references: [id])
   avatarVariationId   String?
   avatarVariation     AvatarVariation? @relation(fields: [avatarVariationId], references: [id])
+  userId         String?
+  user           User?      @relation(fields: [userId], references: [id])
   llmModelId     String     @default("gemini-2.0-flash")
   status         PostStatus @default(DRAFT)
   generationStartedAt DateTime?

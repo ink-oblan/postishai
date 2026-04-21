@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
+import { withAuth } from "@/lib/auth/dal";
 
 type Params = { params: Promise<{ id: string; variationId: string }> };
 
-export async function POST(_req: NextRequest, { params }: Params) {
+export const POST = withAuth(async function POST(_req: NextRequest, { params }: Params, { userId }) {
   const { id, variationId } = await params;
+
+  const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
+  if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const variation = await prisma.avatarVariation.findFirst({
     where: { id: variationId, avatarId: id },
@@ -37,4 +41,4 @@ export async function POST(_req: NextRequest, { params }: Params) {
   });
 
   return NextResponse.json(updated, { status: 202 });
-}
+});

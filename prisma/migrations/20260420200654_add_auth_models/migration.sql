@@ -1,0 +1,95 @@
+-- CreateTable
+CREATE TABLE "User" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT,
+    "email" TEXT NOT NULL,
+    "passwordHash" TEXT,
+    "avatarUrl" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "Account" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "providerAccountId" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Session" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "expiresAt" DATETIME NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- RedefineTables
+PRAGMA defer_foreign_keys=ON;
+PRAGMA foreign_keys=OFF;
+CREATE TABLE "new_Avatar" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "prompt" TEXT,
+    "imageModel" TEXT,
+    "imagePath" TEXT NOT NULL,
+    "gender" TEXT,
+    "age" INTEGER,
+    "ethnicity" TEXT,
+    "origin" TEXT,
+    "occupation" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'COMPLETED',
+    "errorMessage" TEXT,
+    "voiceId" TEXT NOT NULL DEFAULT '',
+    "heygenAssetId" TEXT,
+    "heygenAssetUrl" TEXT,
+    "userId" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    "archivedAt" DATETIME,
+    CONSTRAINT "Avatar_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+INSERT INTO "new_Avatar" ("age", "archivedAt", "createdAt", "errorMessage", "ethnicity", "gender", "heygenAssetId", "heygenAssetUrl", "id", "imageModel", "imagePath", "name", "occupation", "origin", "prompt", "status", "updatedAt", "voiceId") SELECT "age", "archivedAt", "createdAt", "errorMessage", "ethnicity", "gender", "heygenAssetId", "heygenAssetUrl", "id", "imageModel", "imagePath", "name", "occupation", "origin", "prompt", "status", "updatedAt", "voiceId" FROM "Avatar";
+DROP TABLE "Avatar";
+ALTER TABLE "new_Avatar" RENAME TO "Avatar";
+CREATE TABLE "new_Post" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "title" TEXT NOT NULL,
+    "platform" TEXT NOT NULL,
+    "script" TEXT NOT NULL,
+    "avatarId" TEXT NOT NULL,
+    "avatarVariationId" TEXT,
+    "userId" TEXT,
+    "llmModelId" TEXT NOT NULL DEFAULT 'gemini-2.0-flash',
+    "status" TEXT NOT NULL DEFAULT 'DRAFT',
+    "generationStartedAt" DATETIME,
+    "heygenVideoId" TEXT,
+    "videoPath" TEXT,
+    "heygenVideoUrl" TEXT,
+    "metadata" TEXT,
+    "metadataStatus" TEXT NOT NULL DEFAULT 'IDLE',
+    "metadataErrorMessage" TEXT,
+    "metadataUpdatedAt" DATETIME,
+    "errorMessage" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    "archivedAt" DATETIME,
+    CONSTRAINT "Post_avatarId_fkey" FOREIGN KEY ("avatarId") REFERENCES "Avatar" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "Post_avatarVariationId_fkey" FOREIGN KEY ("avatarVariationId") REFERENCES "AvatarVariation" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Post_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+INSERT INTO "new_Post" ("archivedAt", "avatarId", "avatarVariationId", "createdAt", "errorMessage", "generationStartedAt", "heygenVideoId", "heygenVideoUrl", "id", "llmModelId", "metadata", "metadataErrorMessage", "metadataStatus", "metadataUpdatedAt", "platform", "script", "status", "title", "updatedAt", "videoPath") SELECT "archivedAt", "avatarId", "avatarVariationId", "createdAt", "errorMessage", "generationStartedAt", "heygenVideoId", "heygenVideoUrl", "id", "llmModelId", "metadata", "metadataErrorMessage", "metadataStatus", "metadataUpdatedAt", "platform", "script", "status", "title", "updatedAt", "videoPath" FROM "Post";
+DROP TABLE "Post";
+ALTER TABLE "new_Post" RENAME TO "Post";
+PRAGMA foreign_keys=ON;
+PRAGMA defer_foreign_keys=OFF;
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");

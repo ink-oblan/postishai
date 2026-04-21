@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { readFile } from "@/lib/storage";
+import { withAuth } from "@/lib/auth/dal";
 
 type Params = { params: Promise<{ id: string; variationId: string }> };
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export const GET = withAuth(async function GET(_req: NextRequest, { params }: Params, { userId }) {
   const { id, variationId } = await params;
+
+  const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
+  if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const variation = await prisma.avatarVariation.findFirst({
     where: { id: variationId, avatarId: id },
@@ -29,4 +33,4 @@ export async function GET(_req: NextRequest, { params }: Params) {
       "ETag": etag,
     },
   });
-}
+});

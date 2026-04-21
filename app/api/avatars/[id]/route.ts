@@ -4,15 +4,24 @@ import { writeFile, deleteFile } from "@/lib/storage";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
+import { withAuth } from "@/lib/auth/dal";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withAuth(async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+  { userId }
+) {
   const { id } = await params;
-  const avatar = await prisma.avatar.findUnique({ where: { id }, include: { posts: { orderBy: { createdAt: "desc" } } } });
+  const avatar = await prisma.avatar.findFirst({ where: { id, userId }, include: { posts: { orderBy: { createdAt: "desc" } } } });
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(avatar);
-}
+});
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withAuth(async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+  { userId }
+) {
   const { id } = await params;
   const body = await req.json();
   const { name, voiceId, prompt, gender, age, ethnicity, origin, occupation, imageModel, regenerate, imageBase64, archive } = body as {
@@ -31,11 +40,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   };
 
   if (archive) {
+    const existing = await prisma.avatar.findFirst({ where: { id, userId } });
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     await prisma.avatar.update({ where: { id }, data: { archivedAt: new Date() } });
     return new NextResponse(null, { status: 204 });
   }
 
-  const avatar = await prisma.avatar.findUnique({ where: { id } });
+  const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const updateData: Record<string, unknown> = {};
@@ -114,4 +125,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     console.error("[PATCH avatar] update failed:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
-}
+});

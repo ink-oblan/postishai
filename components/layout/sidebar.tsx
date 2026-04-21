@@ -4,9 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, FileVideo, Menu, X, Settings } from "lucide-react";
+import { LayoutDashboard, Users, FileVideo, Menu, X, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useRouter } from "next/navigation";
+
+type UserInfo = {
+  name: string | null;
+  email: string;
+  avatarUrl: string | null;
+};
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -40,10 +47,17 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
   );
 }
 
-function ProfileFooter({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function ProfileFooter({ pathname, onNavigate, user }: { pathname: string; onNavigate?: () => void; user: UserInfo }) {
+  const router = useRouter();
   const active = pathname.startsWith("/settings");
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  }
+
   return (
-    <div className="p-3 border-t border-border">
+    <div className="p-3 border-t border-border space-y-1">
       <Link
         href="/settings"
         onClick={onNavigate}
@@ -56,10 +70,17 @@ function ProfileFooter({ pathname, onNavigate }: { pathname: string; onNavigate?
       >
         <Settings className={cn("h-5 w-5 shrink-0", active ? "text-primary" : "")} />
         <div className="min-w-0">
-          <p className="text-[17px] font-semibold leading-tight truncate">Settings</p>
-          <p className="text-[13px] text-muted-foreground leading-tight">Profile &amp; preferences</p>
+          <p className="text-[17px] font-semibold leading-tight truncate">{user.name || "Settings"}</p>
+          <p className="text-[13px] text-muted-foreground leading-tight truncate">{user.email}</p>
         </div>
       </Link>
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 rounded-xl px-4 py-2.5 w-full text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all duration-150"
+      >
+        <LogOut className="h-4 w-4 shrink-0" />
+        <span className="text-[15px] font-medium">Sign out</span>
+      </button>
     </div>
   );
 }
@@ -75,7 +96,7 @@ function Logo({ onClick }: { onClick?: () => void }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ user }: { user: UserInfo }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -122,7 +143,7 @@ export function Sidebar() {
           </button>
         </div>
         <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
-        <ProfileFooter pathname={pathname} onNavigate={() => setOpen(false)} />
+        <ProfileFooter pathname={pathname} user={user} onNavigate={() => setOpen(false)} />
       </div>
 
       {/* ── Desktop sidebar ── */}
@@ -131,7 +152,7 @@ export function Sidebar() {
           <Logo />
         </div>
         <NavLinks pathname={pathname} />
-        <ProfileFooter pathname={pathname} />
+        <ProfileFooter pathname={pathname} user={user} />
       </aside>
     </>
   );

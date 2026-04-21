@@ -5,11 +5,16 @@ import { metadataToText } from "@/lib/metadata/generator";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import archiver from "archiver";
 import { Readable } from "stream";
+import { withAuth } from "@/lib/auth/dal";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withAuth(async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+  { userId }
+) {
   const { id } = await params;
 
-  const post = await prisma.post.findUnique({ where: { id } });
+  const post = await prisma.post.findFirst({ where: { id, userId } });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (post.status !== "COMPLETED" || !post.videoPath) {
     return NextResponse.json({ error: "Video not ready" }, { status: 409 });
@@ -42,4 +47,4 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       "Content-Length": String(zipBuffer.byteLength),
     },
   });
-}
+});

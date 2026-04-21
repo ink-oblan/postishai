@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
+import { withAuth } from "@/lib/auth/dal";
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withAuth(async function POST(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+  { userId }
+) {
   const { id } = await params;
 
-  const post = await prisma.post.findUnique({ where: { id } });
+  const post = await prisma.post.findFirst({ where: { id, userId } });
   if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
 
   const queued = await prisma.$transaction(async (tx) => {
@@ -21,4 +26,4 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   return NextResponse.json({ status: "GENERATING" }, { status: 202 });
-}
+});

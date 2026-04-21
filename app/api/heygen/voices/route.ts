@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { listVoices } from "@/lib/heygen/client";
+import { withAuth } from "@/lib/auth/dal";
 
-export async function GET() {
+export const GET = withAuth(async function GET() {
   try {
     const voices = await listVoices();
     const english = voices
@@ -19,4 +20,4 @@ export async function GET() {
       { status: 503 }
     );
   }
-}
+});

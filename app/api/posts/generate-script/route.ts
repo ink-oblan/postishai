@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import { renderPromptTemplate } from "@/lib/prompts";
+import { withAuth } from "@/lib/auth/dal";
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async function POST(req: NextRequest) {
   const { title, platform, details, llmModelId } = await req.json();
 
   if (!llmModelId) {
@@ -32,4 +33,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

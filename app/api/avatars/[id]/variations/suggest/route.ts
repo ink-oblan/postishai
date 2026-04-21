@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import { renderPromptTemplate } from "@/lib/prompts";
+import { withAuth } from "@/lib/auth/dal";
 
 const SUGGEST_MODEL_ID = "models/gemini-flash-lite-latest";
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withAuth(async function POST(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+  { userId }
+) {
   const { id } = await params;
-  const avatar = await prisma.avatar.findUnique({ where: { id } });
+  const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const avatarDescription = `${avatar.age}-year-old ${avatar.ethnicity}${avatar.origin ? ` from ${avatar.origin}` : ""} ${avatar.occupation} (${avatar.gender})`;
@@ -37,4 +42,4 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     background: suggestion.background.trim(),
     pose: suggestion.pose.trim(),
   });
-}
+});
