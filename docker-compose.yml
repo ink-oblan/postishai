@@ -25,12 +25,13 @@ services:
       DATABASE_URL: postgresql://postishai:postishai@db:5432/postishai?schema=public
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       STORAGE_PATH: /app/storage
-    command: npm run dev:docker
+    command: sh -c "npm ci && npm run dev:docker"
     ports:
       - "3000:3000"
     volumes:
       - .:/app
       - app_node_modules:/app/node_modules
+      - /app/.next
     depends_on:
       db:
         condition: service_healthy
@@ -44,7 +45,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postishai:postishai@db:5432/postishai?schema=public
       STORAGE_PATH: /app/storage
-    command: sh -c "npx prisma generate && npm run worker"
+    command: sh -c "npm ci && npx prisma generate && npm run worker"
     volumes:
       - .:/app
       - worker_node_modules:/app/node_modules

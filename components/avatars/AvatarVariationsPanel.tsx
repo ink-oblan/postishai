@@ -241,9 +241,10 @@ export function AvatarVariationsPanel({
                 const isClickable = variation.status === "COMPLETED" && !!onVariationClick;
                 return (
                   <div key={variation.id} className="w-24 flex-none">
-                    <button
-                      type="button"
-                      className={`relative block aspect-[9/16] w-full overflow-hidden rounded-lg border-2 bg-muted transition-colors ${
+                    {/* biome-ignore lint/a11y/noStaticElementInteractions: contains nested buttons, can't be a <button> */}
+                    {/* biome-ignore lint/a11y/useKeyWithClickEvents: click-only thumbnail selector */}
+                    <div
+                      className={`relative aspect-[9/16] overflow-hidden rounded-lg border-2 bg-muted transition-colors ${
                         isSelected ? "border-primary" : "border-transparent"
                       } ${isClickable ? "cursor-pointer" : ""}`}
                       onClick={() => isClickable && onVariationClick(variation)}
@@ -296,7 +297,7 @@ export function AvatarVariationsPanel({
                           </button>
                         )}
                       </div>
-                    </button>
+                    </div>
                     <p
                       className="mt-1 truncate text-center text-[0.7rem] text-muted-foreground"
                       title={variation.label}
