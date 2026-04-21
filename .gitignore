@@ -50,6 +50,7 @@ notes.md
 
 # Local storage and generated workspace files
 storage/
+backups/
 /prisma/dev.db
 /prisma/dev.db-shm
 /prisma/dev.db-wal

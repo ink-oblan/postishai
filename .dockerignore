@@ -1,0 +1,17 @@
+node_modules
+.next
+out
+build
+coverage
+.git
+.env
+.env.*
+*.log
+*.tsbuildinfo
+next-env.d.ts
+storage
+backups
+tmp
+prisma/dev.db
+prisma/dev.db-shm
+prisma/dev.db-wal

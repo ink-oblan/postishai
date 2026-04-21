@@ -2,7 +2,9 @@ import fs from "fs/promises";
 import path from "path";
 
 function storageRoot(): string {
-  return path.resolve(process.cwd(), process.env.STORAGE_PATH ?? "./storage");
+  const configuredPath = process.env.STORAGE_PATH ?? "storage";
+  if (path.isAbsolute(configuredPath)) return configuredPath;
+  return path.join(/*turbopackIgnore: true*/ process.cwd(), configuredPath);
 }
 
 export function storagePath(relativePath: string): string {
