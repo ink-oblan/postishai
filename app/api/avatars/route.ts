@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { writeFile } from "@/lib/storage";
-import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
-import { enqueueAvatarGenerateJob, enqueueJobInDb } from "@/lib/worker/jobs";
-import { renderAvatarPrompt } from "@/lib/avatar-prompt";
+import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { renderAvatarPrompt } from "@/lib/avatar-prompt";
+import { prisma } from "@/lib/db";
+import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
+import { writeFile } from "@/lib/storage";
+import { enqueueJobInDb } from "@/lib/worker/jobs";
 
 export const GET = withAuth(async function GET(_req: NextRequest, _ctx: unknown, { userId }) {
   const avatars = await prisma.avatar.findMany({
@@ -17,17 +17,18 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx: unknown,
 
 export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown, { userId }) {
   const body = await req.json();
-  const { name, voiceId, gender, age, ethnicity, origin, occupation, imageModel, imageBase64 } = body as {
-    name: string;
-    voiceId: string;
-    gender?: "man" | "woman" | "neutral";
-    age?: number;
-    ethnicity?: string;
-    origin?: string;
-    occupation?: string;
-    imageModel?: string;
-    imageBase64?: string;
-  };
+  const { name, voiceId, gender, age, ethnicity, origin, occupation, imageModel, imageBase64 } =
+    body as {
+      name: string;
+      voiceId: string;
+      gender?: "man" | "woman" | "neutral";
+      age?: number;
+      ethnicity?: string;
+      origin?: string;
+      occupation?: string;
+      imageModel?: string;
+      imageBase64?: string;
+    };
 
   if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 });
   if (!voiceId) return NextResponse.json({ error: "voiceId is required" }, { status: 400 });
@@ -57,7 +58,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
     if (!gender || !age || !ethnicity || !occupation) {
       return NextResponse.json(
         { error: "gender, age, ethnicity, and occupation are required for AI generation" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 

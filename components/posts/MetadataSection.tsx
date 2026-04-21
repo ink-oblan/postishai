@@ -1,18 +1,18 @@
 "use client";
 
+import { AlertCircle, Loader2, Plus, TriangleAlert, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type React from "react";
 import { startTransition, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { TriangleAlert, Plus, X, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import type { PlatformMetadata } from "@/lib/metadata/types";
-import { Badge } from "@/components/ui/badge";
 import { AiRegenerateIcon } from "@/components/ui/ai-regenerate-icon";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
+import type { PlatformMetadata } from "@/lib/metadata/types";
 
 interface MetadataSectionProps {
   postId: string;
@@ -59,7 +59,7 @@ export function MetadataSection({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">{platformLabel} Metadata</CardTitle>
+        <CardTitle className="font-medium text-sm">{platformLabel} Metadata</CardTitle>
         {canRegenerate && !editing && (
           <CardAction>
             <Tooltip
@@ -86,13 +86,13 @@ export function MetadataSection({
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {metadataStatus === "GENERATING" && !metadata ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>Generating metadata...</span>
           </div>
         ) : null}
         {metadataStatus === "FAILED" && !metadata ? (
-          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-sm text-destructive">
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-destructive text-sm">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{metadataErrorMessage ?? "Metadata generation failed."}</span>
           </div>
@@ -100,14 +100,14 @@ export function MetadataSection({
         {metadata ? (
           <MetadataDisplay editing={editing} metadata={metadata} onChange={onChange} />
         ) : metadataStatus === "IDLE" ? (
-          <p className="text-sm text-muted-foreground">No metadata yet.</p>
+          <p className="text-muted-foreground text-sm">No metadata yet.</p>
         ) : null}
       </CardContent>
     </Card>
   );
 }
 
-function useAutosizeTextarea(value: string) {
+function useAutosizeTextarea(_value: string) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -115,7 +115,7 @@ function useAutosizeTextarea(value: string) {
     if (!element) return;
     element.style.height = "0px";
     element.style.height = `${element.scrollHeight}px`;
-  }, [value]);
+  }, []);
 
   return ref;
 }
@@ -150,13 +150,15 @@ function TokenEditor({
 
   useEffect(() => {
     setInputValue("");
-  }, [tokens]);
+  }, []);
 
   function addTokens(rawValue: string) {
-    const values = splitOnWhitespace ? normalizeTags(rawValue) : rawValue
-      .split(/[\n,]+/)
-      .map(normalizeToken)
-      .filter(Boolean);
+    const values = splitOnWhitespace
+      ? normalizeTags(rawValue)
+      : rawValue
+          .split(/[\n,]+/)
+          .map(normalizeToken)
+          .filter(Boolean);
 
     if (values.length === 0) return false;
 
@@ -224,9 +226,12 @@ function TokenEditor({
           >
             <Badge
               variant="secondary"
-              className="h-auto cursor-pointer gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors hover:bg-muted"
+              className="h-auto cursor-pointer gap-1 rounded-full px-2.5 py-1 font-medium text-xs transition-colors hover:bg-muted"
             >
-              <span>{prefix}{token}</span>
+              <span>
+                {prefix}
+                {token}
+              </span>
               <X className="h-3 w-3 text-muted-foreground" />
             </Badge>
           </button>
@@ -257,11 +262,7 @@ function TokenEditor({
   );
 }
 
-function AutosizeTextarea({
-  value,
-  className,
-  ...props
-}: React.ComponentProps<typeof Textarea>) {
+function AutosizeTextarea({ value, className, ...props }: React.ComponentProps<typeof Textarea>) {
   const ref = useAutosizeTextarea(typeof value === "string" ? value : "");
 
   return (
@@ -289,7 +290,7 @@ function MetadataDisplay({
     return (
       <>
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Caption</p>
+          <p className="mb-1 text-muted-foreground text-xs">Caption</p>
           {editing ? (
             <AutosizeTextarea
               value={metadata.caption}
@@ -301,7 +302,7 @@ function MetadataDisplay({
           )}
         </div>
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Hashtags</p>
+          <p className="mb-1 text-muted-foreground text-xs">Hashtags</p>
           {editing ? (
             <TokenEditor
               tokens={metadata.hashtags}
@@ -311,16 +312,16 @@ function MetadataDisplay({
               splitOnWhitespace
               prefix="#"
             />
+          ) : metadata.hashtags.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {metadata.hashtags.map((h) => (
+                <span key={h} className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                  #{h}
+                </span>
+              ))}
+            </div>
           ) : (
-            metadata.hashtags.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {metadata.hashtags.map((h) => (
-                  <span key={h} className="text-xs bg-muted px-1.5 py-0.5 rounded">#{h}</span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No hashtags.</p>
-            )
+            <p className="text-muted-foreground text-sm">No hashtags.</p>
           )}
         </div>
       </>
@@ -330,7 +331,7 @@ function MetadataDisplay({
   return (
     <>
       <div>
-        <p className="text-xs text-muted-foreground mb-1">Title</p>
+        <p className="mb-1 text-muted-foreground text-xs">Title</p>
         {editing ? (
           <Input
             value={metadata.title}
@@ -342,7 +343,7 @@ function MetadataDisplay({
         )}
       </div>
       <div>
-        <p className="text-xs text-muted-foreground mb-1">Description</p>
+        <p className="mb-1 text-muted-foreground text-xs">Description</p>
         {editing ? (
           <AutosizeTextarea
             value={metadata.description}
@@ -353,25 +354,25 @@ function MetadataDisplay({
           <p className="whitespace-pre-wrap">{metadata.description}</p>
         )}
       </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">Tags</p>
-          {editing ? (
-            <TokenEditor
-              tokens={metadata.tags}
-              onChange={(tags) => onChange?.({ ...metadata, tags })}
-              label="tag"
-              placeholder="Type a tag or paste comma/newline separated tags"
-            />
+      <div>
+        <p className="mb-1 text-muted-foreground text-xs">Tags</p>
+        {editing ? (
+          <TokenEditor
+            tokens={metadata.tags}
+            onChange={(tags) => onChange?.({ ...metadata, tags })}
+            label="tag"
+            placeholder="Type a tag or paste comma/newline separated tags"
+          />
+        ) : metadata.tags.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {metadata.tags.map((t) => (
+              <span key={t} className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                {t}
+              </span>
+            ))}
+          </div>
         ) : (
-          metadata.tags.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {metadata.tags.map((t) => (
-                <span key={t} className="text-xs bg-muted px-1.5 py-0.5 rounded">{t}</span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No tags.</p>
-          )
+          <p className="text-muted-foreground text-sm">No tags.</p>
         )}
       </div>
     </>

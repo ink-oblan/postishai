@@ -24,7 +24,7 @@ export type {
 
 export async function enqueueJob<T extends JobType>(
   type: T,
-  payload: JobPayloadMap[T]
+  payload: JobPayloadMap[T],
 ): Promise<{ created: boolean; jobId: string }> {
   return enqueueJobInDb(prisma, type, payload);
 }
@@ -32,7 +32,7 @@ export async function enqueueJob<T extends JobType>(
 export async function enqueueJobInDb<T extends JobType>(
   db: WorkerDb,
   type: T,
-  payload: JobPayloadMap[T]
+  payload: JobPayloadMap[T],
 ): Promise<{ created: boolean; jobId: string }> {
   const definition = jobRegistry[type] as unknown as JobDefinition<T, unknown>;
   const dedupeKey = definition.dedupeKey(payload);

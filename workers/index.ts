@@ -1,8 +1,8 @@
 import "dotenv/config";
-import { hostname } from "os";
+import { hostname } from "node:os";
+import type { Job } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { jobRegistry } from "@/workers/registry";
-import type { Job } from "@prisma/client";
 import type { JobDefinition, JobType } from "@/workers/types";
 
 const POLL_INTERVAL_MS = 3000;
@@ -13,8 +13,7 @@ const workerId = `${hostname()}:${process.pid}`;
 let shuttingDown = false;
 let currentJobPromise: Promise<void> | null = null;
 
-const log = (...args: unknown[]) =>
-  console.log(`[${new Date().toISOString()}] [worker]`, ...args);
+const log = (...args: unknown[]) => console.log(`[${new Date().toISOString()}] [worker]`, ...args);
 const logError = (...args: unknown[]) =>
   console.error(`[${new Date().toISOString()}] [worker]`, ...args);
 
@@ -78,7 +77,12 @@ async function claimNextJob(): Promise<Job | null> {
   });
 }
 
-async function completeJob(job: Job, definition: JobDefinition, payload: unknown, result: unknown): Promise<void> {
+async function completeJob(
+  job: Job,
+  definition: JobDefinition,
+  payload: unknown,
+  result: unknown,
+): Promise<void> {
   await prisma.$transaction(async (tx) => {
     await definition.onSuccess?.(tx, payload as never, result as never, job);
     await tx.job.update({
@@ -94,7 +98,12 @@ async function completeJob(job: Job, definition: JobDefinition, payload: unknown
   });
 }
 
-async function failJob(job: Job, definition: JobDefinition, payload: unknown, error: string): Promise<void> {
+async function failJob(
+  job: Job,
+  definition: JobDefinition,
+  payload: unknown,
+  error: string,
+): Promise<void> {
   await prisma.$transaction(async (tx) => {
     await definition.onFailure?.(tx, payload as never, error, job);
     await tx.job.update({
@@ -138,7 +147,7 @@ async function processJob(job: Job): Promise<void> {
     const result = await withTimeout(
       definition.run({ db: prisma, workerId, log, logError }, payload as never, job),
       definition.timeoutMs,
-      `${job.type}(${job.id})`
+      `${job.type}(${job.id})`,
     );
 
     await completeJob(job, definition, payload, result);
@@ -154,7 +163,9 @@ async function processJob(job: Job): Promise<void> {
       return;
     }
 
-    logError(`job ${job.id} failed permanently (attempt ${job.attempts}/${job.maxAttempts}): ${error}`);
+    logError(
+      `job ${job.id} failed permanently (attempt ${job.attempts}/${job.maxAttempts}): ${error}`,
+    );
     await failJob(job, definition, payload, error);
   }
 }
@@ -175,7 +186,9 @@ async function recoverInterruptedJobs(): Promise<void> {
     const lockedAt = job.lockedAt?.getTime() ?? 0;
     const ageMs = Date.now() - lockedAt;
     if (lockedAt > 0 && ageMs < staleMs) {
-      log(`skipping job ${job.id} type=${job.type} — not yet stale (${Math.round(ageMs / 1000)}s / ${Math.round(staleMs / 1000)}s)`);
+      log(
+        `skipping job ${job.id} type=${job.type} — not yet stale (${Math.round(ageMs / 1000)}s / ${Math.round(staleMs / 1000)}s)`,
+      );
       continue;
     }
 

@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { readFile } from "@/lib/storage";
-import { withAuth } from "@/lib/auth/dal";
 
 export const GET = withAuth(async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ filename: string }> },
-  { userId }
+  { userId },
 ) {
   const { filename } = await params;
   // Only serve .mp4 files from the videos directory

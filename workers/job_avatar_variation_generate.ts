@@ -1,13 +1,16 @@
-import { readFile, writeFile } from "@/lib/storage";
 import { getImageAdapter } from "@/lib/image-models/registry";
-import type { AvatarVariationGeneratePayload, JobDefinition } from "@/workers/types";
+import { readFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
+import type { JobDefinition } from "@/workers/types";
 
 type AvatarVariationGenerateResult = {
   imagePath: string;
 };
 
-export const avatarVariationGenerateJob: JobDefinition<"avatar.variation.generate", AvatarVariationGenerateResult> = {
+export const avatarVariationGenerateJob: JobDefinition<
+  "avatar.variation.generate",
+  AvatarVariationGenerateResult
+> = {
   type: "avatar.variation.generate",
   timeoutMs: 10 * 60 * 1000,
   maxAttempts: 3,
@@ -46,9 +49,13 @@ export const avatarVariationGenerateJob: JobDefinition<"avatar.variation.generat
 
     ctx.log(`[variation.generate] reading source image (${elapsed()})`);
     const sourceImageBuffer = await readFile(variation.avatar.imagePath);
-    const sourceMimeType: "image/png" | "image/jpeg" = variation.avatar.imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
+    const sourceMimeType: "image/png" | "image/jpeg" = variation.avatar.imagePath.endsWith(".jpg")
+      ? "image/jpeg"
+      : "image/png";
     const sourceBase64 = sourceImageBuffer.toString("base64");
-    ctx.log(`[variation.generate] source image loaded ${(sourceImageBuffer.length / 1024).toFixed(0)}KB (${elapsed()})`);
+    ctx.log(
+      `[variation.generate] source image loaded ${(sourceImageBuffer.length / 1024).toFixed(0)}KB (${elapsed()})`,
+    );
 
     const adapter = getImageAdapter(imageModel);
     ctx.log(`[variation.generate] calling image model... (${elapsed()})`);
@@ -89,10 +96,12 @@ export const avatarVariationGenerateJob: JobDefinition<"avatar.variation.generat
     });
   },
   async onFailure(db, payload, error) {
-    await db.avatarVariation.update({
-      where: { id: payload.variationId },
-      data: { status: "FAILED", errorMessage: error },
-    }).catch(() => {});
+    await db.avatarVariation
+      .update({
+        where: { id: payload.variationId },
+        data: { status: "FAILED", errorMessage: error },
+      })
+      .catch(() => {});
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";

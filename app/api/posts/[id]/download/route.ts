@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { Readable } from "node:stream";
+import archiver from "archiver";
+import { type NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
-import { readFile } from "@/lib/storage";
 import { metadataToText } from "@/lib/metadata/generator";
 import type { PlatformMetadata } from "@/lib/metadata/types";
-import archiver from "archiver";
-import { Readable } from "stream";
-import { withAuth } from "@/lib/auth/dal";
+import { readFile } from "@/lib/storage";
 
 export const GET = withAuth(async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-  { userId }
+  { userId },
 ) {
   const { id } = await params;
 
@@ -24,7 +24,10 @@ export const GET = withAuth(async function GET(
   const metadata: PlatformMetadata = JSON.parse(post.metadata ?? "{}");
   const metadataText = metadataToText(metadata);
 
-  const slug = post.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+  const slug = post.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 40);
   const platform = post.platform.toLowerCase().replace("_", "-");
   const filename = `${slug}-${platform}.zip`;
 

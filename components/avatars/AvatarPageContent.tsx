@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { ImageIcon, Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { ImageIcon, Plus } from "lucide-react";
+import { useState } from "react";
+import { AvatarActions } from "@/components/avatars/AvatarActions";
+import { AvatarEditPanel } from "@/components/avatars/AvatarEditPanel";
+import { AvatarStatusPoller } from "@/components/avatars/AvatarStatusPoller";
+import { AvatarVariationsPanel } from "@/components/avatars/AvatarVariationsPanel";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PLATFORM_LABELS, STATUS_CONFIG } from "@/lib/utils";
-import { AvatarActions } from "@/components/avatars/AvatarActions";
-import { AvatarStatusPoller } from "@/components/avatars/AvatarStatusPoller";
-import { AvatarEditPanel } from "@/components/avatars/AvatarEditPanel";
-import { AvatarVariationsPanel } from "@/components/avatars/AvatarVariationsPanel";
 
 interface AvatarVariation {
   id: string;
@@ -68,7 +68,7 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
       <div className="space-y-4">
         {avatar.status === "GENERATING" || avatar.status === "FAILED" ? (
           <AvatarStatusPoller
@@ -78,7 +78,7 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
             generatedAt={avatar.updatedAt}
           />
         ) : (
-          <div className="aspect-[9/16] relative rounded-xl overflow-hidden bg-muted">
+          <div className="relative aspect-[9/16] overflow-hidden rounded-xl bg-muted">
             <Image
               key={previewUrl}
               src={previewUrl}
@@ -88,14 +88,14 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
               unoptimized
             />
             {selectedVariation && (
-              <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/60 backdrop-blur-sm px-2.5 py-1 text-xs font-medium text-white">
+              <div className="absolute top-2.5 right-2.5 left-2.5 flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/60 px-2.5 py-1 font-medium text-white text-xs backdrop-blur-sm">
                   {selectedVariation.label}
                 </span>
                 <button
                   type="button"
                   onClick={() => setSelectedVariation(null)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-black/60 backdrop-blur-sm px-2.5 py-1 text-xs font-medium text-white hover:bg-black/80 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-lg bg-black/60 px-2.5 py-1 font-medium text-white text-xs backdrop-blur-sm transition-colors hover:bg-black/80"
                 >
                   <ImageIcon className="h-3 w-3" />
                   Base photo
@@ -104,10 +104,12 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
             )}
           </div>
         )}
-        <AvatarActions avatar={{ id: avatar.id, prompt: avatar.prompt, imageModel: avatar.imageModel }} />
+        <AvatarActions
+          avatar={{ id: avatar.id, prompt: avatar.prompt, imageModel: avatar.imageModel }}
+        />
       </div>
 
-      <div className="md:col-span-2 space-y-4">
+      <div className="space-y-4 md:col-span-2">
         <AvatarEditPanel
           avatar={{
             id: avatar.id,
@@ -136,18 +138,19 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Posts ({posts.length})</CardTitle>
+              <CardTitle className="font-medium text-sm">Posts ({posts.length})</CardTitle>
               <Link
                 href={`/posts/new?avatarId=${avatar.id}${selectedVariation ? `&variationId=${selectedVariation.id}` : ""}`}
-                className="inline-flex items-center rounded-lg border border-border bg-background text-sm font-medium h-7 px-2.5 gap-1 hover:bg-muted transition-colors text-[0.8rem]"
+                className="inline-flex h-7 items-center gap-1 rounded-lg border border-border bg-background px-2.5 font-medium text-[0.8rem] text-sm transition-colors hover:bg-muted"
               >
-                <Plus className="h-3.5 w-3.5" />{selectedVariation ? "New Post with variation" : "New Post"}
+                <Plus className="h-3.5 w-3.5" />
+                {selectedVariation ? "New Post with variation" : "New Post"}
               </Link>
             </div>
           </CardHeader>
           <CardContent>
             {posts.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No posts yet.</p>
+              <p className="py-4 text-center text-muted-foreground text-sm">No posts yet.</p>
             ) : (
               <div className="divide-y divide-border">
                 {posts.map((post) => {
@@ -156,12 +159,16 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
                     <Link
                       key={post.id}
                       href={`/posts/${post.id}`}
-                      className="flex items-center justify-between py-2.5 hover:bg-muted/50 -mx-2 px-2 rounded transition-colors"
+                      className="-mx-2 flex items-center justify-between rounded px-2 py-2.5 transition-colors hover:bg-muted/50"
                     >
-                      <p className="text-sm truncate">{post.title}</p>
-                      <div className="flex gap-2 shrink-0 ml-3">
-                        <Badge variant="outline" className="text-xs">{PLATFORM_LABELS[post.platform]}</Badge>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusCfg.className}`}>
+                      <p className="truncate text-sm">{post.title}</p>
+                      <div className="ml-3 flex shrink-0 gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {PLATFORM_LABELS[post.platform]}
+                        </Badge>
+                        <span
+                          className={`rounded-full px-2 py-0.5 font-medium text-xs ${statusCfg.className}`}
+                        >
                           {statusCfg.label}
                         </span>
                       </div>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { listVoices } from "@/lib/heygen/client";
 import { withAuth } from "@/lib/auth/dal";
+import { listVoices } from "@/lib/heygen/client";
 
 export const GET = withAuth(async function GET() {
   try {
@@ -17,7 +17,7 @@ export const GET = withAuth(async function GET() {
 
     return NextResponse.json(
       { error: "Unable to load HeyGen voices right now. Try again in a moment." },
-      { status: 503 }
+      { status: 503 },
     );
   }
 });

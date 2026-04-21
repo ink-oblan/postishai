@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface Props {
   avatarId: string;
@@ -14,7 +14,7 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
   const [elapsed, setElapsed] = useState(() =>
-    Math.floor((Date.now() - new Date(generatedAt).getTime()) / 1000)
+    Math.floor((Date.now() - new Date(generatedAt).getTime()) / 1000),
   );
 
   useEffect(() => {
@@ -46,11 +46,11 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
 
   if (status === "GENERATING") {
     return (
-      <div className="aspect-[9/16] flex flex-col items-center justify-center bg-muted rounded-xl gap-3">
+      <div className="flex aspect-[9/16] flex-col items-center justify-center gap-3 rounded-xl bg-muted">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
         <div className="text-center">
-          <p className="text-sm font-medium">Generating image…</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{elapsed}s elapsed</p>
+          <p className="font-medium text-sm">Generating image…</p>
+          <p className="mt-0.5 text-muted-foreground text-xs">{elapsed}s elapsed</p>
         </div>
       </div>
     );
@@ -58,9 +58,9 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
 
   if (status === "FAILED") {
     return (
-      <div className="aspect-[9/16] flex flex-col items-center justify-center bg-destructive/10 rounded-xl gap-2">
-        <p className="text-sm font-medium text-destructive">Generation failed</p>
-        <p className="text-xs text-muted-foreground">Try regenerating from the actions below</p>
+      <div className="flex aspect-[9/16] flex-col items-center justify-center gap-2 rounded-xl bg-destructive/10">
+        <p className="font-medium text-destructive text-sm">Generation failed</p>
+        <p className="text-muted-foreground text-xs">Try regenerating from the actions below</p>
       </div>
     );
   }

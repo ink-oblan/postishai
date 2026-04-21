@@ -1,16 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { AlertDialog } from "@base-ui/react";
+import { AlertCircle, Archive, Plus, RefreshCw, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
-import { AlertDialog } from "@base-ui/react";
-import { Plus, Archive, AlertCircle, RefreshCw, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 
 interface AvatarVariation {
   id: string;
@@ -39,7 +45,15 @@ interface Props {
   onVariationDelete?: (variationId: string) => void;
 }
 
-export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, defaultImageModel, selectedVariationId, onVariationClick, onVariationDelete }: Props) {
+export function AvatarVariationsPanel({
+  avatarId,
+  initialVariations,
+  hasPrompt,
+  defaultImageModel,
+  selectedVariationId,
+  onVariationClick,
+  onVariationDelete,
+}: Props) {
   const router = useRouter();
   const [variations, setVariations] = useState<AvatarVariation[]>(initialVariations);
   const [showForm, setShowForm] = useState(false);
@@ -57,7 +71,9 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
 
   // Poll while any variation is generating
   useEffect(() => {
-    const isGenerating = variations.some((v) => v.status === "GENERATING" || v.status === "PENDING");
+    const isGenerating = variations.some(
+      (v) => v.status === "GENERATING" || v.status === "PENDING",
+    );
     if (!isGenerating) {
       pollingRef.current = false;
       return;
@@ -69,9 +85,11 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
       try {
         const res = await fetch(`/api/avatars/${avatarId}/variations`);
         if (!res.ok) return;
-        const data = await res.json() as AvatarVariation[];
+        const data = (await res.json()) as AvatarVariation[];
         setVariations(data);
-        const stillGenerating = data.some((v) => v.status === "GENERATING" || v.status === "PENDING");
+        const stillGenerating = data.some(
+          (v) => v.status === "GENERATING" || v.status === "PENDING",
+        );
         if (!stillGenerating) {
           clearInterval(interval);
           pollingRef.current = false;
@@ -110,7 +128,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
     try {
       const res = await fetch(`/api/avatars/${avatarId}/variations/suggest`, { method: "POST" });
       if (!res.ok) throw new Error("Failed to get suggestion");
-      const data = await res.json() as { clothes: string; background: string; pose: string };
+      const data = (await res.json()) as { clothes: string; background: string; pose: string };
       setClothes(data.clothes);
       setBackground(data.background);
       setPose(data.pose);
@@ -140,7 +158,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
         const err = await res.json();
         throw new Error(err.error ?? "Failed to create variation");
       }
-      const created = await res.json() as AvatarVariation;
+      const created = (await res.json()) as AvatarVariation;
       setVariations((prev) => [...prev, created]);
       resetForm();
       toast.success("Variation generation started");
@@ -157,7 +175,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to regenerate");
-      const updated = await res.json() as AvatarVariation;
+      const updated = (await res.json()) as AvatarVariation;
       setVariations((prev) => prev.map((v) => (v.id === variation.id ? updated : v)));
       toast.success("Regeneration started");
     } catch {
@@ -192,99 +210,116 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium">Variations ({variations.length})</CardTitle>
+            <CardTitle className="font-medium text-sm">Variations ({variations.length})</CardTitle>
             {hasPrompt && !showForm && (
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-7 px-2.5 text-[0.8rem] gap-1"
+                className="h-7 gap-1 px-2.5 text-[0.8rem]"
                 onClick={() => setShowForm(true)}
               >
-                <Plus className="h-3.5 w-3.5" />Add variation
+                <Plus className="h-3.5 w-3.5" />
+                Add variation
               </Button>
             )}
           </div>
         </CardHeader>
         <CardContent>
           {variations.length === 0 && !showForm && (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              {hasPrompt ? "No variations yet. Add one to explore different looks." : "Variations are only available for AI-generated avatars."}
+            <p className="py-4 text-center text-muted-foreground text-sm">
+              {hasPrompt
+                ? "No variations yet. Add one to explore different looks."
+                : "Variations are only available for AI-generated avatars."}
             </p>
           )}
 
           {variations.length > 0 && (
-            <div className="flex gap-3 overflow-x-auto pb-2 mb-4">
+            <div className="mb-4 flex gap-3 overflow-x-auto pb-2">
               {variations.map((variation) => {
                 const isSelected = selectedVariationId === variation.id;
                 const isClickable = variation.status === "COMPLETED" && !!onVariationClick;
                 return (
-                <div key={variation.id} className="flex-none w-24">
-                  <div
-                    className={`aspect-[9/16] relative rounded-lg overflow-hidden bg-muted border-2 transition-colors ${
-                      isSelected ? "border-primary" : "border-transparent"
-                    } ${isClickable ? "cursor-pointer" : ""}`}
-                    onClick={() => isClickable && onVariationClick(variation)}
-                  >
-                    {variation.status === "COMPLETED" && variation.imagePath ? (
-                      <Image
-                        src={`/api/avatars/${avatarId}/variations/${variation.id}/image?t=${new Date(variation.updatedAt).getTime()}`}
-                        alt={variation.label}
-                        fill
-                        className={`object-cover transition-[filter] duration-200 ${isSelected ? "blur-[2px] brightness-90" : ""}`}
-                        unoptimized
-                      />
-                    ) : variation.status === "FAILED" ? (
-                      <div className="flex flex-col items-center justify-center h-full gap-1 px-2">
-                        <AlertCircle className="h-5 w-5 text-destructive" />
-                        <p className="text-[0.65rem] text-destructive text-center leading-tight">Failed</p>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <Spinner className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="absolute top-1 right-1 flex flex-col gap-1">
-                      {variation.status === "FAILED" && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); void handleRegenerate(variation); }}
-                          className="h-6 w-6 rounded-md bg-background/80 backdrop-blur-sm border border-border flex items-center justify-center hover:bg-muted transition-colors"
-                          title="Retry"
-                        >
-                          <RefreshCw className="h-3 w-3" />
-                        </button>
+                  <div key={variation.id} className="w-24 flex-none">
+                    <button
+                      type="button"
+                      className={`relative block aspect-[9/16] w-full overflow-hidden rounded-lg border-2 bg-muted transition-colors ${
+                        isSelected ? "border-primary" : "border-transparent"
+                      } ${isClickable ? "cursor-pointer" : ""}`}
+                      onClick={() => isClickable && onVariationClick(variation)}
+                    >
+                      {variation.status === "COMPLETED" && variation.imagePath ? (
+                        <Image
+                          src={`/api/avatars/${avatarId}/variations/${variation.id}/image?t=${new Date(variation.updatedAt).getTime()}`}
+                          alt={variation.label}
+                          fill
+                          className={`object-cover transition-[filter] duration-200 ${isSelected ? "blur-[2px] brightness-90" : ""}`}
+                          unoptimized
+                        />
+                      ) : variation.status === "FAILED" ? (
+                        <div className="flex h-full flex-col items-center justify-center gap-1 px-2">
+                          <AlertCircle className="h-5 w-5 text-destructive" />
+                          <p className="text-center text-[0.65rem] text-destructive leading-tight">
+                            Failed
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <Spinner className="h-5 w-5 text-muted-foreground" />
+                        </div>
                       )}
-                      {variation.status !== "PENDING" && variation.status !== "GENERATING" && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(variation); }}
-                          className="h-6 w-6 rounded-md bg-background/80 backdrop-blur-sm border border-border flex items-center justify-center hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
-                          title="Archive"
-                        >
-                          <Archive className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
+                      <div className="absolute top-1 right-1 flex flex-col gap-1">
+                        {variation.status === "FAILED" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleRegenerate(variation);
+                            }}
+                            className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/80 backdrop-blur-sm transition-colors hover:bg-muted"
+                            title="Retry"
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                          </button>
+                        )}
+                        {variation.status !== "PENDING" && variation.status !== "GENERATING" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(variation);
+                            }}
+                            className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/80 backdrop-blur-sm transition-colors hover:border-destructive/30 hover:bg-destructive/10"
+                            title="Archive"
+                          >
+                            <Archive className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </button>
+                    <p
+                      className="mt-1 truncate text-center text-[0.7rem] text-muted-foreground"
+                      title={variation.label}
+                    >
+                      {variation.label}
+                    </p>
                   </div>
-                  <p className="text-[0.7rem] text-muted-foreground truncate mt-1 text-center" title={variation.label}>
-                    {variation.label}
-                  </p>
-                </div>
-              );
-            })}
+                );
+              })}
             </div>
           )}
 
           {showForm && (
             <div className="space-y-3 pt-1">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">New variation</p>
+              <div className="mb-1 flex items-center justify-between">
+                <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                  New variation
+                </p>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-6 px-2 text-xs gap-1"
+                  className="h-6 gap-1 px-2 text-xs"
                   onClick={handleSuggest}
                   disabled={suggesting}
                 >
@@ -294,7 +329,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
               </div>
 
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Label *</p>
+                <p className="mb-1 text-muted-foreground text-xs">Label *</p>
                 <Input
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
@@ -304,7 +339,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
               </div>
 
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Clothes</p>
+                <p className="mb-1 text-muted-foreground text-xs">Clothes</p>
                 <Input
                   value={clothes}
                   onChange={(e) => setClothes(e.target.value)}
@@ -314,7 +349,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
               </div>
 
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Background</p>
+                <p className="mb-1 text-muted-foreground text-xs">Background</p>
                 <Input
                   value={background}
                   onChange={(e) => setBackground(e.target.value)}
@@ -324,7 +359,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
               </div>
 
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Pose</p>
+                <p className="mb-1 text-muted-foreground text-xs">Pose</p>
                 <Input
                   value={pose}
                   onChange={(e) => setPose(e.target.value)}
@@ -334,20 +369,29 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
               </div>
 
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Image Model</p>
+                <p className="mb-1 text-muted-foreground text-xs">Image Model</p>
                 {imageModels.length > 0 ? (
-                  <Select value={imageModel} onValueChange={(v: string | null) => v && setImageModel(v)}>
-                    <SelectTrigger className="h-8 text-sm w-full">
-                      <SelectValue>{imageModels.find((m) => m.id === imageModel)?.name ?? imageModel}</SelectValue>
+                  <Select
+                    value={imageModel}
+                    onValueChange={(v: string | null) => v && setImageModel(v)}
+                  >
+                    <SelectTrigger className="h-8 w-full text-sm">
+                      <SelectValue>
+                        {imageModels.find((m) => m.id === imageModel)?.name ?? imageModel}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {imageModels.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 ) : (
-                  <div className="h-8 flex items-center"><Spinner className="h-3.5 w-3.5 text-muted-foreground" /></div>
+                  <div className="flex h-8 items-center">
+                    <Spinner className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
                 )}
               </div>
 
@@ -358,7 +402,7 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
                   onClick={() => void handleGenerate()}
                   disabled={submitting || !label.trim()}
                 >
-                  {submitting && <Spinner className="h-3.5 w-3.5 mr-1.5" />}
+                  {submitting && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
                   Generate
                 </Button>
                 <Button type="button" size="sm" variant="outline" onClick={resetForm}>
@@ -370,23 +414,37 @@ export function AvatarVariationsPanel({ avatarId, initialVariations, hasPrompt, 
         </CardContent>
       </Card>
 
-      <AlertDialog.Root open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+      <AlertDialog.Root
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
         <AlertDialog.Portal>
-          <AlertDialog.Backdrop className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 transition-opacity duration-200" />
-          <AlertDialog.Popup className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl p-6 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 data-[starting-style]:opacity-0 data-[starting-style]:scale-95 transition-all duration-200">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
+          <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+          <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl transition-all duration-200 data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
+            <div className="mb-2 flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
                 <Archive className="h-4 w-4 text-muted-foreground" />
               </div>
-              <AlertDialog.Title className="text-base font-semibold">Archive variation?</AlertDialog.Title>
+              <AlertDialog.Title className="font-semibold text-base">
+                Archive variation?
+              </AlertDialog.Title>
             </div>
-            <AlertDialog.Description className="text-sm text-muted-foreground mb-6 pl-12">
+            <AlertDialog.Description className="mb-6 pl-12 text-muted-foreground text-sm">
               &ldquo;{deleteTarget?.label}&rdquo; will be archived and hidden from this avatar.
             </AlertDialog.Description>
-            <div className="flex gap-2 justify-end">
-              <AlertDialog.Close render={<Button variant="outline" size="sm" />}>Cancel</AlertDialog.Close>
-              <Button size="sm" variant="destructive" onClick={() => void handleDeleteConfirm()} disabled={deleting}>
-                {deleting && <Spinner className="h-3.5 w-3.5 mr-1.5" />}
+            <div className="flex justify-end gap-2">
+              <AlertDialog.Close render={<Button variant="outline" size="sm" />}>
+                Cancel
+              </AlertDialog.Close>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => void handleDeleteConfirm()}
+                disabled={deleting}
+              >
+                {deleting && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
                 Archive
               </Button>
             </div>

@@ -15,11 +15,13 @@ export const LoginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-export type AuthFormState = {
-  errors?: {
-    name?: string[];
-    email?: string[];
-    password?: string[];
-  };
-  message?: string;
-} | undefined;
+export type AuthFormState =
+  | {
+      errors?: {
+        name?: string[];
+        email?: string[];
+        password?: string[];
+      };
+      message?: string;
+    }
+  | undefined;

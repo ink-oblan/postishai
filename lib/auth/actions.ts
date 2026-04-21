@@ -2,13 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { type AuthFormState, LoginSchema, SignupSchema } from "./definitions";
 import { hashPassword, verifyPassword } from "./password";
 import { createSession } from "./session";
-import { SignupSchema, LoginSchema, type AuthFormState } from "./definitions";
 
 export async function register(
   _prevState: AuthFormState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AuthFormState> {
   const validated = SignupSchema.safeParse({
     name: formData.get("name"),
@@ -47,10 +47,7 @@ export async function register(
   redirect("/dashboard");
 }
 
-export async function login(
-  _prevState: AuthFormState,
-  formData: FormData
-): Promise<AuthFormState> {
+export async function login(_prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const validated = LoginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -63,7 +60,7 @@ export async function login(
   const { email, password } = validated.data;
 
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.passwordHash) {
+  if (!user?.passwordHash) {
     return { message: "Invalid email or password." };
   }
 

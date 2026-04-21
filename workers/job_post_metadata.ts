@@ -1,6 +1,6 @@
 import { generateMetadata } from "@/lib/metadata/generator";
-import type { JobDefinition, PostMetadataGeneratePayload } from "@/workers/types";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
+import type { JobDefinition, PostMetadataGeneratePayload } from "@/workers/types";
 
 type PostMetadataResult = {
   metadataJson: string;
@@ -43,7 +43,12 @@ export const postMetadataJob: JobDefinition<"post.metadata", PostMetadataResult>
       throw new Error(`Post ${payload.postId} not found`);
     }
 
-    const metadata = await generateMetadata(post.platform, post.script, post.title, post.llmModelId);
+    const metadata = await generateMetadata(
+      post.platform,
+      post.script,
+      post.title,
+      post.llmModelId,
+    );
     return { metadataJson: JSON.stringify(metadata) };
   },
   async onSuccess(db, payload, result) {
@@ -58,13 +63,15 @@ export const postMetadataJob: JobDefinition<"post.metadata", PostMetadataResult>
     });
   },
   async onFailure(db, payload, error) {
-    await db.post.update({
-      where: { id: payload.postId },
-      data: {
-        metadataStatus: "FAILED",
-        metadataErrorMessage: error,
-      },
-    }).catch(() => {});
+    await db.post
+      .update({
+        where: { id: payload.postId },
+        data: {
+          metadataStatus: "FAILED",
+          metadataErrorMessage: error,
+        },
+      })
+      .catch(() => {});
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";

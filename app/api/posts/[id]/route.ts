@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
-import { isPostEditable } from "@/lib/posts";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { PlatformMetadata } from "@/lib/metadata/types";
+import { isPostEditable } from "@/lib/posts";
 import { enqueuePostMetadataJob } from "@/lib/worker/jobs";
-import { withAuth } from "@/lib/auth/dal";
 
 function normalizeTagList(values: unknown) {
   if (!Array.isArray(values)) return [];
@@ -38,7 +38,8 @@ function sanitizeMetadata(platform: string, metadata: unknown): PlatformMetadata
 
   if (platform === "YOUTUBE_SHORTS") {
     const candidate = metadata as { title?: unknown; description?: unknown; tags?: unknown };
-    if (typeof candidate.title !== "string" || typeof candidate.description !== "string") return null;
+    if (typeof candidate.title !== "string" || typeof candidate.description !== "string")
+      return null;
     return {
       platform: "YOUTUBE_SHORTS",
       title: candidate.title.trim(),
@@ -53,7 +54,7 @@ function sanitizeMetadata(platform: string, metadata: unknown): PlatformMetadata
 export const GET = withAuth(async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-  { userId }
+  { userId },
 ) {
   const { id } = await params;
   const post = await prisma.post.findFirst({
@@ -67,13 +68,22 @@ export const GET = withAuth(async function GET(
 export const PATCH = withAuth(async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-  { userId }
+  { userId },
 ) {
   const { id } = await params;
   const post = await prisma.post.findFirst({ where: { id, userId } });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await req.json();
-  const { title, script, llmModelId, avatarId, avatarVariationId, metadata, archive, regenerateMetadata } = body as {
+  const {
+    title,
+    script,
+    llmModelId,
+    avatarId,
+    avatarVariationId,
+    metadata,
+    archive,
+    regenerateMetadata,
+  } = body as {
     title?: string;
     script?: string;
     llmModelId?: string;
@@ -93,7 +103,10 @@ export const PATCH = withAuth(async function PATCH(
   }
 
   if (!isPostEditable(post)) {
-    return NextResponse.json({ error: "Only posts without a created video can be edited" }, { status: 409 });
+    return NextResponse.json(
+      { error: "Only posts without a created video can be edited" },
+      { status: 409 },
+    );
   }
   if (!title?.trim() || !script?.trim()) {
     return NextResponse.json({ error: "Title and script are required" }, { status: 400 });
@@ -110,7 +123,9 @@ export const PATCH = withAuth(async function PATCH(
     return NextResponse.json({ error: "Unknown metadata model" }, { status: 400 });
   }
 
-  const avatar = await prisma.avatar.findFirst({ where: { id: avatarId.trim(), userId, archivedAt: null } });
+  const avatar = await prisma.avatar.findFirst({
+    where: { id: avatarId.trim(), userId, archivedAt: null },
+  });
   if (!avatar) {
     return NextResponse.json({ error: "Avatar not found" }, { status: 404 });
   }
@@ -121,7 +136,10 @@ export const PATCH = withAuth(async function PATCH(
       where: { id: avatarVariationId, avatarId: avatar.id, archivedAt: null },
     });
     if (!variation) {
-      return NextResponse.json({ error: "Avatar variation not found or does not belong to the selected avatar" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Avatar variation not found or does not belong to the selected avatar" },
+        { status: 404 },
+      );
     }
   }
 
@@ -129,7 +147,8 @@ export const PATCH = withAuth(async function PATCH(
   const trimmedScript = script.trim();
   const trimmedLlmModelId = llmModelId.trim();
   const nextAvatarId = avatar.id;
-  const nextAvatarVariationId = avatarVariationId !== undefined ? (avatarVariationId ?? null) : post.avatarVariationId;
+  const nextAvatarVariationId =
+    avatarVariationId !== undefined ? (avatarVariationId ?? null) : post.avatarVariationId;
   const nextMetadata = sanitizeMetadata(post.platform, metadata);
   // If avatar changed, reset variation (variation belongs to the old avatar)
   const resolvedVariationId = nextAvatarId !== post.avatarId ? null : nextAvatarVariationId;
@@ -148,21 +167,25 @@ export const PATCH = withAuth(async function PATCH(
       llmModelId: trimmedLlmModelId,
       avatarId: nextAvatarId,
       avatarVariationId: resolvedVariationId,
-      ...(shouldRegenerateMetadata ? {
-        status: "DRAFT",
-        generationStartedAt: null,
-        metadata: null,
-        metadataStatus: "IDLE",
-        metadataErrorMessage: null,
-        metadataUpdatedAt: null,
-        heygenVideoId: null,
-        heygenVideoUrl: null,
-      } : nextMetadata ? {
-        metadata: JSON.stringify(nextMetadata),
-        metadataStatus: "COMPLETED",
-        metadataErrorMessage: null,
-        metadataUpdatedAt: new Date(),
-      } : {}),
+      ...(shouldRegenerateMetadata
+        ? {
+            status: "DRAFT",
+            generationStartedAt: null,
+            metadata: null,
+            metadataStatus: "IDLE",
+            metadataErrorMessage: null,
+            metadataUpdatedAt: null,
+            heygenVideoId: null,
+            heygenVideoUrl: null,
+          }
+        : nextMetadata
+          ? {
+              metadata: JSON.stringify(nextMetadata),
+              metadataStatus: "COMPLETED",
+              metadataErrorMessage: null,
+              metadataUpdatedAt: new Date(),
+            }
+          : {}),
     },
   });
 

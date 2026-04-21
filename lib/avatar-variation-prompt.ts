@@ -6,7 +6,10 @@ export type AvatarVariationPromptVars = {
   pose?: string;
 };
 
-export async function renderAvatarVariationPrompt(vars: AvatarVariationPromptVars, isUploaded: boolean): Promise<string> {
+export async function renderAvatarVariationPrompt(
+  vars: AvatarVariationPromptVars,
+  isUploaded: boolean,
+): Promise<string> {
   const file = isUploaded ? "avatar-variation-prompt-uploaded.txt" : "avatar-variation-prompt.txt";
   return renderPromptTemplate(file, {
     clothes: vars.clothes || undefined,

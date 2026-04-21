@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { FileVideo, LayoutDashboard, LogOut, Menu, Settings, Users, X } from "lucide-react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, FileVideo, Menu, X, Settings, LogOut } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 type UserInfo = {
   name: string | null;
@@ -23,7 +22,7 @@ const navItems = [
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
-    <nav className="flex-1 p-3 space-y-1">
+    <nav className="flex-1 space-y-1 p-3">
       {navItems.map(({ href, label, icon: Icon }) => {
         const active = pathname.startsWith(href);
         return (
@@ -32,10 +31,10 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
             href={href}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3.5 rounded-xl px-5 py-4 text-[20px] font-semibold transition-all duration-150",
+              "flex items-center gap-3.5 rounded-xl px-5 py-4 font-semibold text-[20px] transition-all duration-150",
               active
                 ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
             )}
           >
             <Icon className={cn("h-[22px] w-[22px] shrink-0", active ? "text-primary" : "")} />
@@ -47,7 +46,15 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
   );
 }
 
-function ProfileFooter({ pathname, onNavigate, user }: { pathname: string; onNavigate?: () => void; user: UserInfo }) {
+function ProfileFooter({
+  pathname,
+  onNavigate,
+  user,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+  user: UserInfo;
+}) {
   const router = useRouter();
   const active = pathname.startsWith("/settings");
 
@@ -57,7 +64,7 @@ function ProfileFooter({ pathname, onNavigate, user }: { pathname: string; onNav
   }
 
   return (
-    <div className="p-3 border-t border-border space-y-1">
+    <div className="space-y-1 border-border border-t p-3">
       <Link
         href="/settings"
         onClick={onNavigate}
@@ -65,21 +72,24 @@ function ProfileFooter({ pathname, onNavigate, user }: { pathname: string; onNav
           "flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-150",
           active
             ? "bg-primary/10 text-primary"
-            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
         )}
       >
         <Settings className={cn("h-5 w-5 shrink-0", active ? "text-primary" : "")} />
         <div className="min-w-0">
-          <p className="text-[17px] font-semibold leading-tight truncate">{user.name || "Settings"}</p>
-          <p className="text-[13px] text-muted-foreground leading-tight truncate">{user.email}</p>
+          <p className="truncate font-semibold text-[17px] leading-tight">
+            {user.name || "Settings"}
+          </p>
+          <p className="truncate text-[13px] text-muted-foreground leading-tight">{user.email}</p>
         </div>
       </Link>
       <button
+        type="button"
         onClick={handleLogout}
-        className="flex items-center gap-3 rounded-xl px-4 py-2.5 w-full text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all duration-150"
+        className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-muted-foreground transition-all duration-150 hover:bg-muted/60 hover:text-foreground"
       >
         <LogOut className="h-4 w-4 shrink-0" />
-        <span className="text-[15px] font-medium">Sign out</span>
+        <span className="font-medium text-[15px]">Sign out</span>
       </button>
     </div>
   );
@@ -87,9 +97,15 @@ function ProfileFooter({ pathname, onNavigate, user }: { pathname: string; onNav
 
 function Logo({ onClick }: { onClick?: () => void }) {
   return (
-    <Link href="/dashboard" onClick={onClick} className="flex items-center gap-2.5 group">
-      <div className="h-12 w-12 shrink-0 group-hover:opacity-90 transition-opacity">
-        <Image src="/logo.svg" alt="Logo" width={32} height={32} className="h-full w-full object-contain" />
+    <Link href="/dashboard" onClick={onClick} className="group flex items-center gap-2.5">
+      <div className="h-12 w-12 shrink-0 transition-opacity group-hover:opacity-90">
+        <Image
+          src="/logo.svg"
+          alt="Logo"
+          width={32}
+          height={32}
+          className="h-full w-full object-contain"
+        />
       </div>
       <span className="font-bold text-[21px] tracking-tight">PostishAI</span>
     </Link>
@@ -103,10 +119,11 @@ export function Sidebar({ user }: { user: UserInfo }) {
   return (
     <>
       {/* ── Mobile top header ── */}
-      <header className="md:hidden fixed top-0 inset-x-0 z-40 h-14 flex items-center px-4 gap-3 bg-background/95 backdrop-blur-md border-b border-border">
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-3 border-border border-b bg-background/95 px-4 backdrop-blur-md md:hidden">
         <button
+          type="button"
           onClick={() => setOpen(true)}
-          className="p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+          className="-ml-2 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
           aria-label="Open navigation"
         >
           <Menu className="h-5 w-5" />
@@ -119,25 +136,28 @@ export function Sidebar({ user }: { user: UserInfo }) {
 
       {/* ── Mobile backdrop ── */}
       {open && (
-        <div
-          className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+        <button
+          type="button"
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm md:hidden"
           onClick={() => setOpen(false)}
+          aria-label="Close navigation"
         />
       )}
 
       {/* ── Mobile drawer ── */}
       <div
         className={cn(
-          "md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-sidebar flex flex-col border-r border-sidebar-border",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-sidebar-border border-r bg-sidebar md:hidden",
           "transform transition-transform duration-300 ease-out",
-          open ? "translate-x-0" : "-translate-x-full"
+          open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-sidebar-border">
+        <div className="flex items-center justify-between border-sidebar-border border-b px-4 py-3.5">
           <Logo onClick={() => setOpen(false)} />
           <button
+            type="button"
             onClick={() => setOpen(false)}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -147,8 +167,8 @@ export function Sidebar({ user }: { user: UserInfo }) {
       </div>
 
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden md:flex w-64 shrink-0 border-r border-border flex-col h-full bg-sidebar">
-        <div className="px-4 py-4 border-b border-border">
+      <aside className="hidden h-full w-64 shrink-0 flex-col border-border border-r bg-sidebar md:flex">
+        <div className="border-border border-b px-4 py-4">
           <Logo />
         </div>
         <NavLinks pathname={pathname} />

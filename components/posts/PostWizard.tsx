@@ -1,16 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Dialog } from "@base-ui/react";
+import { Check, ChevronLeft, ChevronRight, Loader2, Plus, Sparkles } from "lucide-react";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronRight, ChevronLeft, Loader2, Check, Plus, Sparkles } from "lucide-react";
-import { Dialog } from "@base-ui/react";
-import { toast } from "sonner";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
@@ -72,18 +78,28 @@ export function PostWizard() {
 
   useEffect(() => {
     if (preselectedAvatarId) {
-      setData((d) => ({ ...d, avatarId: preselectedAvatarId, avatarVariationId: preselectedVariationId }));
+      setData((d) => ({
+        ...d,
+        avatarId: preselectedAvatarId,
+        avatarVariationId: preselectedVariationId,
+      }));
       setStep(2);
       // Fetch variations so the selection is visible if user navigates back to step 1
       fetch(`/api/avatars/${preselectedAvatarId}/variations`)
         .then((r) => r.json())
-        .then((all: AvatarVariation[]) => setAvatarVariations(all.filter((v) => v.status === "COMPLETED")))
+        .then((all: AvatarVariation[]) =>
+          setAvatarVariations(all.filter((v) => v.status === "COMPLETED")),
+        )
         .catch(() => {});
     }
-    fetch("/api/avatars").then((r) => r.json()).then(setAvatars);
-    fetch("/api/llm-models").then((r) => r.json()).then(setLLMModels);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetch("/api/avatars")
+      .then((r) => r.json())
+      .then(setAvatars);
+    fetch("/api/llm-models")
+      .then((r) => r.json())
+      .then(setLLMModels);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectedVariationId, preselectedAvatarId]);
 
   function update(patch: Partial<WizardData>) {
     setData((d) => ({ ...d, ...patch }));
@@ -164,11 +180,15 @@ export function PostWizard() {
       <div className="flex items-center gap-2">
         {[1, 2].map((s) => (
           <div key={s} className="flex items-center gap-2">
-            <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
-              s < step ? "bg-primary text-primary-foreground" :
-              s === step ? "bg-primary text-primary-foreground" :
-              "bg-muted text-muted-foreground"
-            }`}>
+            <div
+              className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs transition-colors ${
+                s < step
+                  ? "bg-primary text-primary-foreground"
+                  : s === step
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+              }`}
+            >
               {s < step ? <Check className="h-3.5 w-3.5" /> : s}
             </div>
             <span className={`text-sm ${s === step ? "font-medium" : "text-muted-foreground"}`}>
@@ -182,19 +202,19 @@ export function PostWizard() {
       {/* Step 1: Avatar selection */}
       {step === 1 && (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Select the avatar for this post</p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+          <p className="text-muted-foreground text-sm">Select the avatar for this post</p>
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
             <button
               type="button"
               onClick={() => router.push("/avatars/new")}
-              className="rounded-lg overflow-hidden border-2 border-dashed border-border bg-muted/20 text-left transition-all hover:border-primary/40 hover:bg-muted/40"
+              className="overflow-hidden rounded-lg border-2 border-border border-dashed bg-muted/20 text-left transition-all hover:border-primary/40 hover:bg-muted/40"
             >
-              <div className="aspect-[9/16] flex items-center justify-center bg-[linear-gradient(180deg,hsl(var(--muted))/0.7,transparent)]">
+              <div className="flex aspect-[9/16] items-center justify-center bg-[linear-gradient(180deg,hsl(var(--muted))/0.7,transparent)]">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
                   <Plus className="h-7 w-7" />
                 </div>
               </div>
-              <p className="text-xs font-medium p-2 truncate">Add new avatar</p>
+              <p className="truncate p-2 font-medium text-xs">Add new avatar</p>
             </button>
 
             {avatars.map((avatar) => (
@@ -202,11 +222,13 @@ export function PostWizard() {
                 key={avatar.id}
                 type="button"
                 onClick={() => handleAvatarSelect(avatar.id)}
-                className={`rounded-lg overflow-hidden border-2 transition-all text-left ${
-                  data.avatarId === avatar.id ? "border-primary" : "border-border hover:border-primary/40"
+                className={`overflow-hidden rounded-lg border-2 text-left transition-all ${
+                  data.avatarId === avatar.id
+                    ? "border-primary"
+                    : "border-border hover:border-primary/40"
                 }`}
               >
-                <div className="aspect-[9/16] relative bg-muted">
+                <div className="relative aspect-[9/16] bg-muted">
                   <Image
                     src={
                       data.avatarId === avatar.id && data.avatarVariationId
@@ -219,16 +241,16 @@ export function PostWizard() {
                     unoptimized
                   />
                 </div>
-                <p className="text-xs font-medium p-2 truncate">{avatar.name}</p>
+                <p className="truncate p-2 font-medium text-xs">{avatar.name}</p>
               </button>
             ))}
           </div>
 
           {data.avatarId && (loadingVariations || avatarVariations.length > 0) && (
             <div className="space-y-1.5">
-              <p className="text-sm text-muted-foreground">Variation</p>
+              <p className="text-muted-foreground text-sm">Variation</p>
               {loadingVariations ? (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Loading variations…
                 </div>
@@ -237,10 +259,10 @@ export function PostWizard() {
                   <button
                     type="button"
                     onClick={() => update({ avatarVariationId: null })}
-                    className={`h-7 px-2.5 rounded-md border text-xs font-medium transition-colors ${
+                    className={`h-7 rounded-md border px-2.5 font-medium text-xs transition-colors ${
                       data.avatarVariationId === null
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background border-border hover:bg-muted"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background hover:bg-muted"
                     }`}
                   >
                     Base
@@ -250,10 +272,10 @@ export function PostWizard() {
                       key={v.id}
                       type="button"
                       onClick={() => update({ avatarVariationId: v.id })}
-                      className={`h-7 px-2.5 rounded-md border text-xs font-medium transition-colors ${
+                      className={`h-7 rounded-md border px-2.5 font-medium text-xs transition-colors ${
                         data.avatarVariationId === v.id
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background border-border hover:bg-muted"
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background hover:bg-muted"
                       }`}
                     >
                       {v.label}
@@ -302,7 +324,7 @@ export function PostWizard() {
               <button
                 type="button"
                 onClick={() => setAiScriptOpen(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                className="inline-flex items-center gap-1.5 font-medium text-primary text-xs transition-colors hover:text-primary/80"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 Write with AI
@@ -315,39 +337,52 @@ export function PostWizard() {
               placeholder="What should the avatar say in the video?"
               rows={4}
             />
-            <p className="text-xs text-muted-foreground">{script.length} characters</p>
+            <p className="text-muted-foreground text-xs">{script.length} characters</p>
           </div>
 
           {/* AI Script Generation Modal */}
           <Dialog.Root open={aiScriptOpen} onOpenChange={setAiScriptOpen}>
             <Dialog.Portal>
-              <Dialog.Backdrop className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 transition-opacity duration-200" />
-              <Dialog.Popup className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl p-6 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 data-[starting-style]:opacity-0 data-[starting-style]:scale-95 transition-all duration-200">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+              <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl transition-all duration-200 data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                     <Sparkles className="h-4 w-4 text-primary" />
                   </div>
-                  <Dialog.Title className="text-base font-semibold">Generate Script with AI</Dialog.Title>
+                  <Dialog.Title className="font-semibold text-base">
+                    Generate Script with AI
+                  </Dialog.Title>
                 </div>
-                <Dialog.Description className="text-sm text-muted-foreground mb-4">
-                  Describe what the script should be about, or leave empty to generate based on the post title and platform.
+                <Dialog.Description className="mb-4 text-muted-foreground text-sm">
+                  Describe what the script should be about, or leave empty to generate based on the
+                  post title and platform.
                 </Dialog.Description>
                 <Textarea
                   value={aiScriptDetails}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAiScriptDetails(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setAiScriptDetails(e.target.value)
+                  }
                   placeholder="e.g. Promote our summer sale, mention 30% off all items, upbeat tone..."
                   rows={3}
                   disabled={aiScriptLoading}
                 />
-                <div className="flex gap-2 justify-end mt-4">
-                  <Dialog.Close render={<Button variant="outline" size="sm" disabled={aiScriptLoading} />}>
+                <div className="mt-4 flex justify-end gap-2">
+                  <Dialog.Close
+                    render={<Button variant="outline" size="sm" disabled={aiScriptLoading} />}
+                  >
                     Cancel
                   </Dialog.Close>
                   <Button size="sm" onClick={handleGenerateScript} disabled={aiScriptLoading}>
                     {aiScriptLoading ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Generating...</>
+                      <>
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        Generating...
+                      </>
                     ) : (
-                      <><Sparkles className="h-3.5 w-3.5 mr-1.5" />Generate</>
+                      <>
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                        Generate
+                      </>
                     )}
                   </Button>
                 </div>
@@ -357,9 +392,14 @@ export function PostWizard() {
 
           <div className="space-y-2">
             <Label>AI Model for Metadata</Label>
-            <Select value={data.llmModelId} onValueChange={(v: string | null) => v && update({ llmModelId: v })}>
+            <Select
+              value={data.llmModelId}
+              onValueChange={(v: string | null) => v && update({ llmModelId: v })}
+            >
               <SelectTrigger>
-                <SelectValue>{llmModels.find((m) => m.id === data.llmModelId)?.name ?? data.llmModelId}</SelectValue>
+                <SelectValue>
+                  {llmModels.find((m) => m.id === data.llmModelId)?.name ?? data.llmModelId}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="w-max">
                 {llmModels.map((m) => (
@@ -377,17 +417,24 @@ export function PostWizard() {
       <div className="flex justify-between pt-2">
         {step > 1 ? (
           <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
-            <ChevronLeft className="h-4 w-4 mr-1" />Back
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Back
           </Button>
-        ) : <div />}
+        ) : (
+          <div />
+        )}
         {step === 1 ? (
           <Button onClick={() => setStep(2)} disabled={!data.avatarId}>
-            Next<ChevronRight className="h-4 w-4 ml-1" />
+            Next
+            <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         ) : (
           <Button onClick={handleSubmit} disabled={submitting || !canSubmit()}>
             {submitting ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
             ) : (
               "Create Post"
             )}

@@ -1,9 +1,9 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -39,14 +39,21 @@ export function AvatarPickerField({
 
   const selectedAvatar = avatars.find((avatar) => avatar.id === value);
   const currentAvatarName = selectedAvatar?.name ?? fallbackName;
-  const currentAvatarImageUrl = variationImageUrl ?? (selectedAvatar ? `/api/avatars/${selectedAvatar.id}/image` : fallbackImageUrl);
+  const currentAvatarImageUrl =
+    variationImageUrl ??
+    (selectedAvatar ? `/api/avatars/${selectedAvatar.id}/image` : fallbackImageUrl);
   const filteredAvatars = avatars.filter((avatar) =>
-    avatar.name.toLowerCase().includes(search.trim().toLowerCase())
+    avatar.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
 
   useEffect(() => {
     setSearch(currentAvatarName);
     setOpen(false);
+  }, [currentAvatarName]);
+
+  const closePicker = useCallback(() => {
+    setOpen(false);
+    setSearch(currentAvatarName);
   }, [currentAvatarName]);
 
   useEffect(() => {
@@ -60,16 +67,11 @@ export function AvatarPickerField({
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open, currentAvatarName]);
+  }, [open, closePicker]);
 
   function openPicker() {
     setSearch("");
     setOpen(true);
-  }
-
-  function closePicker() {
-    setOpen(false);
-    setSearch(currentAvatarName);
   }
 
   function handleSelect(avatar: AvatarPickerOption) {
@@ -139,13 +141,16 @@ export function AvatarPickerField({
                 </button>
               ))
             ) : (
-              <p className="px-2 py-2 text-sm text-muted-foreground">No avatars match that search.</p>
+              <p className="px-2 py-2 text-muted-foreground text-sm">
+                No avatars match that search.
+              </p>
             )}
           </div>
         )}
       </div>
       <Link href={newAvatarHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
-        <Plus className="h-3.5 w-3.5 mr-1.5" />New avatar
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        New avatar
       </Link>
     </div>
   );

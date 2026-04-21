@@ -13,7 +13,7 @@ export class GeminiAdapter implements LLMModelAdapter {
   }
 
   async generate(prompt: string): Promise<string> {
-    const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
+    const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY as string });
     const response = await client.models.generateContent({
       model: this.id,
       contents: prompt,

@@ -1,21 +1,27 @@
 "use client";
 
 import { AlertDialog } from "@base-ui/react";
-import Link from "next/link";
+import { AlertTriangle, Download, Loader2, Pencil, RefreshCw } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type React from "react";
 import { startTransition, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
-import { Download, Loader2, Pencil, AlertTriangle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { AvatarPickerField, type AvatarPickerOption } from "@/components/posts/AvatarPickerField";
 import { MetadataSection } from "@/components/posts/MetadataSection";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
 import type { PlatformMetadata } from "@/lib/metadata/types";
-import { toast } from "sonner";
 
 interface LLMModel {
   id: string;
@@ -72,11 +78,15 @@ interface PostData {
 }
 
 function PropLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-muted-foreground mb-1">{children}</p>;
+  return <p className="mb-1 text-muted-foreground text-xs">{children}</p>;
 }
 
 function PropValue({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm font-medium">{children || <span className="text-muted-foreground">—</span>}</p>;
+  return (
+    <p className="font-medium text-sm">
+      {children || <span className="text-muted-foreground">—</span>}
+    </p>
+  );
 }
 
 export function PostEditPanel({
@@ -92,7 +102,9 @@ export function PostEditPanel({
 }) {
   const [avatarVariations, setAvatarVariations] = useState<AvatarVariationOption[]>([]);
   const [avatarVariationId, setAvatarVariationId] = useState<string | null>(post.avatarVariationId);
-  const [savedAvatarVariationId, setSavedAvatarVariationId] = useState<string | null>(post.avatarVariationId);
+  const [savedAvatarVariationId, setSavedAvatarVariationId] = useState<string | null>(
+    post.avatarVariationId,
+  );
   const router = useRouter();
   const [savedTitle, setSavedTitle] = useState(post.title);
   const [savedScript, setSavedScript] = useState(post.script);
@@ -104,7 +116,9 @@ export function PostEditPanel({
   const [savedVoiceName, setSavedVoiceName] = useState(post.voiceName);
   const [savedMetadata, setSavedMetadata] = useState(post.metadata);
   const [savedMetadataStatus, setSavedMetadataStatus] = useState(post.metadataStatus);
-  const [savedMetadataErrorMessage, setSavedMetadataErrorMessage] = useState(post.metadataErrorMessage);
+  const [savedMetadataErrorMessage, setSavedMetadataErrorMessage] = useState(
+    post.metadataErrorMessage,
+  );
   const [editing, setEditing] = useState(initialEditing);
   const [title, setTitle] = useState(post.title);
   const [script, setScript] = useState(post.script);
@@ -120,7 +134,8 @@ export function PostEditPanel({
   const selectedAvatar = avatars.find((avatar) => avatar.id === avatarId);
   const currentAvatarName = selectedAvatar?.name ?? savedAvatarName;
   const currentVoiceName = selectedAvatar
-    ? voices.find((voice) => voice.voice_id === selectedAvatar.voiceId)?.name.trim() ?? savedVoiceName
+    ? (voices.find((voice) => voice.voice_id === selectedAvatar.voiceId)?.name.trim() ??
+      savedVoiceName)
     : savedVoiceName;
   const scriptRef = useRef<HTMLTextAreaElement | null>(null);
   const prevInitialEditingRef = useRef(initialEditing);
@@ -138,7 +153,11 @@ export function PostEditPanel({
       try {
         const res = await fetch(`/api/posts/${post.id}/status`);
         if (!res.ok) return;
-        const data = await res.json() as { metadataStatus: string; metadataErrorMessage: string | null; metadata: string | null };
+        const data = (await res.json()) as {
+          metadataStatus: string;
+          metadataErrorMessage: string | null;
+          metadata: string | null;
+        };
         if (savedMetadataStatusRef.current !== "GENERATING") return;
         if (data.metadataStatus === "GENERATING") return;
 
@@ -230,8 +249,12 @@ export function PostEditPanel({
 
   useEffect(() => {
     if (editing) {
-      fetch("/api/llm-models").then((r) => r.json()).then(setLLMModels);
-      fetch("/api/avatars").then((r) => r.json()).then(setAvatars);
+      fetch("/api/llm-models")
+        .then((r) => r.json())
+        .then(setLLMModels);
+      fetch("/api/avatars")
+        .then((r) => r.json())
+        .then(setAvatars);
 
       let cancelled = false;
       fetchHeyGenVoices()
@@ -255,7 +278,7 @@ export function PostEditPanel({
     if (!element) return;
     element.style.height = "0px";
     element.style.height = `${element.scrollHeight}px`;
-  }, [script, editing]);
+  }, []);
 
   const hasChanges =
     title.trim() !== savedTitle ||
@@ -265,9 +288,7 @@ export function PostEditPanel({
     avatarVariationId !== savedAvatarVariationId ||
     JSON.stringify(metadata) !== JSON.stringify(savedMetadata);
   const metadataChanges =
-    script.trim() !== savedScript ||
-    llmModelId !== savedLlmModelId ||
-    avatarId !== savedAvatarId;
+    script.trim() !== savedScript || llmModelId !== savedLlmModelId || avatarId !== savedAvatarId;
 
   function handleCancel() {
     setTitle(savedTitle);
@@ -291,13 +312,21 @@ export function PostEditPanel({
       const res = await fetch(`/api/posts/${post.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, script, llmModelId, avatarId, avatarVariationId, metadata, regenerateMetadata }),
+        body: JSON.stringify({
+          title,
+          script,
+          llmModelId,
+          avatarId,
+          avatarVariationId,
+          metadata,
+          regenerateMetadata,
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to update");
       }
-      const updated = await res.json() as {
+      const updated = (await res.json()) as {
         status?: string;
         llmModelId?: string;
         metadata?: PlatformMetadata | null;
@@ -344,7 +373,7 @@ export function PostEditPanel({
           ? post.status === "FAILED"
             ? "Post updated, reset to draft, and metadata regeneration started"
             : "Post updated and metadata regeneration started"
-          : "Post updated"
+          : "Post updated",
       );
       setConfirmOpen(false);
       setEditing(false);
@@ -371,9 +400,14 @@ export function PostEditPanel({
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             {editing ? (
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} required className="h-8 text-sm" />
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                className="h-8 text-sm"
+              />
             ) : (
-              <h1 className="text-xl font-semibold truncate">{savedTitle}</h1>
+              <h1 className="truncate font-semibold text-xl">{savedTitle}</h1>
             )}
           </div>
           <div className="shrink-0">
@@ -383,24 +417,35 @@ export function PostEditPanel({
                   type="button"
                   size="sm"
                   onClick={handleSaveClick}
-                  disabled={loading || !title.trim() || !script.trim() || !llmModelId || !hasChanges}
+                  disabled={
+                    loading || !title.trim() || !script.trim() || !llmModelId || !hasChanges
+                  }
                 >
-                  {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                  {loading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                   Save
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={handleCancel}>Cancel</Button>
+                <Button type="button" size="sm" variant="outline" onClick={handleCancel}>
+                  Cancel
+                </Button>
               </div>
             ) : (
               <div className="flex gap-2">
                 {editable && (
-                  <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
-                    <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditing(true)}
+                  >
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                    Edit
                   </Button>
                 )}
                 {post.downloadUrl && (
                   <a href={post.downloadUrl} download>
                     <Button type="button" size="sm">
-                      <Download className="h-3.5 w-3.5 mr-1.5" />Download
+                      <Download className="mr-1.5 h-3.5 w-3.5" />
+                      Download
                     </Button>
                   </a>
                 )}
@@ -411,9 +456,10 @@ export function PostEditPanel({
       </div>
 
       {editing && post.status === "FAILED" && metadataChanges && (
-        <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 text-sm dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          Saving changes will reset this failed post back to draft and start metadata regeneration in the worker.
+          Saving changes will reset this failed post back to draft and start metadata regeneration
+          in the worker.
         </div>
       )}
 
@@ -437,21 +483,25 @@ export function PostEditPanel({
                 value={avatarId}
                 fallbackName={savedAvatarName}
                 fallbackImageUrl={post.avatarImageUrl}
-                variationImageUrl={avatarVariationId ? `/api/avatars/${avatarId}/variations/${avatarVariationId}/image` : null}
+                variationImageUrl={
+                  avatarVariationId
+                    ? `/api/avatars/${avatarId}/variations/${avatarVariationId}/image`
+                    : null
+                }
                 newAvatarHref={`/avatars/new?redirectTo=/posts/${post.id}`}
                 onChange={handleAvatarSelect}
               />
               {avatarVariations.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1.5">Variation</p>
+                  <p className="mb-1.5 text-muted-foreground text-xs">Variation</p>
                   <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       onClick={() => setAvatarVariationId(null)}
-                      className={`h-7 px-2.5 rounded-md border text-xs font-medium transition-colors ${
+                      className={`h-7 rounded-md border px-2.5 font-medium text-xs transition-colors ${
                         avatarVariationId === null
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background border-border hover:bg-muted"
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background hover:bg-muted"
                       }`}
                     >
                       Base
@@ -461,10 +511,10 @@ export function PostEditPanel({
                         key={v.id}
                         type="button"
                         onClick={() => setAvatarVariationId(v.id)}
-                        className={`h-7 px-2.5 rounded-md border text-xs font-medium transition-colors ${
+                        className={`h-7 rounded-md border px-2.5 font-medium text-xs transition-colors ${
                           avatarVariationId === v.id
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background border-border hover:bg-muted"
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background hover:bg-muted"
                         }`}
                       >
                         {v.label}
@@ -477,7 +527,7 @@ export function PostEditPanel({
           ) : (
             <Link
               href={`/avatars/${savedAvatarId}`}
-              className="group inline-flex items-center gap-3 rounded-lg hover:opacity-90 transition-opacity"
+              className="group inline-flex items-center gap-3 rounded-lg transition-opacity hover:opacity-90"
             >
               <span className="relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted">
                 <Image
@@ -486,7 +536,7 @@ export function PostEditPanel({
                       ? `/api/avatars/${savedAvatarId}/variations/${savedAvatarVariationId}/image`
                       : selectedAvatar
                         ? `/api/avatars/${savedAvatarId}/image`
-                        : post.avatarVariationImageUrl ?? post.avatarImageUrl
+                        : (post.avatarVariationImageUrl ?? post.avatarImageUrl)
                   }
                   alt={currentAvatarName}
                   fill
@@ -494,7 +544,7 @@ export function PostEditPanel({
                   unoptimized
                 />
               </span>
-              <span className="text-sm font-medium text-primary underline decoration-primary/40 underline-offset-2 transition-all duration-150 group-hover:decoration-primary">
+              <span className="font-medium text-primary text-sm underline decoration-primary/40 underline-offset-2 transition-all duration-150 group-hover:decoration-primary">
                 {currentAvatarName}
               </span>
             </Link>
@@ -510,16 +560,21 @@ export function PostEditPanel({
           <PropLabel>Metadata Model</PropLabel>
           {editing ? (
             llmModels.length > 0 ? (
-              <Select value={llmModelId} onValueChange={(v: string | null) => v && setLLMModelId(v)}>
-                <SelectTrigger className="h-8 text-sm w-full">
-                  <SelectValue>{llmModels.find((m) => m.id === llmModelId)?.name ?? llmModelId}</SelectValue>
+              <Select
+                value={llmModelId}
+                onValueChange={(v: string | null) => v && setLLMModelId(v)}
+              >
+                <SelectTrigger className="h-8 w-full text-sm">
+                  <SelectValue>
+                    {llmModels.find((m) => m.id === llmModelId)?.name ?? llmModelId}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="max-h-64 w-max">
                   {llmModels.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       <div className="flex min-w-0 flex-1 items-baseline gap-3 pr-4">
-                        <span className="shrink-0 font-medium whitespace-nowrap">{m.name}</span>
-                        <span className="min-w-0 text-xs text-muted-foreground whitespace-normal break-words">
+                        <span className="shrink-0 whitespace-nowrap font-medium">{m.name}</span>
+                        <span className="min-w-0 whitespace-normal break-words text-muted-foreground text-xs">
                           {m.description}
                         </span>
                       </div>
@@ -528,7 +583,9 @@ export function PostEditPanel({
                 </SelectContent>
               </Select>
             ) : (
-              <div className="h-8 flex items-center"><Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /></div>
+              <div className="flex h-8 items-center">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              </div>
             )
           ) : (
             <PropValue>{savedLlmModelName}</PropValue>
@@ -553,7 +610,7 @@ export function PostEditPanel({
                 className="min-h-9 resize-none text-sm"
                 style={{ height: "auto", overflow: "hidden" }}
               />
-              <p className="text-xs text-muted-foreground">{script.length} characters</p>
+              <p className="text-muted-foreground text-xs">{script.length} characters</p>
             </div>
           ) : (
             <PropValue>
@@ -584,25 +641,39 @@ export function PostEditPanel({
 
       <AlertDialog.Root open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialog.Portal>
-          <AlertDialog.Backdrop className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 transition-opacity duration-200" />
-          <AlertDialog.Popup className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl p-6 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 data-[starting-style]:opacity-0 data-[starting-style]:scale-95 transition-all duration-200">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
+          <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+          <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl transition-all duration-200 data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
+            <div className="mb-2 flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
                 <RefreshCw className="h-4 w-4 text-muted-foreground" />
               </div>
-              <AlertDialog.Title className="text-base font-semibold">Regenerate metadata?</AlertDialog.Title>
+              <AlertDialog.Title className="font-semibold text-base">
+                Regenerate metadata?
+              </AlertDialog.Title>
             </div>
-            <AlertDialog.Description className="text-sm text-muted-foreground mb-6 pl-12">
-              Save to keep the current metadata, or save and regenerate to wipe it and generate new metadata.
+            <AlertDialog.Description className="mb-6 pl-12 text-muted-foreground text-sm">
+              Save to keep the current metadata, or save and regenerate to wipe it and generate new
+              metadata.
             </AlertDialog.Description>
-            <div className="flex gap-2 justify-end">
-              <AlertDialog.Close render={<Button variant="outline" size="sm" />}>Cancel</AlertDialog.Close>
-              <Button variant="outline" size="sm" onClick={() => void handleSave(false)} disabled={loading}>
-                {pendingSaveAction === "save" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+            <div className="flex justify-end gap-2">
+              <AlertDialog.Close render={<Button variant="outline" size="sm" />}>
+                Cancel
+              </AlertDialog.Close>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleSave(false)}
+                disabled={loading}
+              >
+                {pendingSaveAction === "save" ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : null}
                 Save
               </Button>
               <Button size="sm" onClick={() => void handleSave(true)} disabled={loading}>
-                {pendingSaveAction === "regenerate" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                {pendingSaveAction === "regenerate" ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : null}
                 Save and regenerate
               </Button>
             </div>

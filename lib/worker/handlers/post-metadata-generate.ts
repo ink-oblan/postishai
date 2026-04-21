@@ -8,7 +8,7 @@ const logError = (...args: unknown[]) =>
   console.error(`[${new Date().toISOString()}] [post-metadata]`, ...args);
 
 export async function handlePostMetadataGenerate(
-  payload: PostMetadataGeneratePayload
+  payload: PostMetadataGeneratePayload,
 ): Promise<void> {
   const { postId } = payload;
   log(`start postId=${postId}`);
@@ -18,7 +18,12 @@ export async function handlePostMetadataGenerate(
 
   log(`generating metadata (model=${post.llmModelId})...`);
   try {
-    const metadata = await generateMetadata(post.platform, post.script, post.title, post.llmModelId);
+    const metadata = await generateMetadata(
+      post.platform,
+      post.script,
+      post.title,
+      post.llmModelId,
+    );
     await prisma.post.update({
       where: { id: postId },
       data: {

@@ -1,15 +1,15 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login, register } from "@/lib/auth/actions";
-import { useSearchParams } from "next/navigation";
 
 function GoogleIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="size-4">
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
       <path
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
         fill="#4285F4"
@@ -52,7 +52,7 @@ export function LoginForm() {
       </a>
 
       {oauthError && (
-        <p className="text-sm text-destructive text-center">
+        <p className="text-center text-destructive text-sm">
           Google sign-in failed. Please try again.
         </p>
       )}
@@ -60,7 +60,7 @@ export function LoginForm() {
       {/* Divider */}
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border" />
+          <span className="w-full border-border border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-2 text-muted-foreground">or</span>
@@ -74,7 +74,7 @@ export function LoginForm() {
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" placeholder="Your name" />
             {state?.errors?.name && (
-              <p className="text-xs text-destructive">{state.errors.name[0]}</p>
+              <p className="text-destructive text-xs">{state.errors.name[0]}</p>
             )}
           </div>
         )}
@@ -83,7 +83,7 @@ export function LoginForm() {
           <Label htmlFor="email">Email</Label>
           <Input id="email" name="email" type="email" placeholder="you@example.com" />
           {state?.errors?.email && (
-            <p className="text-xs text-destructive">{state.errors.email[0]}</p>
+            <p className="text-destructive text-xs">{state.errors.email[0]}</p>
           )}
         </div>
 
@@ -91,13 +91,11 @@ export function LoginForm() {
           <Label htmlFor="password">Password</Label>
           <Input id="password" name="password" type="password" placeholder="••••••••" />
           {state?.errors?.password && (
-            <p className="text-xs text-destructive">{state.errors.password[0]}</p>
+            <p className="text-destructive text-xs">{state.errors.password[0]}</p>
           )}
         </div>
 
-        {state?.message && (
-          <p className="text-sm text-destructive">{state.message}</p>
-        )}
+        {state?.message && <p className="text-destructive text-sm">{state.message}</p>}
 
         <Button type="submit" size="lg" className="w-full" disabled={pending}>
           {pending
@@ -111,7 +109,7 @@ export function LoginForm() {
       </form>
 
       {/* Toggle mode */}
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-center text-muted-foreground text-sm">
         {mode === "login" ? (
           <>
             Don&apos;t have an account?{" "}

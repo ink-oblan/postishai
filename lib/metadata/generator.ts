@@ -1,15 +1,18 @@
-import { Platform } from "@prisma/client";
-import type { PlatformMetadata } from "./types";
+import type { Platform } from "@prisma/client";
 import { getLLMAdapter } from "../llm-models/registry";
 import { buildInstagramPrompt } from "./platforms/instagram";
 import { buildTikTokPrompt } from "./platforms/tiktok";
 import { buildYouTubeShortsPrompt } from "./platforms/youtube-shorts";
+import type { PlatformMetadata } from "./types";
 
 function buildPrompt(platform: Platform, script: string, title: string): Promise<string> {
   switch (platform) {
-    case "INSTAGRAM": return buildInstagramPrompt(script, title);
-    case "TIKTOK": return buildTikTokPrompt(script, title);
-    case "YOUTUBE_SHORTS": return buildYouTubeShortsPrompt(script, title);
+    case "INSTAGRAM":
+      return buildInstagramPrompt(script, title);
+    case "TIKTOK":
+      return buildTikTokPrompt(script, title);
+    case "YOUTUBE_SHORTS":
+      return buildYouTubeShortsPrompt(script, title);
   }
 }
 
@@ -37,7 +40,7 @@ export async function generateMetadata(
   platform: Platform,
   script: string,
   title: string,
-  llmModelId: string
+  llmModelId: string,
 ): Promise<PlatformMetadata> {
   const adapter = getLLMAdapter(llmModelId);
   const prompt = await buildPrompt(platform, script, title);

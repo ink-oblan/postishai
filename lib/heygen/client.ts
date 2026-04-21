@@ -1,10 +1,10 @@
 import type {
-  HeyGenUploadResponse,
   HeyGenCreateVideoPayload,
   HeyGenCreateVideoResponse,
+  HeyGenUploadResponse,
   HeyGenVideoStatusResponse,
-  HeyGenVoicesResponse,
   HeyGenVoice,
+  HeyGenVoicesResponse,
 } from "./types";
 
 const API_BASE = "https://api.heygen.com";
@@ -22,7 +22,7 @@ function headers(extra?: Record<string, string>) {
 
 export async function uploadAvatarImage(
   imageBuffer: Buffer,
-  mimeType = "image/png"
+  mimeType = "image/png",
 ): Promise<{ assetId: string; assetUrl: string }> {
   const res = await fetch(`${UPLOAD_BASE}/v1/asset`, {
     method: "POST",
@@ -46,12 +46,10 @@ export async function createVideo(payload: HeyGenCreateVideoPayload): Promise<st
   return json.data.video_id;
 }
 
-export async function getVideoStatus(
-  videoId: string
-): Promise<HeyGenVideoStatusResponse["data"]> {
+export async function getVideoStatus(videoId: string): Promise<HeyGenVideoStatusResponse["data"]> {
   const res = await fetch(
     `${API_BASE}/v1/video_status.get?video_id=${encodeURIComponent(videoId)}`,
-    { headers: headers() }
+    { headers: headers() },
   );
   if (!res.ok) throw new Error(`HeyGen status poll failed (${res.status}): ${await res.text()}`);
   const json: HeyGenVideoStatusResponse = await res.json();

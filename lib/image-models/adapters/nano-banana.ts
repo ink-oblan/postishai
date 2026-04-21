@@ -1,15 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
-import type { ImageModelAdapter, ImageGenerationOptions, ImageGenerationResult } from "../types";
+import type { ImageGenerationOptions, ImageGenerationResult, ImageModelAdapter } from "../types";
 
 const GEMINI_TIMEOUT_MS = 540_000; // 540s — under the worker's 600s variation job timeout
 
 async function generateWithGeminiImage(
   modelId: string,
   options: ImageGenerationOptions,
-  aspectRatio: string = "9:16"
+  aspectRatio: string = "9:16",
 ): Promise<ImageGenerationResult> {
   const client = new GoogleGenAI({
-    apiKey: process.env.GOOGLE_API_KEY!,
+    apiKey: process.env.GOOGLE_API_KEY as string,
     httpOptions: { timeout: GEMINI_TIMEOUT_MS },
   });
 
@@ -17,7 +17,12 @@ async function generateWithGeminiImage(
     ? [
         {
           parts: [
-            { inlineData: { mimeType: options.sourceImage.mimeType, data: options.sourceImage.base64 } },
+            {
+              inlineData: {
+                mimeType: options.sourceImage.mimeType,
+                data: options.sourceImage.base64,
+              },
+            },
             { text: options.prompt },
           ],
         },

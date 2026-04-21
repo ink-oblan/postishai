@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { readFile } from "@/lib/storage";
-import { withAuth } from "@/lib/auth/dal";
 
 type Params = { params: Promise<{ id: string; variationId: string }> };
 
@@ -14,7 +14,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, { params }: Pa
   const variation = await prisma.avatarVariation.findFirst({
     where: { id: variationId, avatarId: id },
   });
-  if (!variation || !variation.imagePath) {
+  if (!variation?.imagePath) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -30,7 +30,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, { params }: Pa
     headers: {
       "Content-Type": contentType,
       "Cache-Control": "public, max-age=0, must-revalidate",
-      "ETag": etag,
+      ETag: etag,
     },
   });
 });

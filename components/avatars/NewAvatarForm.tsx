@@ -1,15 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { Loader2, Play, Sparkles, Square, Upload } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
-import { Sparkles, Upload, Loader2, Play, Square } from "lucide-react";
-import { toast } from "sonner";
 
 const ETHNICITIES = [
   "Eastern European",
@@ -67,13 +73,19 @@ export function NewAvatarForm() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const stopAudio = useCallback(() => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     setPlayingVoiceId(null);
   }, []);
 
   function toggleVoicePreview(voice: Voice) {
     if (!voice.preview_audio) return;
-    if (playingVoiceId === voice.voice_id) { stopAudio(); return; }
+    if (playingVoiceId === voice.voice_id) {
+      stopAudio();
+      return;
+    }
     stopAudio();
     const audio = new Audio(voice.preview_audio);
     audio.onended = () => setPlayingVoiceId(null);
@@ -85,7 +97,9 @@ export function NewAvatarForm() {
   useEffect(() => stopAudio, [stopAudio]);
 
   useEffect(() => {
-    fetch("/api/image-models").then((r) => r.json()).then(setModels);
+    fetch("/api/image-models")
+      .then((r) => r.json())
+      .then(setModels);
 
     let cancelled = false;
 
@@ -119,20 +133,48 @@ export function NewAvatarForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
-    if (!name.trim()) { toast.error("Name is required"); return; }
-    if (!voiceId) { toast.error("Voice is required"); return; }
-    if (mode === "generate") {
-      if (!age || isNaN(Number(age))) { toast.error("Valid age is required"); return; }
-      if (!ethnicity) { toast.error("Ethnicity is required"); return; }
-      if (!occupation.trim()) { toast.error("Occupation is required"); return; }
+    if (!name.trim()) {
+      toast.error("Name is required");
+      return;
     }
-    if (mode === "upload" && !imageBase64) { toast.error("Please select an image"); return; }
+    if (!voiceId) {
+      toast.error("Voice is required");
+      return;
+    }
+    if (mode === "generate") {
+      if (!age || Number.isNaN(Number(age))) {
+        toast.error("Valid age is required");
+        return;
+      }
+      if (!ethnicity) {
+        toast.error("Ethnicity is required");
+        return;
+      }
+      if (!occupation.trim()) {
+        toast.error("Occupation is required");
+        return;
+      }
+    }
+    if (mode === "upload" && !imageBase64) {
+      toast.error("Please select an image");
+      return;
+    }
 
     setLoading(true);
     try {
-      const body = mode === "upload"
-        ? { name, voiceId, imageBase64 }
-        : { name, voiceId, gender, age: Number(age), ethnicity, origin: origin.trim() || undefined, occupation, imageModel };
+      const body =
+        mode === "upload"
+          ? { name, voiceId, imageBase64 }
+          : {
+              name,
+              voiceId,
+              gender,
+              age: Number(age),
+              ethnicity,
+              origin: origin.trim() || undefined,
+              occupation,
+              imageModel,
+            };
 
       const res = await fetch("/api/avatars", {
         method: "POST",
@@ -163,18 +205,36 @@ export function NewAvatarForm() {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Mode toggle */}
       <div className="flex gap-2">
-        <Button type="button" variant={mode === "generate" ? "default" : "outline"} size="sm" onClick={() => setMode("generate")}>
-          <Sparkles className="h-3.5 w-3.5 mr-1.5" />Generate with AI
+        <Button
+          type="button"
+          variant={mode === "generate" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setMode("generate")}
+        >
+          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+          Generate with AI
         </Button>
-        <Button type="button" variant={mode === "upload" ? "default" : "outline"} size="sm" onClick={() => setMode("upload")}>
-          <Upload className="h-3.5 w-3.5 mr-1.5" />Upload Image
+        <Button
+          type="button"
+          variant={mode === "upload" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setMode("upload")}
+        >
+          <Upload className="mr-1.5 h-3.5 w-3.5" />
+          Upload Image
         </Button>
       </div>
 
       {/* Name */}
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Dr. James" required />
+        <Input
+          id="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Dr. James"
+          required
+        />
       </div>
 
       {/* Voice */}
@@ -185,16 +245,29 @@ export function NewAvatarForm() {
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 w-9 p-0 shrink-0"
-            onClick={() => { const v = voices.find((v) => v.voice_id === voiceId); if (v) toggleVoicePreview(v); }}
+            className="h-9 w-9 shrink-0 p-0"
+            onClick={() => {
+              const v = voices.find((v) => v.voice_id === voiceId);
+              if (v) toggleVoicePreview(v);
+            }}
             disabled={!voices.find((v) => v.voice_id === voiceId)?.preview_audio}
             title="Preview voice"
           >
-            {playingVoiceId === voiceId
-              ? <Square className="h-3.5 w-3.5 fill-current" />
-              : <Play className="h-3.5 w-3.5 fill-current" />}
+            {playingVoiceId === voiceId ? (
+              <Square className="h-3.5 w-3.5 fill-current" />
+            ) : (
+              <Play className="h-3.5 w-3.5 fill-current" />
+            )}
           </Button>
-          <Select value={voiceId} onValueChange={(v: string | null) => { if (v) { stopAudio(); setVoiceId(v); } }}>
+          <Select
+            value={voiceId}
+            onValueChange={(v: string | null) => {
+              if (v) {
+                stopAudio();
+                setVoiceId(v);
+              }
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select voice…" />
             </SelectTrigger>
@@ -254,7 +327,9 @@ export function NewAvatarForm() {
               </SelectTrigger>
               <SelectContent>
                 {ETHNICITIES.map((e) => (
-                  <SelectItem key={e} value={e}>{e}</SelectItem>
+                  <SelectItem key={e} value={e}>
+                    {e}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -263,7 +338,7 @@ export function NewAvatarForm() {
           {/* Origin (optional) */}
           <div className="space-y-2">
             <Label htmlFor="origin">
-              Origin <span className="text-muted-foreground font-normal">(optional)</span>
+              Origin <span className="font-normal text-muted-foreground">(optional)</span>
             </Label>
             <Input
               id="origin"
@@ -295,7 +370,7 @@ export function NewAvatarForm() {
                 {models.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     <span className="font-medium">{m.name}</span>
-                    <span className="text-muted-foreground ml-2 text-xs">{m.description}</span>
+                    <span className="ml-2 text-muted-foreground text-xs">{m.description}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -306,28 +381,43 @@ export function NewAvatarForm() {
         <div className="space-y-2">
           <Label>Image</Label>
           <Card
-            className="border-dashed cursor-pointer hover:border-primary/50 transition-colors"
+            className="cursor-pointer border-dashed transition-colors hover:border-primary/50"
             onClick={() => fileRef.current?.click()}
           >
-            <CardContent className="flex flex-col items-center justify-center py-8 gap-3">
+            <CardContent className="flex flex-col items-center justify-center gap-3 py-8">
               {previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={previewUrl} alt="Preview" className="max-h-48 rounded-md object-contain" />
+                // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="max-h-48 rounded-md object-contain"
+                />
               ) : (
                 <>
                   <Upload className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Click to select an image (PNG or JPEG)</p>
+                  <p className="text-muted-foreground text-sm">
+                    Click to select an image (PNG or JPEG)
+                  </p>
                 </>
               )}
             </CardContent>
           </Card>
-          <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFile} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            className="hidden"
+            onChange={handleFile}
+          />
         </div>
       )}
 
       <Button type="submit" disabled={loading} className="w-full">
         {loading ? (
-          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{mode === "generate" ? "Submitting…" : "Creating…"}</>
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {mode === "generate" ? "Submitting…" : "Creating…"}
+          </>
         ) : (
           "Create Avatar"
         )}
