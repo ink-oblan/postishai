@@ -2,6 +2,18 @@
 
 Next.js app with a PostgreSQL-backed Prisma database and a separate worker process.
 
+## Source Layout
+
+Application source code lives in `src/`:
+
+- `src/app`: Next.js App Router routes, layouts, API routes, and prompt templates
+- `src/components`: React components
+- `src/lib`: shared application libraries
+- `src/workers` and `src/worker.ts`: background worker entrypoint and jobs
+- `src/scripts`: project scripts run through npm
+
+Root-level config, Prisma schema/migrations, Docker files, environment files, and `public/` stay at the repository root for their respective tools.
+
 ## Local Docker Development
 
 Copy `.env.example` to `.env` and fill in the API credentials:

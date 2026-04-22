@@ -27,9 +27,9 @@ Known API references for this project:
 <!-- END:api-integration-rules -->
 
 <!-- BEGIN:ai-prompt-location -->
-# AI prompts belong in app/api/prompts
+# AI prompts belong in src/app/api/prompts
 
-Always store prompt text sent to AI services or models in `app/api/prompts`. Do not inline AI prompt prose in route handlers, libraries, workers, or components; load and render a prompt template from `app/api/prompts` instead.
+Always store prompt text sent to AI services or models in `src/app/api/prompts`. Do not inline AI prompt prose in route handlers, libraries, workers, or components; load and render a prompt template from `src/app/api/prompts` instead.
 <!-- END:ai-prompt-location -->
 
 <!-- BEGIN:ffmpeg-video-processing -->

@@ -41,7 +41,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/lib/generated/prisma
+/src/lib/generated/prisma
 
 # Dev log
 *.log
@@ -50,7 +50,7 @@ next-env.d.ts
 notes.md
 
 # Local storage and generated workspace files
-storage/
+/storage/
 backups/
 /prisma/dev.db
 /prisma/dev.db-shm

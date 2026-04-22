@@ -56,20 +56,18 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
       throw new Error(`Post ${payload.postId} not found`);
     }
 
-    const useVariation = post.avatarVariation?.status === "COMPLETED";
-    let heygenAssetId = useVariation
-      ? post.avatarVariation?.heygenAssetId
-      : post.avatar.heygenAssetId;
+    const variation = post.avatarVariation?.status === "COMPLETED" ? post.avatarVariation : null;
+    let heygenAssetId = variation ? variation.heygenAssetId : post.avatar.heygenAssetId;
 
     if (!heygenAssetId) {
-      const imagePath = useVariation ? post.avatarVariation?.imagePath : post.avatar.imagePath;
+      const imagePath = variation ? variation.imagePath : post.avatar.imagePath;
       const mimeType = imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
       const imageBuffer = await readFile(imagePath);
       const uploaded = await uploadAvatarImage(imageBuffer, mimeType);
       heygenAssetId = uploaded.assetId;
-      if (useVariation) {
+      if (variation) {
         await ctx.db.avatarVariation.update({
-          where: { id: post.avatarVariation?.id },
+          where: { id: variation.id },
           data: { heygenAssetId: uploaded.assetId, heygenAssetUrl: uploaded.assetUrl },
         });
       } else {

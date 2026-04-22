@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import Handlebars from "handlebars";
 
-const PROMPTS_DIR = path.join(process.cwd(), "app/api/prompts");
+const PROMPTS_DIR = path.join(process.cwd(), "src/app/api/prompts");
 
 const compiledTemplates = new Map<string, HandlebarsTemplateDelegate>();
 
