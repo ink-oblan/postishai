@@ -1,6 +1,7 @@
 // @vitest-environment node
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { SignJWT, jwtVerify } from "jose";
+
+import { jwtVerify, SignJWT } from "jose";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const TEST_SECRET = new TextEncoder().encode("test-secret-key-that-is-at-least-32-chars-long");
 
@@ -30,7 +31,7 @@ vi.mock("@/lib/auth/secret", () => ({
   SESSION_SECRET: new TextEncoder().encode("test-secret-key-that-is-at-least-32-chars-long"),
 }));
 
-import { createSession, verifySessionToken, deleteSession, getSessionCookie } from "../session";
+import { createSession, deleteSession, getSessionCookie, verifySessionToken } from "../session";
 
 describe("verifySessionToken", () => {
   it("verifies a valid JWT and returns the payload", async () => {
@@ -40,9 +41,7 @@ describe("verifySessionToken", () => {
       .sign(TEST_SECRET);
 
     const result = await verifySessionToken(token);
-    expect(result).toEqual(
-      expect.objectContaining({ sessionId: "sess-1", userId: "user-1" }),
-    );
+    expect(result).toEqual(expect.objectContaining({ sessionId: "sess-1", userId: "user-1" }));
   });
 
   it("returns null for an invalid token", async () => {

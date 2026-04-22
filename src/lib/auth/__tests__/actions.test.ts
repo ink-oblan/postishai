@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockPrisma, mockHashPassword, mockVerifyPassword, mockCreateSession, mockRedirect } =
   vi.hoisted(() => {
@@ -59,7 +59,10 @@ describe("register", () => {
   });
 
   it("returns validation errors for invalid input", async () => {
-    const result = await register(undefined, makeFormData({ name: "", email: "bad", password: "short" }));
+    const result = await register(
+      undefined,
+      makeFormData({ name: "", email: "bad", password: "short" }),
+    );
     expect(result?.errors).toBeDefined();
   });
 
@@ -81,7 +84,10 @@ describe("register", () => {
     mockCreateSession.mockResolvedValue(undefined);
 
     await expect(
-      register(undefined, makeFormData({ name: "John", email: "john@example.com", password: "secure1pass" })),
+      register(
+        undefined,
+        makeFormData({ name: "John", email: "john@example.com", password: "secure1pass" }),
+      ),
     ).rejects.toThrow("NEXT_REDIRECT:/dashboard");
 
     expect(mockHashPassword).toHaveBeenCalledWith("secure1pass");

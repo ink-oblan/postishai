@@ -1,5 +1,8 @@
 // @vitest-environment node
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import type { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+type NextRouteContext = { params: Promise<Record<string, string>> };
 
 const { mockGetSessionCookie, mockVerifySessionToken, mockPrisma } = vi.hoisted(() => ({
   mockGetSessionCookie: vi.fn(),
@@ -21,10 +24,10 @@ vi.mock("@/lib/db", () => ({
 }));
 
 vi.mock("react", () => ({
-  cache: (fn: Function) => fn,
+  cache: (fn: (...args: never) => unknown) => fn,
 }));
 
-import { verifySession, requireSession, withAuth, AuthError } from "../dal";
+import { AuthError, requireSession, verifySession, withAuth } from "../dal";
 
 const fakeUser = {
   id: "user-1",
@@ -122,7 +125,10 @@ describe("withAuth", () => {
     const wrapped = withAuth(handler);
 
     const request = new Request("http://localhost/api/test");
-    const response = await wrapped(request as any, {} as any);
+    const response = await wrapped(
+      request as unknown as NextRequest,
+      {} as unknown as NextRouteContext,
+    );
 
     expect(response.status).toBe(401);
     expect(handler).not.toHaveBeenCalled();
@@ -142,7 +148,10 @@ describe("withAuth", () => {
     const wrapped = withAuth(handler);
 
     const request = new Request("http://localhost/api/test");
-    const response = await wrapped(request as any, {} as any);
+    const response = await wrapped(
+      request as unknown as NextRequest,
+      {} as unknown as NextRouteContext,
+    );
 
     expect(response.status).toBe(200);
     expect(handler).toHaveBeenCalledWith(
@@ -166,7 +175,10 @@ describe("withAuth", () => {
     const wrapped = withAuth(handler);
 
     const request = new Request("http://localhost/api/test");
-    const response = await wrapped(request as any, {} as any);
+    const response = await wrapped(
+      request as unknown as NextRequest,
+      {} as unknown as NextRouteContext,
+    );
 
     expect(response.status).toBe(401);
   });
@@ -185,6 +197,8 @@ describe("withAuth", () => {
     const wrapped = withAuth(handler);
 
     const request = new Request("http://localhost/api/test");
-    await expect(wrapped(request as any, {} as any)).rejects.toThrow("unexpected");
+    await expect(
+      wrapped(request as unknown as NextRequest, {} as unknown as NextRouteContext),
+    ).rejects.toThrow("unexpected");
   });
 });

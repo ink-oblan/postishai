@@ -45,7 +45,7 @@ describe("SignupSchema", () => {
     if (!result.success) {
       const nameErrors = result.error.flatten().fieldErrors.name;
       expect(nameErrors).toBeDefined();
-      expect(nameErrors![0]).toContain("at least 2 characters");
+      expect(nameErrors?.[0]).toContain("at least 2 characters");
     }
   });
 
@@ -71,7 +71,7 @@ describe("SignupSchema", () => {
     if (!result.success) {
       const pwErrors = result.error.flatten().fieldErrors.password;
       expect(pwErrors).toBeDefined();
-      expect(pwErrors!.some((e) => e.includes("at least 8 characters"))).toBe(true);
+      expect(pwErrors?.some((e) => e.includes("at least 8 characters"))).toBe(true);
     }
   });
 
@@ -85,7 +85,7 @@ describe("SignupSchema", () => {
     if (!result.success) {
       const pwErrors = result.error.flatten().fieldErrors.password;
       expect(pwErrors).toBeDefined();
-      expect(pwErrors!.some((e) => e.includes("at least one letter"))).toBe(true);
+      expect(pwErrors?.some((e) => e.includes("at least one letter"))).toBe(true);
     }
   });
 
@@ -99,7 +99,7 @@ describe("SignupSchema", () => {
     if (!result.success) {
       const pwErrors = result.error.flatten().fieldErrors.password;
       expect(pwErrors).toBeDefined();
-      expect(pwErrors!.some((e) => e.includes("at least one number"))).toBe(true);
+      expect(pwErrors?.some((e) => e.includes("at least one number"))).toBe(true);
     }
   });
 
@@ -150,7 +150,7 @@ describe("LoginSchema", () => {
     if (!result.success) {
       const pwErrors = result.error.flatten().fieldErrors.password;
       expect(pwErrors).toBeDefined();
-      expect(pwErrors![0]).toContain("Password is required");
+      expect(pwErrors?.[0]).toContain("Password is required");
     }
   });
 });
