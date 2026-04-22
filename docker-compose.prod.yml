@@ -1,56 +1,20 @@
 services:
-  db:
-    image: postgres:18.3-alpine
-    environment:
-      POSTGRES_DB: postishai
-      POSTGRES_USER: postishai
-      POSTGRES_PASSWORD: postishai
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postishai -d postishai"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   app:
     build:
-      context: .
       target: prod
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://postishai:postishai@db:5432/postishai?schema=public
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
-      STORAGE_PATH: /app/storage
     command: sh -c "npm run start 2>&1 | tee /logs/dev.log"
-    ports:
-      - "3000:3000"
     volumes:
       - ./storage:/app/storage
       - .:/logs
-    depends_on:
-      db:
-        condition: service_healthy
 
   worker:
     build:
-      context: .
       target: prod
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://postishai:postishai@db:5432/postishai?schema=public
-      STORAGE_PATH: /app/storage
     command: sh -c "npm run worker:start 2>&1 | tee /logs/worker.log"
     volumes:
       - ./storage:/app/storage
       - .:/logs
-    depends_on:
-      db:
-        condition: service_healthy
 
 volumes:
-  postgres_data:
+  app_node_modules: ~
+  worker_node_modules: ~

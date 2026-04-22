@@ -22,10 +22,10 @@ The app and worker stream logs into `dev.log` and `worker.log` in the repository
 ## Production Compose
 
 ```bash
-docker compose -f docker-compose.prod.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 ```
 
-The production compose file builds the Next.js app, applies migrations, starts `next start`, and starts the worker. Replace the default PostgreSQL credentials before deploying outside local infrastructure.
+`docker-compose.prod.yml` is an override file — it only contains prod-specific values (build target, commands, volumes). The base `docker-compose.yml` is always required. Replace the default PostgreSQL credentials before deploying outside local infrastructure.
 
 ## Optional PostgreSQL Backups
 
@@ -59,7 +59,7 @@ For production compose:
 
 ```bash
 POSTGRES_BACKUP_DOCKER_SERVICE=db \
-POSTGRES_BACKUP_COMPOSE_FILE=docker-compose.prod.yml \
+POSTGRES_BACKUP_COMPOSE_FILE=docker-compose.yml,docker-compose.prod.yml \
 POSTGRES_BACKUP_ENV=prod \
 npm run backup:db
 ```
