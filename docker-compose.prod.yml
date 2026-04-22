@@ -2,7 +2,7 @@ services:
   app:
     build:
       target: prod
-    command: sh -c "npm run start 2>&1 | tee /logs/dev.log"
+    command: sh -c "npm run app:start 2>&1 | tee /logs/dev.log"
     volumes:
       - ./storage:/app/storage
       - .:/logs

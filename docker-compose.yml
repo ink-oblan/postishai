@@ -25,7 +25,7 @@ services:
       DATABASE_URL: postgresql://postishai:postishai@db:5432/postishai?schema=public
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       STORAGE_PATH: /app/storage
-    command: sh -c "npm ci && npm run dev:docker"
+    command: sh -c "npm ci && npm run app:dev:docker"
     ports:
       - "3000:3000"
     volumes:
@@ -45,7 +45,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postishai:postishai@db:5432/postishai?schema=public
       STORAGE_PATH: /app/storage
-    command: sh -c "npm ci && npx prisma generate && npm run worker"
+    command: sh -c "npm ci && npx prisma generate && npm run worker:dev"
     volumes:
       - .:/app
       - worker_node_modules:/app/node_modules

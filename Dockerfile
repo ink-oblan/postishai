@@ -12,15 +12,15 @@ FROM deps AS dev
 
 COPY . .
 EXPOSE 3000
-CMD ["sh", "-c", "npm ci && npm run dev:docker"]
+CMD ["sh", "-c", "npm ci && npm run app:dev:docker"]
 
 FROM deps AS prod
 
 COPY . .
 RUN npx prisma generate
-RUN npm run build
+RUN npm run app:build
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
-CMD ["npm", "run", "start:logged"]
+CMD ["npm", "run", "app:start:logged"]

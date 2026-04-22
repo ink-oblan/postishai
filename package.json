@@ -3,13 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev 2>&1 | tee dev.log",
-    "dev:docker": "npx prisma generate && npm run dev",
-    "build": "next build",
-    "start": "next start",
-    "start:logged": "next start 2>&1 | tee dev.log",
-    "worker": "tsx watch src/worker.ts 2>&1 | tee worker.log",
-    "worker:start": "tsx src/worker.ts 2>&1 | tee worker.log",
+    "dev": "docker compose up --build",
+    "start": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d",
+    "stop": "docker compose down",
+    "logs": "docker compose logs -f app worker",
     "backup:db": "tsx src/scripts/backup-postgres-to-s3.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --fix .",
@@ -17,7 +14,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "app:dev": "next dev 2>&1 | tee dev.log",
+    "app:dev:docker": "npx prisma generate && npm run app:dev",
+    "app:build": "next build",
+    "app:start": "next start",
+    "app:start:logged": "next start 2>&1 | tee dev.log",
+    "worker:dev": "tsx watch src/worker.ts 2>&1 | tee worker.log",
+    "worker:start": "tsx src/worker.ts 2>&1 | tee worker.log"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1033.0",

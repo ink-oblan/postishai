@@ -20,7 +20,7 @@ Copy `.env.example` to `.env` and fill in the API credentials:
 
 ```bash
 cp .env.example .env
-docker compose up --build
+npm run dev
 ```
 
 The compose stack starts:
@@ -34,7 +34,7 @@ The app and worker stream logs into `dev.log` and `worker.log` in the repository
 ## Production Compose
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+npm run start
 ```
 
 `docker-compose.prod.yml` is an override file — it only contains prod-specific values (build target, commands, volumes). The base `docker-compose.yml` is always required. Replace the default PostgreSQL credentials before deploying outside local infrastructure.
