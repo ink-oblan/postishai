@@ -28,7 +28,8 @@ vi.mock("@/lib/db", () => ({
 }));
 
 vi.mock("@/lib/auth/secret", () => ({
-  SESSION_SECRET: new TextEncoder().encode("test-secret-key-that-is-at-least-32-chars-long"),
+  getSessionSecret: () =>
+    new TextEncoder().encode("test-secret-key-that-is-at-least-32-chars-long"),
 }));
 
 import { createSession, deleteSession, getSessionCookie, verifySessionToken } from "../session";

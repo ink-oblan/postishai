@@ -18,8 +18,8 @@
     "app:dev": "next dev 2>&1 | tee dev.log",
     "app:dev:docker": "npx prisma generate && npm run app:dev",
     "app:build": "next build",
-    "app:start": "next start",
-    "app:start:logged": "next start 2>&1 | tee dev.log",
+    "app:start": "node .next/standalone/server.js",
+    "app:start:logged": "node .next/standalone/server.js 2>&1 | tee dev.log",
     "worker:dev": "tsx watch src/worker.ts 2>&1 | tee worker.log",
     "worker:start": "tsx src/worker.ts 2>&1 | tee worker.log"
   },
@@ -33,6 +33,7 @@
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^16.6.1",
     "handlebars": "^4.7.8",
     "jose": "^6.2.2",
     "lucide-react": "^1.8.0",

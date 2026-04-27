@@ -1,7 +1,7 @@
 import { jwtVerify } from "jose";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { SESSION_SECRET } from "@/lib/auth/secret";
+import { getSessionSecret } from "@/lib/auth/secret";
 
 const PUBLIC_PATHS = ["/login", "/api/auth"];
 const STATIC_PATHS = ["/_next", "/favicon.ico", "/logo.svg", "/logo-dark.svg"];
@@ -22,7 +22,7 @@ export async function proxy(request: NextRequest) {
       const token = request.cookies.get("session")?.value;
       if (token) {
         try {
-          await jwtVerify(token, SESSION_SECRET);
+          await jwtVerify(token, getSessionSecret());
           return NextResponse.redirect(new URL("/dashboard", request.url));
         } catch {
           // Invalid token, let them see login page
@@ -42,7 +42,7 @@ export async function proxy(request: NextRequest) {
   }
 
   try {
-    await jwtVerify(token, SESSION_SECRET);
+    await jwtVerify(token, getSessionSecret());
     return NextResponse.next();
   } catch {
     if (isApi) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
