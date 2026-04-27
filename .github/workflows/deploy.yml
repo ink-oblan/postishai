@@ -1,0 +1,46 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /opt/postishai
+
+            git fetch origin main
+            git reset --hard origin/main
+
+            mkdir -p storage logs
+            npm ci --omit=dev --ignore-scripts
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml build --pull
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+            docker image prune -f
+
+            for attempt in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:3000 >/dev/null; then
+                exit 0
+              fi
+              sleep 2
+            done
+
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100 app
+            exit 1

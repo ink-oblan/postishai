@@ -1,7 +1,7 @@
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { SESSION_SECRET } from "./secret";
+import { getSessionSecret } from "./secret";
 
 const SESSION_COOKIE = "session";
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -16,7 +16,7 @@ export async function createSession(userId: string): Promise<void> {
   const token = await new SignJWT({ sessionId: session.id, userId })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(expiresAt)
-    .sign(SESSION_SECRET);
+    .sign(getSessionSecret());
 
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
@@ -32,7 +32,7 @@ export async function verifySessionToken(
   token: string,
 ): Promise<{ sessionId: string; userId: string } | null> {
   try {
-    const { payload } = await jwtVerify(token, SESSION_SECRET);
+    const { payload } = await jwtVerify(token, getSessionSecret());
     return payload as { sessionId: string; userId: string };
   } catch {
     return null;
