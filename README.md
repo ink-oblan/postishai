@@ -31,13 +31,15 @@ The compose stack starts:
 
 The app and worker stream logs into `dev.log` and `worker.log` in the repository root.
 
+The Docker services read `DATABASE_URL` from `.env`; use the Compose database hostname `db` there.
+
 ## Production Compose
 
 ```bash
 npm run start
 ```
 
-`docker-compose.prod.yml` is an override file — it only contains prod-specific values (build target, commands, volumes). The base `docker-compose.yml` is always required. Replace the default PostgreSQL credentials before deploying outside local infrastructure.
+`docker-compose.prod.yml` is an override file — it only contains prod-specific values (build target, commands, volumes). The base `docker-compose.yml` is always required. Set `POSTGRES_PASSWORD` and a matching `DATABASE_URL` before starting production compose; production intentionally has no default database password.
 
 ## Optional PostgreSQL Backups
 

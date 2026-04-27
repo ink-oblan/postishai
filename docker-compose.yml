@@ -22,7 +22,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://postishai:postishai@db:5432/postishai?schema=public
+      DATABASE_URL: ${DATABASE_URL}
       HUSKY: "0"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       STORAGE_PATH: /app/storage
@@ -44,7 +44,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://postishai:postishai@db:5432/postishai?schema=public
+      DATABASE_URL: ${DATABASE_URL}
       HUSKY: "0"
       STORAGE_PATH: /app/storage
     command: sh -c "npm ci && npx prisma generate && npm run worker:dev"
