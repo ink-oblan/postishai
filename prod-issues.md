@@ -1,4 +1,4 @@
-- Make github CD deploy working.
+- [x] Make github CD deploy working.
 - We shouldn't use "-postishai" in prod compose in password. Should we?
 - volumes: !override not required?
 - ports: !reset [] - why?
