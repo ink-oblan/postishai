@@ -2,7 +2,7 @@ services:
   db:
     restart: unless-stopped
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postishai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports: !reset []
     volumes: !override
       - postgres_data:/var/lib/postgresql
@@ -12,7 +12,7 @@ services:
       context: .
       target: migrate
     environment:
-      DATABASE_URL: postgresql://postishai:${POSTGRES_PASSWORD:-postishai}@db:5432/postishai?schema=public
+      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       db:
         condition: service_healthy
@@ -23,7 +23,7 @@ services:
       target: prod
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://postishai:${POSTGRES_PASSWORD:-postishai}@db:5432/postishai?schema=public
+      DATABASE_URL: ${DATABASE_URL}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       NODE_ENV: production
     command: ["node", "server.js"]
@@ -41,7 +41,7 @@ services:
       target: prod-build
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://postishai:${POSTGRES_PASSWORD:-postishai}@db:5432/postishai?schema=public
+      DATABASE_URL: ${DATABASE_URL}
       NODE_ENV: production
     command: sh -c "npm run worker:start 2>&1 | tee /logs/worker.log"
     volumes: !override
@@ -50,8 +50,3 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-
-volumes:
-  postgres_data: ~
-  app_node_modules: ~
-  worker_node_modules: ~
