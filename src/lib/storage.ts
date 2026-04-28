@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { config } from "./config";
 
 function storageRoot(): string {
-  const configuredPath = process.env.STORAGE_PATH ?? "storage";
+  const configuredPath = config.storagePath;
   if (path.isAbsolute(configuredPath)) return configuredPath;
   return path.join(/*turbopackIgnore: true*/ process.cwd(), configuredPath);
 }

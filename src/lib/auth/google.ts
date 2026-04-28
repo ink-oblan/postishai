@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { config } from "../config";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -7,13 +8,12 @@ const GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
 const googleJWKS = createRemoteJWKSet(new URL(GOOGLE_JWKS_URL));
 
 function getRedirectUri() {
-  const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return `${base}/api/auth/google/callback`;
+  return `${config.appUrl}/api/auth/google/callback`;
 }
 
 export function getGoogleAuthUrl(state: string): string {
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_OAUTH_CLIENT_ID as string,
+    client_id: config.google.oauthClientId,
     redirect_uri: getRedirectUri(),
     response_type: "code",
     scope: "openid email profile",
@@ -31,8 +31,8 @@ export async function exchangeCodeForTokens(code: string) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID as string,
-      client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET as string,
+      client_id: config.google.oauthClientId,
+      client_secret: config.google.oauthClientSecret,
       redirect_uri: getRedirectUri(),
       grant_type: "authorization_code",
     }),
@@ -60,7 +60,7 @@ export type GoogleUser = {
 export async function verifyGoogleIdToken(idToken: string): Promise<GoogleUser> {
   const { payload } = await jwtVerify(idToken, googleJWKS, {
     issuer: ["https://accounts.google.com", "accounts.google.com"],
-    audience: process.env.GOOGLE_OAUTH_CLIENT_ID as string,
+    audience: config.google.oauthClientId,
   });
 
   const { sub, email, email_verified, name, picture } = payload as Record<string, unknown>;

@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { config } from "../../config";
 import type { ImageGenerationOptions, ImageGenerationResult, ImageModelAdapter } from "../types";
 
 const GEMINI_TIMEOUT_MS = 540_000; // 540s — under the worker's 600s variation job timeout
@@ -9,7 +10,7 @@ async function generateWithGeminiImage(
   aspectRatio: string = "9:16",
 ): Promise<ImageGenerationResult> {
   const client = new GoogleGenAI({
-    apiKey: process.env.GOOGLE_API_KEY as string,
+    apiKey: config.google.apiKey,
     httpOptions: { timeout: GEMINI_TIMEOUT_MS },
   });
 
@@ -29,14 +30,14 @@ async function generateWithGeminiImage(
       ]
     : options.prompt;
 
-  const config = options.sourceImage
+  const generateConfig = options.sourceImage
     ? { responseModalities: ["IMAGE"] as ["IMAGE"] }
     : { responseModalities: ["IMAGE"] as ["IMAGE"], imageConfig: { aspectRatio } };
 
   const response = await client.models.generateContent({
     model: modelId,
     contents,
-    config,
+    config: generateConfig,
   });
   const part = response.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
   if (!part?.inlineData?.data) throw new Error("No image returned from Gemini");

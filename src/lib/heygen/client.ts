@@ -1,3 +1,4 @@
+import { config } from "../config";
 import type {
   HeyGenCreateVideoPayload,
   HeyGenCreateVideoResponse,
@@ -10,14 +11,8 @@ import type {
 const API_BASE = "https://api.heygen.com";
 const UPLOAD_BASE = "https://upload.heygen.com";
 
-function apiKey(): string {
-  const key = process.env.HEYGEN_API_KEY;
-  if (!key) throw new Error("HEYGEN_API_KEY not set");
-  return key;
-}
-
 function headers(extra?: Record<string, string>) {
-  return { "x-api-key": apiKey(), ...extra };
+  return { "x-api-key": config.heygen.apiKey, ...extra };
 }
 
 export async function uploadAvatarImage(

@@ -1,4 +1,5 @@
 import type { User } from "@prisma/client";
+import { config } from "../config";
 
 type TelegramConfig = {
   token: string;
@@ -6,28 +7,21 @@ type TelegramConfig = {
 };
 
 function getTelegramConfig(): TelegramConfig | null {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_APPROVAL_CHAT_ID;
-
-  if (!token || !chatId) return null;
-
-  return { token, chatId };
+  const { botToken, approvalChatId } = config.telegram;
+  if (!botToken || !approvalChatId) return null;
+  return { token: botToken, chatId: approvalChatId };
 }
 
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
-function getAppUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-}
-
 export async function notifySignupForApproval(user: User): Promise<void> {
-  const config = getTelegramConfig();
-  if (!config) return;
+  const tg = getTelegramConfig();
+  if (!tg) return;
 
   const approveUrl = user.approvalToken
-    ? `${getAppUrl()}/api/auth/approve?token=${encodeURIComponent(user.approvalToken)}`
+    ? `${config.appUrl}/api/auth/approve?token=${encodeURIComponent(user.approvalToken)}`
     : null;
 
   const details = user.approvalDetails?.trim();
@@ -42,17 +36,17 @@ export async function notifySignupForApproval(user: User): Promise<void> {
     lines.push("", "<b>Usage details:</b>", escapeHtml(details));
   }
 
-  await sendTelegramMessage(config, lines.join("\n"), approveUrl).catch((error) => {
+  await sendTelegramMessage(tg, lines.join("\n"), approveUrl).catch((error) => {
     console.error("Telegram approval notification failed", error);
   });
 }
 
 export async function notifyApprovalDetails(user: User): Promise<void> {
-  const config = getTelegramConfig();
-  if (!config) return;
+  const tg = getTelegramConfig();
+  if (!tg) return;
 
   const approveUrl = user.approvalToken
-    ? `${getAppUrl()}/api/auth/approve?token=${encodeURIComponent(user.approvalToken)}`
+    ? `${config.appUrl}/api/auth/approve?token=${encodeURIComponent(user.approvalToken)}`
     : null;
 
   const lines = [
@@ -65,21 +59,21 @@ export async function notifyApprovalDetails(user: User): Promise<void> {
     escapeHtml(user.approvalDetails?.trim() || "Not provided"),
   ];
 
-  await sendTelegramMessage(config, lines.join("\n"), approveUrl).catch((error) => {
+  await sendTelegramMessage(tg, lines.join("\n"), approveUrl).catch((error) => {
     console.error("Telegram approval details notification failed", error);
   });
 }
 
 async function sendTelegramMessage(
-  config: TelegramConfig,
+  tg: TelegramConfig,
   text: string,
   approveUrl: string | null,
 ): Promise<void> {
-  const response = await fetch(`https://api.telegram.org/bot${config.token}/sendMessage`, {
+  const response = await fetch(`https://api.telegram.org/bot${tg.token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      chat_id: config.chatId,
+      chat_id: tg.chatId,
       text,
       parse_mode: "HTML",
       reply_markup: approveUrl

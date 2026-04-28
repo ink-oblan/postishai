@@ -1,6 +1,7 @@
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
+import { config } from "../config";
 import { getSessionSecret } from "./secret";
 
 const SESSION_COOKIE = "session";
@@ -21,7 +22,7 @@ export async function createSession(userId: string): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: config.isProduction,
     sameSite: "lax",
     expires: expiresAt,
     path: "/",

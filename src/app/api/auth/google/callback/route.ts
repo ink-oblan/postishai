@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens, verifyGoogleIdToken } from "@/lib/auth/google";
 import { createSession } from "@/lib/auth/session";
 import { notifySignupForApproval } from "@/lib/auth/telegram-approval";
+import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
 
 function createApprovalToken(): string {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get("state");
   const error = searchParams.get("error");
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = config.appUrl;
 
   const cookieStore = await cookies();
   const storedState = cookieStore.get("oauth_state")?.value;
