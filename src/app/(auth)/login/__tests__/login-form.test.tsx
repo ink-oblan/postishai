@@ -55,6 +55,7 @@ describe("LoginForm", () => {
     await user.click(signUpButtons[0]);
 
     expect(screen.getByLabelText("Name")).toBeInTheDocument();
+    expect(screen.getByLabelText("How will you use PostishAI? Optional")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create account" })).toBeInTheDocument();
   });
 

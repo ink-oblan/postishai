@@ -8,5 +8,6 @@ export const GET = withAuth(async function GET(_req, _ctx, session) {
     name: user.name,
     email: user.email,
     avatarUrl: user.avatarUrl,
+    approvedAt: user.approvedAt,
   });
 });

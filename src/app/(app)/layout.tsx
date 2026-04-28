@@ -5,6 +5,7 @@ import { verifySession } from "@/lib/auth/dal";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await verifySession();
   if (!session) redirect("/login");
+  if (!session.user.approvedAt) redirect("/pending-approval");
 
   const { user } = session;
 
