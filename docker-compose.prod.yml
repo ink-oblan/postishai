@@ -8,6 +8,7 @@ services:
       - postgres_data:/var/lib/postgresql
 
   migrate:
+    image: ${IMAGE_BASE:-ghcr.io/placeholder}/migrate:${IMAGE_TAG:-latest}
     build:
       context: .
       target: migrate
@@ -19,6 +20,7 @@ services:
     restart: "no"
 
   app:
+    image: ${IMAGE_BASE:-ghcr.io/placeholder}/app:${IMAGE_TAG:-latest}
     build:
       target: prod
     restart: unless-stopped
@@ -37,6 +39,7 @@ services:
         condition: service_completed_successfully
 
   worker:
+    image: ${IMAGE_BASE:-ghcr.io/placeholder}/worker:${IMAGE_TAG:-latest}
     build:
       target: prod-build
     restart: unless-stopped
