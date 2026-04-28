@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: postishai
       POSTGRES_USER: postishai
-      POSTGRES_PASSWORD: postishai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -22,7 +22,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postishai:${POSTGRES_PASSWORD}@db:5432/postishai?schema=public
       HUSKY: "0"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       STORAGE_PATH: /app/storage
@@ -46,7 +46,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postishai:${POSTGRES_PASSWORD}@db:5432/postishai?schema=public
       HUSKY: "0"
       STORAGE_PATH: /app/storage
     command: sh -c "npm ci && npx prisma generate && npm run worker:dev"

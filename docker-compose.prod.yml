@@ -13,7 +13,7 @@ services:
       context: .
       target: migrate
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postishai:${POSTGRES_PASSWORD}@db:5432/postishai?schema=public
     depends_on:
       db:
         condition: service_healthy
@@ -25,7 +25,7 @@ services:
       target: prod
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postishai:${POSTGRES_PASSWORD}@db:5432/postishai?schema=public
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       NODE_ENV: production
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -48,7 +48,7 @@ services:
       target: prod-build
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postishai:${POSTGRES_PASSWORD}@db:5432/postishai?schema=public
       NODE_ENV: production
     command: sh -c "npm run worker:start 2>&1 | tee /logs/worker.log"
     volumes: !override

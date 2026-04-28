@@ -31,7 +31,7 @@ The compose stack starts:
 
 The app and worker stream logs into `dev.log` and `worker.log` in the repository root.
 
-The Docker services read `DATABASE_URL` from `.env`; use the Compose database hostname `db` there.
+Docker Compose constructs `DATABASE_URL` automatically from `POSTGRES_PASSWORD` (defaults to `postishai` for local dev).
 
 ## Production Compose
 
@@ -39,7 +39,7 @@ The Docker services read `DATABASE_URL` from `.env`; use the Compose database ho
 npm run start
 ```
 
-`docker-compose.prod.yml` is an override file — it only contains prod-specific values (build target, commands, volumes). The base `docker-compose.yml` is always required. Set `POSTGRES_PASSWORD` and a matching `DATABASE_URL` before starting production compose; production intentionally has no default database password.
+`docker-compose.prod.yml` is an override file — it only contains prod-specific values (build target, commands, volumes). The base `docker-compose.yml` is always required. Set `POSTGRES_PASSWORD` before starting production compose; `DATABASE_URL` is constructed automatically. Production intentionally has no default database password.
 
 ## Optional PostgreSQL Backups
 
@@ -51,7 +51,7 @@ npm run backup:db
 
 Required environment for backup to work:
 
-- `DATABASE_URL`: PostgreSQL connection URL to back up. You can override it with `POSTGRES_BACKUP_DATABASE_URL`.
+- `DATABASE_URL`: PostgreSQL connection URL to back up (constructed by Docker Compose; set manually only for non-Docker runs). You can override it with `POSTGRES_BACKUP_DATABASE_URL`.
 - `POSTGRES_BACKUP_S3_BUCKET` or `S3_BUCKET`: destination S3 bucket.
 - `AWS_REGION` or `AWS_DEFAULT_REGION`: destination bucket region.
 - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: credentials with `s3:PutObject` access.
