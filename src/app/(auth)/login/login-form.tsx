@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { login, register } from "@/lib/auth/actions";
 
 function GoogleIcon() {
@@ -70,13 +71,27 @@ export function LoginForm() {
       {/* Email/Password Form */}
       <form action={action} className="space-y-4">
         {mode === "register" && (
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" name="name" placeholder="Your name" />
-            {state?.errors?.name && (
-              <p className="text-destructive text-xs">{state.errors.name[0]}</p>
-            )}
-          </div>
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" name="name" placeholder="Your name" />
+              {state?.errors?.name && (
+                <p className="text-destructive text-xs">{state.errors.name[0]}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="useCaseDetails">How will you use PostishAI? Optional</Label>
+              <Textarea
+                id="useCaseDetails"
+                name="useCaseDetails"
+                placeholder="Tell us what you want to create and how you plan to use the demo."
+                className="min-h-24 resize-none"
+              />
+              {state?.errors?.useCaseDetails && (
+                <p className="text-destructive text-xs">{state.errors.useCaseDetails[0]}</p>
+              )}
+            </div>
+          </>
         )}
 
         <div className="space-y-1.5">

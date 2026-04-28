@@ -7,17 +7,21 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  name         String?
-  email        String    @unique
-  passwordHash String?
-  avatarUrl    String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  accounts     Account[]
-  sessions     Session[]
-  avatars      Avatar[]
-  posts        Post[]
+  id                 String    @id @default(cuid())
+  name               String?
+  email              String    @unique
+  passwordHash       String?
+  avatarUrl          String?
+  approvedAt         DateTime?
+  approvalToken      String?   @unique
+  approvalDetails    String?
+  approvalNotifiedAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  accounts           Account[]
+  sessions           Session[]
+  avatars            Avatar[]
+  posts              Post[]
 }
 
 model Account {

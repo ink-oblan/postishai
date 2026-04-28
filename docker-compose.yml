@@ -26,6 +26,8 @@ services:
       HUSKY: "0"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       STORAGE_PATH: /app/storage
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_APPROVAL_CHAT_ID: ${TELEGRAM_APPROVAL_CHAT_ID:-}
     command: sh -c "npm ci && npm run app:dev:docker"
     ports:
       - "3000:3000"

@@ -1,8 +1,14 @@
+import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens, verifyGoogleIdToken } from "@/lib/auth/google";
 import { createSession } from "@/lib/auth/session";
+import { notifySignupForApproval } from "@/lib/auth/telegram-approval";
 import { prisma } from "@/lib/db";
+
+function createApprovalToken(): string {
+  return randomBytes(32).toString("base64url");
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -40,10 +46,12 @@ export async function GET(request: NextRequest) {
     });
 
     let userId: string;
+    let isApproved = false;
 
     if (account) {
       // Existing Google account — just log in
       userId = account.userId;
+      isApproved = Boolean(account.user.approvedAt);
     } else {
       // Only link/create if Google has verified the email
       if (!googleUser.email_verified) {
@@ -67,6 +75,7 @@ export async function GET(request: NextRequest) {
           },
         });
         userId = existingUser.id;
+        isApproved = Boolean(existingUser.approvedAt);
       } else {
         // Create new user with Google account
         const newUser = await prisma.user.create({
@@ -74,6 +83,7 @@ export async function GET(request: NextRequest) {
             name: googleUser.name,
             email: googleUser.email,
             avatarUrl: googleUser.picture,
+            approvalToken: createApprovalToken(),
             accounts: {
               create: {
                 provider: "google",
@@ -82,11 +92,19 @@ export async function GET(request: NextRequest) {
             },
           },
         });
+        await notifySignupForApproval(newUser);
+        await prisma.user.update({
+          where: { id: newUser.id },
+          data: { approvalNotifiedAt: new Date() },
+        });
         userId = newUser.id;
       }
     }
 
     await createSession(userId);
+    if (!isApproved) {
+      return NextResponse.redirect(new URL("/pending-approval", appUrl));
+    }
     return NextResponse.redirect(new URL("/dashboard", appUrl));
   } catch {
     const loginUrl = new URL("/login", appUrl);

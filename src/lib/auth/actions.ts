@@ -1,10 +1,22 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { type AuthFormState, LoginSchema, SignupSchema } from "./definitions";
+import { verifySession } from "./dal";
+import {
+  ApprovalDetailsSchema,
+  type AuthFormState,
+  LoginSchema,
+  SignupSchema,
+} from "./definitions";
 import { hashPassword, verifyPassword } from "./password";
 import { createSession } from "./session";
+import { notifyApprovalDetails, notifySignupForApproval } from "./telegram-approval";
+
+function createApprovalToken(): string {
+  return randomBytes(32).toString("base64url");
+}
 
 export async function register(
   _prevState: AuthFormState,
@@ -14,13 +26,14 @@ export async function register(
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    useCaseDetails: formData.get("useCaseDetails") || undefined,
   });
 
   if (!validated.success) {
     return { errors: validated.error.flatten().fieldErrors };
   }
 
-  const { name, email, password } = validated.data;
+  const { name, email, password, useCaseDetails } = validated.data;
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
@@ -34,6 +47,8 @@ export async function register(
       name,
       email,
       passwordHash,
+      approvalToken: createApprovalToken(),
+      approvalDetails: useCaseDetails || null,
       accounts: {
         create: {
           provider: "credentials",
@@ -43,8 +58,13 @@ export async function register(
     },
   });
 
+  await notifySignupForApproval(user);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { approvalNotifiedAt: new Date() },
+  });
   await createSession(user.id);
-  redirect("/dashboard");
+  redirect("/pending-approval");
 }
 
 export async function login(_prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
@@ -70,5 +90,31 @@ export async function login(_prevState: AuthFormState, formData: FormData): Prom
   }
 
   await createSession(user.id);
+  if (!user.approvedAt) {
+    redirect("/pending-approval");
+  }
   redirect("/dashboard");
+}
+
+export async function submitApprovalDetails(formData: FormData): Promise<void> {
+  const session = await verifySession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const validated = ApprovalDetailsSchema.safeParse({
+    useCaseDetails: formData.get("useCaseDetails"),
+  });
+
+  if (!validated.success) {
+    redirect("/pending-approval?details=invalid");
+  }
+
+  const user = await prisma.user.update({
+    where: { id: session.userId },
+    data: { approvalDetails: validated.data.useCaseDetails },
+  });
+
+  await notifyApprovalDetails(user);
+  redirect("/pending-approval?details=sent");
 }

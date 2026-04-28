@@ -11,6 +11,13 @@ export class AuthError extends Error {
   }
 }
 
+export class ApprovalRequiredError extends Error {
+  constructor() {
+    super("Approval required");
+    this.name = "ApprovalRequiredError";
+  }
+}
+
 export const verifySession = cache(async () => {
   const token = await getSessionCookie();
   if (!token) return null;
@@ -35,6 +42,9 @@ export async function requireSession() {
   if (!session) {
     throw new AuthError();
   }
+  if (!session.user.approvedAt) {
+    throw new ApprovalRequiredError();
+  }
   return session;
 }
 
@@ -56,12 +66,18 @@ export function withAuth<TContext = unknown>(
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!session.user.approvedAt) {
+      return NextResponse.json({ error: "Approval required" }, { status: 403 });
+    }
 
     try {
       return await handler(request, context, session);
     } catch (err) {
       if (err instanceof AuthError) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (err instanceof ApprovalRequiredError) {
+        return NextResponse.json({ error: "Approval required" }, { status: 403 });
       }
       throw err;
     }

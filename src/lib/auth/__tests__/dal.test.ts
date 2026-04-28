@@ -27,13 +27,14 @@ vi.mock("react", () => ({
   cache: (fn: (...args: never) => unknown) => fn,
 }));
 
-import { AuthError, requireSession, verifySession, withAuth } from "../dal";
+import { ApprovalRequiredError, AuthError, requireSession, verifySession, withAuth } from "../dal";
 
 const fakeUser = {
   id: "user-1",
   name: "Test User",
   email: "test@example.com",
   avatarUrl: null,
+  approvedAt: new Date(),
 };
 
 describe("verifySession", () => {
@@ -111,6 +112,19 @@ describe("requireSession", () => {
     const result = await requireSession();
     expect(result.userId).toBe("user-1");
   });
+
+  it("throws ApprovalRequiredError when user is pending", async () => {
+    mockGetSessionCookie.mockResolvedValue("good-token");
+    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "sess-1",
+      userId: "user-1",
+      expiresAt: new Date(Date.now() + 86400000),
+      user: { ...fakeUser, approvedAt: null },
+    });
+
+    await expect(requireSession()).rejects.toThrow(ApprovalRequiredError);
+  });
 });
 
 describe("withAuth", () => {
@@ -159,6 +173,29 @@ describe("withAuth", () => {
       expect.anything(),
       expect.objectContaining({ userId: "user-1", user: fakeUser }),
     );
+  });
+
+  it("returns 403 when authenticated user is pending approval", async () => {
+    mockGetSessionCookie.mockResolvedValue("good-token");
+    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "sess-1",
+      userId: "user-1",
+      expiresAt: new Date(Date.now() + 86400000),
+      user: { ...fakeUser, approvedAt: null },
+    });
+
+    const handler = vi.fn().mockResolvedValue(new Response("ok"));
+    const wrapped = withAuth(handler);
+
+    const request = new Request("http://localhost/api/test");
+    const response = await wrapped(
+      request as unknown as NextRequest,
+      {} as unknown as NextRouteContext,
+    );
+
+    expect(response.status).toBe(403);
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it("catches AuthError from handler and returns 401", async () => {
