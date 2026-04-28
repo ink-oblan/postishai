@@ -2,8 +2,8 @@ name: Deploy
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 concurrency:
   group: deploy-production
@@ -49,6 +49,7 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_BASE }}/${{ matrix.image_suffix }}:latest
+            ${{ env.IMAGE_BASE }}/${{ matrix.image_suffix }}:${{ github.ref_name }}
             ${{ env.IMAGE_BASE }}/${{ matrix.image_suffix }}:sha-${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.image_suffix }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image_suffix }}
@@ -64,7 +65,7 @@ jobs:
         uses: appleboy/ssh-action@v1
         env:
           IMAGE_BASE: ghcr.io/${{ github.repository }}
-          IMAGE_TAG: sha-${{ github.sha }}
+          IMAGE_TAG: ${{ github.ref_name }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
         with:
@@ -77,8 +78,8 @@ jobs:
             set -euo pipefail
             cd /opt/postishai
 
-            git fetch origin main
-            git reset --hard origin/main
+            git fetch origin tag "$IMAGE_TAG"
+            git checkout "$IMAGE_TAG"
 
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
