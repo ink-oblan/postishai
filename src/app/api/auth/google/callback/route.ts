@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get("state");
   const error = searchParams.get("error");
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
   const cookieStore = await cookies();
   const storedState = cookieStore.get("oauth_state")?.value;
 
@@ -17,7 +19,7 @@ export async function GET(request: NextRequest) {
   cookieStore.delete("oauth_state");
 
   if (error || !code || !state || state !== storedState) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/login", appUrl);
     loginUrl.searchParams.set("error", "oauth_failed");
     return NextResponse.redirect(loginUrl);
   }
@@ -45,7 +47,7 @@ export async function GET(request: NextRequest) {
     } else {
       // Only link/create if Google has verified the email
       if (!googleUser.email_verified) {
-        const loginUrl = new URL("/login", request.url);
+        const loginUrl = new URL("/login", appUrl);
         loginUrl.searchParams.set("error", "email_not_verified");
         return NextResponse.redirect(loginUrl);
       }
@@ -85,9 +87,9 @@ export async function GET(request: NextRequest) {
     }
 
     await createSession(userId);
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/dashboard", appUrl));
   } catch {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/login", appUrl);
     loginUrl.searchParams.set("error", "oauth_failed");
     return NextResponse.redirect(loginUrl);
   }
