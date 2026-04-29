@@ -33,6 +33,17 @@ The app and worker stream logs into `dev.log` and `worker.log` in the repository
 
 Docker Compose constructs `DATABASE_URL` automatically from `POSTGRES_PASSWORD` (defaults to `postishai` for local dev).
 
+## Local Database Migrations
+
+After changing `prisma/schema.prisma`, create and apply a local migration:
+
+```bash
+npm run db:migrate -- --name add_short_description
+npm run db:generate
+```
+
+Use a short snake_case migration name that describes the schema change. `db:migrate` runs `prisma migrate dev` against the local database, and `db:generate` refreshes the Prisma client.
+
 ## Production Compose
 
 ```bash

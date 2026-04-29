@@ -8,6 +8,8 @@
     "stop": "docker compose down",
     "logs": "docker compose logs -f app worker",
     "backup:db": "tsx scripts/backup-postgres-to-s3.ts",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
     "lint": "biome check .",
     "lint:fix": "biome check --fix .",
     "format": "biome format --write .",

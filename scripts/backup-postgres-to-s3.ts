@@ -40,6 +40,18 @@ function timestamp() {
     .replace(/\.\d{3}Z$/, "Z");
 }
 
+function getDatabaseUrl(): string {
+  const explicit = optionalEnv("POSTGRES_BACKUP_DATABASE_URL") ?? optionalEnv("DATABASE_URL");
+  if (explicit) return explicit;
+
+  const password = requiredEnv("POSTGRES_PASSWORD");
+  const host = optionalEnv("POSTGRES_HOST") ?? "db";
+  const port = optionalEnv("POSTGRES_PORT") ?? "5432";
+  const user = optionalEnv("POSTGRES_USER") ?? "postishai";
+  const db = optionalEnv("POSTGRES_DB") ?? "postishai";
+  return `postgresql://${user}:${encodeURIComponent(password)}@${host}:${port}/${db}?schema=public`;
+}
+
 function buildDumpConfig(databaseUrl: string): DumpConfig {
   const url = new URL(databaseUrl);
   if (url.protocol !== "postgresql:" && url.protocol !== "postgres:") {
@@ -132,7 +144,7 @@ async function runDump(outputPath: string, databaseUrl: string) {
 }
 
 function s3Key(fileName: string) {
-  const prefix = optionalEnv("POSTGRES_BACKUP_S3_PREFIX") ?? "postgres";
+  const prefix = optionalEnv("POSTGRES_BACKUP_S3_PREFIX") ?? "backups";
   return [prefix, fileName]
     .map((part) => part.replace(/^\/+|\/+$/g, ""))
     .filter(Boolean)
@@ -180,7 +192,7 @@ async function uploadBackup(filePath: string, key: string, databaseUrl: string, 
 }
 
 async function main() {
-  const databaseUrl = optionalEnv("POSTGRES_BACKUP_DATABASE_URL") ?? requiredEnv("DATABASE_URL");
+  const databaseUrl = getDatabaseUrl();
   const target = getS3Target();
   const databaseName = new URL(databaseUrl).pathname.replace(/^\//, "") || "database";
   const fileName = `${databaseName}-${timestamp()}.dump`;
