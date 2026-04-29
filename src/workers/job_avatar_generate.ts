@@ -1,5 +1,5 @@
 import { getImageAdapter } from "@/lib/image-models/registry";
-import { readFile, writeFile } from "@/lib/storage";
+import { archiveFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition } from "@/workers/types";
 
@@ -53,12 +53,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     }
 
     if (avatar.imagePath) {
-      const archivedExt = avatar.imagePath.match(/\.\w+$/)?.[0] ?? ".png";
-      const archivePath = `avatars/archive/${avatarId}_${Date.now()}${archivedExt}`;
-      const oldData = await readFile(avatar.imagePath).catch(() => null);
-      if (oldData) {
-        await writeFile(archivePath, oldData).catch(() => {});
-      }
+      await archiveFile(avatar.imagePath).catch(() => null);
     }
 
     await writeFile(imagePath, Buffer.from(result.base64, "base64"));

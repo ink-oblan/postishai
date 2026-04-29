@@ -1,20 +1,28 @@
 import { ArrowUpRight, Plus, Zap } from "lucide-react";
 import Link from "next/link";
+import { requireSession } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { formatDistanceToNow } from "@/lib/utils";
 
 export default async function DashboardPage() {
+  const { userId } = await requireSession();
+  const activeWhere = { archivedAt: null, userId };
   const [avatarCount, postCount, recentPosts] = await Promise.all([
-    prisma.avatar.count(),
-    prisma.post.count(),
+    prisma.avatar.count({ where: activeWhere }),
+    prisma.post.count({ where: activeWhere }),
     prisma.post.findMany({
+      where: activeWhere,
       take: 8,
       orderBy: { createdAt: "desc" },
       include: { avatar: { select: { name: true } } },
     }),
   ]);
 
-  const statusCounts = await prisma.post.groupBy({ by: ["status"], _count: true });
+  const statusCounts = await prisma.post.groupBy({
+    by: ["status"],
+    where: activeWhere,
+    _count: true,
+  });
   const byStatus = Object.fromEntries(statusCounts.map((s) => [s.status, s._count]));
 
   const completedCount = byStatus.COMPLETED ?? 0;

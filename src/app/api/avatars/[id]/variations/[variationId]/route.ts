@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
+import { archiveFile } from "@/lib/storage";
 
 type Params = { params: Promise<{ id: string; variationId: string }> };
 
@@ -18,6 +19,8 @@ export const DELETE = withAuth(async function DELETE(
     where: { id: variationId, avatarId: id },
   });
   if (!variation) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (variation.imagePath) await archiveFile(variation.imagePath).catch(() => null);
 
   await prisma.avatarVariation.update({
     where: { id: variationId },

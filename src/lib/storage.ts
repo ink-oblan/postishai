@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
-  DeleteObjectCommand,
+  CopyObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -46,10 +46,27 @@ function s3Prefix(): string {
   return prefix.replace(/^\/+|\/+$/g, "");
 }
 
+function archivePrefix(): string {
+  return normalizeStoragePath(config.storageArchivePrefix.trim().replace(/^\/+|\/+$/g, ""));
+}
+
 export function storageObjectKey(relativePath: string): string {
   const normalizedPath = normalizeStoragePath(relativePath);
   const prefix = s3Prefix();
   return prefix ? `${prefix}/${normalizedPath}` : normalizedPath;
+}
+
+export function storageArchivePath(relativePath: string, now = new Date()): string {
+  const normalizedPath = normalizeStoragePath(relativePath);
+  const parsed = path.posix.parse(normalizedPath);
+  const timestamp = now.toISOString().replaceAll(":", "-").replaceAll(".", "-");
+  const fileName = `${parsed.name}.${timestamp}${parsed.ext}`;
+  const archiveDir = parsed.dir ? `${archivePrefix()}/${parsed.dir}` : archivePrefix();
+  return `${archiveDir}/${fileName}`;
+}
+
+function copySource(bucket: string, key: string): string {
+  return `${bucket}/${key.split("/").map(encodeURIComponent).join("/")}`;
 }
 
 function getS3Client(): S3Client {
@@ -111,21 +128,33 @@ export async function readFile(relativePath: string): Promise<Buffer> {
   return fs.readFile(storagePath(relativePath));
 }
 
-export async function deleteFile(relativePath: string): Promise<void> {
+export async function archiveFile(relativePath: string): Promise<string | null> {
+  const archivePath = storageArchivePath(relativePath);
+
   if (config.storageMode === "s3") {
-    await getS3Client().send(
-      new DeleteObjectCommand({
-        Bucket: s3Bucket(),
-        Key: storageObjectKey(relativePath),
-      }),
-    );
-    return;
+    try {
+      const bucket = s3Bucket();
+      await getS3Client().send(
+        new CopyObjectCommand({
+          Bucket: bucket,
+          CopySource: copySource(bucket, storageObjectKey(relativePath)),
+          Key: storageObjectKey(archivePath),
+        }),
+      );
+      return archivePath;
+    } catch (error) {
+      if (isS3NotFound(error)) return null;
+      throw error;
+    }
   }
 
   try {
-    await fs.unlink(storagePath(relativePath));
+    await fs.mkdir(path.dirname(storagePath(archivePath)), { recursive: true });
+    await fs.copyFile(storagePath(relativePath), storagePath(archivePath));
+    return archivePath;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
   }
 }
 

@@ -3,11 +3,14 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TextLink } from "@/components/ui/text-link";
+import { requireSession } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { formatDistanceToNow, PLATFORM_LABELS, STATUS_CONFIG } from "@/lib/utils";
 
 export default async function PostsPage() {
+  const { userId } = await requireSession();
   const posts = await prisma.post.findMany({
+    where: { archivedAt: null, userId },
     orderBy: { createdAt: "desc" },
     include: { avatar: { select: { id: true, name: true } } },
   });

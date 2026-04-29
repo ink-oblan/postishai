@@ -12,15 +12,15 @@ vi.mock("@aws-sdk/client-s3", () => {
     send = sendMock;
   }
 
+  class CopyObjectCommand {
+    constructor(readonly input: unknown) {}
+  }
+
   class PutObjectCommand {
     constructor(readonly input: unknown) {}
   }
 
   class GetObjectCommand {
-    constructor(readonly input: unknown) {}
-  }
-
-  class DeleteObjectCommand {
     constructor(readonly input: unknown) {}
   }
 
@@ -36,7 +36,7 @@ vi.mock("@aws-sdk/client-s3", () => {
   }
 
   return {
-    DeleteObjectCommand,
+    CopyObjectCommand,
     GetObjectCommand,
     HeadObjectCommand,
     NotFound,
@@ -46,13 +46,23 @@ vi.mock("@aws-sdk/client-s3", () => {
 });
 
 describe("storage path normalization", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("normalizes relative paths", async () => {
-    const { normalizeStoragePath, storageObjectKey } = await import("../storage");
+    const { normalizeStoragePath, storageArchivePath, storageObjectKey } = await import(
+      "../storage"
+    );
 
     vi.stubEnv("S3_PREFIX", "postishai/storage/");
+    vi.stubEnv("STORAGE_ARCHIVE_PREFIX", "archives");
 
     expect(normalizeStoragePath("avatars/../videos/file.mp4")).toBe("videos/file.mp4");
     expect(storageObjectKey("videos/file.mp4")).toBe("postishai/storage/videos/file.mp4");
+    expect(storageArchivePath("avatars/a.png", new Date("2026-04-29T10:11:12.123Z"))).toBe(
+      "archives/avatars/a.2026-04-29T10-11-12-123Z.png",
+    );
   });
 
   it.each([
@@ -82,8 +92,10 @@ describe("local storage", () => {
     await fs.rm(tempDir, { force: true, recursive: true });
   });
 
-  it("writes, reads, checks, and deletes files", async () => {
-    const { deleteFile, fileExists, readFile, storagePath, writeFile } = await import("../storage");
+  it("writes, reads, checks, and archives files", async () => {
+    const { archiveFile, fileExists, readFile, storagePath, writeFile } = await import(
+      "../storage"
+    );
 
     await writeFile("avatars/a.png", Buffer.from("image"));
 
@@ -91,9 +103,11 @@ describe("local storage", () => {
     await expect(readFile("avatars/a.png")).resolves.toEqual(Buffer.from("image"));
     await expect(fileExists("avatars/a.png")).resolves.toBe(true);
 
-    await deleteFile("avatars/a.png");
+    const archivePath = await archiveFile("avatars/a.png");
 
-    await expect(fileExists("avatars/a.png")).resolves.toBe(false);
+    expect(archivePath).toMatch(/^archive\/avatars\/a\..+\.png$/);
+    await expect(fileExists("avatars/a.png")).resolves.toBe(true);
+    await expect(readFile(archivePath ?? "")).resolves.toEqual(Buffer.from("image"));
   });
 });
 
@@ -140,14 +154,16 @@ describe("s3 storage", () => {
     });
   });
 
-  it("deletes objects", async () => {
-    const { deleteFile } = await import("../storage");
+  it("archives objects with a server-side copy", async () => {
+    const { archiveFile } = await import("../storage");
 
-    await deleteFile("avatars/a.png");
+    const archivePath = await archiveFile("avatars/a.png");
 
+    expect(archivePath).toMatch(/^archive\/avatars\/a\..+\.png$/);
     expect(sendMock.mock.calls[0]?.[0].input).toMatchObject({
       Bucket: "media-bucket",
-      Key: "postishai/storage/avatars/a.png",
+      CopySource: "media-bucket/postishai/storage/avatars/a.png",
+      Key: expect.stringMatching(/^postishai\/storage\/archive\/avatars\/a\..+\.png$/) as unknown,
     });
   });
 

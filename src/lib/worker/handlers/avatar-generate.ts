@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getImageAdapter } from "@/lib/image-models/registry";
-import { readFile, writeFile } from "@/lib/storage";
+import { archiveFile, writeFile } from "@/lib/storage";
 import type { AvatarGeneratePayload } from "../jobs";
 
 const log = (...args: unknown[]) =>
@@ -32,10 +32,7 @@ export async function handleAvatarGenerate(payload: AvatarGeneratePayload): Prom
   log(`backing up old image...`);
   const avatar = await prisma.avatar.findUnique({ where: { id: avatarId } });
   if (avatar?.imagePath && avatar.imagePath !== "") {
-    const ext = avatar.imagePath.match(/\.\w+$/)?.[0] ?? ".png";
-    const archivePath = `avatars/archive/${avatarId}_${Date.now()}${ext}`;
-    const oldData = await readFile(avatar.imagePath).catch(() => null);
-    if (oldData) await writeFile(archivePath, oldData).catch(() => {});
+    await archiveFile(avatar.imagePath).catch(() => null);
   }
 
   log(`writing image to ${relativePath}...`);

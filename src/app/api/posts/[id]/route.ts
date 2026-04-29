@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { isPostEditable } from "@/lib/posts";
+import { archiveFile } from "@/lib/storage";
 import { enqueuePostMetadataJob } from "@/lib/worker/jobs";
 
 function normalizeTagList(values: unknown) {
@@ -98,6 +99,7 @@ export const PATCH = withAuth(async function PATCH(
     if (post.status !== "DRAFT") {
       return NextResponse.json({ error: "Only DRAFT posts can be archived" }, { status: 409 });
     }
+    if (post.videoPath) await archiveFile(post.videoPath).catch(() => null);
     await prisma.post.update({ where: { id }, data: { archivedAt: new Date() } });
     return new NextResponse(null, { status: 204 });
   }

@@ -3,7 +3,7 @@ import { withAuth } from "@/lib/auth/dal";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
 import { prisma } from "@/lib/db";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
-import { deleteFile, writeFile } from "@/lib/storage";
+import { archiveFile, writeFile } from "@/lib/storage";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 
 export const GET = withAuth(async function GET(
@@ -56,8 +56,17 @@ export const PATCH = withAuth(async function PATCH(
   };
 
   if (archive) {
-    const existing = await prisma.avatar.findFirst({ where: { id, userId } });
+    const existing = await prisma.avatar.findFirst({
+      where: { id, userId },
+      include: { variations: true },
+    });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (existing.imagePath) await archiveFile(existing.imagePath).catch(() => null);
+    await Promise.all(
+      existing.variations.map((variation) =>
+        variation.imagePath ? archiveFile(variation.imagePath).catch(() => null) : null,
+      ),
+    );
     await prisma.avatar.update({ where: { id }, data: { archivedAt: new Date() } });
     return new NextResponse(null, { status: 204 });
   }
@@ -77,7 +86,7 @@ export const PATCH = withAuth(async function PATCH(
         ? "image/jpeg"
         : "image/png";
 
-      if (avatar.imagePath && avatar.imagePath !== "") await deleteFile(avatar.imagePath);
+      if (avatar.imagePath && avatar.imagePath !== "") await archiveFile(avatar.imagePath);
 
       const ext = mimeType === "image/jpeg" ? "jpg" : "png";
       const relativePath = `avatars/${id}.${ext}`;

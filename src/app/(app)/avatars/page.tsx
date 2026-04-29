@@ -1,11 +1,13 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { AvatarGrid } from "@/components/avatars/AvatarGrid";
+import { requireSession } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 
 export default async function AvatarsPage() {
+  const { userId } = await requireSession();
   const avatars = await prisma.avatar.findMany({
-    where: { archivedAt: null },
+    where: { archivedAt: null, userId },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { posts: true } } },
   });

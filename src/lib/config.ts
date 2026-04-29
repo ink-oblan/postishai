@@ -43,6 +43,9 @@ export const config = {
   get storagePath() {
     return withDefault("STORAGE_PATH", "storage");
   },
+  get storageArchivePrefix() {
+    return withDefault("STORAGE_ARCHIVE_PREFIX", "archive");
+  },
   get storageMode(): StorageMode {
     return isTruthyEnv(optional("USE_S3_AS_STORAGE")) ? "s3" : "local";
   },

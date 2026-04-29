@@ -27,6 +27,12 @@ describe("config storage mode", () => {
 
     expect(config.storageMode).toBe("local");
   });
+
+  it("uses a configurable storage archive prefix", () => {
+    vi.stubEnv("STORAGE_ARCHIVE_PREFIX", "archives");
+
+    expect(config.storageArchivePrefix).toBe("archives");
+  });
 });
 
 describe("config s3 env", () => {
