@@ -7,6 +7,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "./config";
 
 let s3Client: S3Client | null = null;
@@ -180,4 +181,15 @@ export async function fileExists(relativePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export async function getPresignedUrl(relativePath: string, expiresIn = 3600): Promise<string> {
+  return getSignedUrl(
+    getS3Client(),
+    new GetObjectCommand({
+      Bucket: s3Bucket(),
+      Key: storageObjectKey(relativePath),
+    }),
+    { expiresIn },
+  );
 }

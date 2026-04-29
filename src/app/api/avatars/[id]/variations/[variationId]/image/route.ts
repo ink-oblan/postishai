@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
-import { readFile } from "@/lib/storage";
+import { getPresignedUrl, readFile } from "@/lib/storage";
 
 type Params = { params: Promise<{ id: string; variationId: string }> };
 
@@ -16,6 +17,11 @@ export const GET = withAuth(async function GET(_req: NextRequest, { params }: Pa
   });
   if (!variation?.imagePath) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (config.storageMode === "s3") {
+    const url = await getPresignedUrl(variation.imagePath);
+    return NextResponse.redirect(url);
   }
 
   const buffer = await readFile(variation.imagePath);

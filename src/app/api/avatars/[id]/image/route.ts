@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
-import { readFile } from "@/lib/storage";
+import { getPresignedUrl, readFile } from "@/lib/storage";
 
 export const GET = withAuth(async function GET(
   _req: NextRequest,
@@ -11,6 +12,11 @@ export const GET = withAuth(async function GET(
   const { id } = await params;
   const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
   if (!avatar?.imagePath) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (config.storageMode === "s3") {
+    const url = await getPresignedUrl(avatar.imagePath);
+    return NextResponse.redirect(url);
+  }
 
   const buffer = await readFile(avatar.imagePath);
   const contentType = avatar.imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
