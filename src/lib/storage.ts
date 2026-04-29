@@ -4,16 +4,10 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
-  NotFound,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { config } from "./config";
-
-type S3Body = {
-  transformToByteArray?: () => Promise<Uint8Array>;
-  [Symbol.asyncIterator]?: () => AsyncIterator<Uint8Array>;
-};
 
 let s3Client: S3Client | null = null;
 
@@ -75,23 +69,10 @@ function s3Bucket(): string {
   return config.s3.bucket;
 }
 
-async function bodyToBuffer(body: S3Body | undefined): Promise<Buffer> {
-  if (!body) return Buffer.alloc(0);
-  if (body.transformToByteArray) {
-    return Buffer.from(await body.transformToByteArray());
-  }
-  if (body[Symbol.asyncIterator]) {
-    const chunks: Uint8Array[] = [];
-    for await (const chunk of body as AsyncIterable<Uint8Array>) {
-      chunks.push(chunk);
-    }
-    return Buffer.concat(chunks);
-  }
-  throw new Error("Unsupported S3 response body");
-}
-
 function isS3NotFound(error: unknown): boolean {
-  return error instanceof NotFound || (error instanceof Error && error.name === "NotFound");
+  if (!(error instanceof Error)) return false;
+  const name = error.name;
+  return name === "NotFound" || name === "NoSuchKey" || name === "404";
 }
 
 export function storagePath(relativePath: string): string {
@@ -123,7 +104,8 @@ export async function readFile(relativePath: string): Promise<Buffer> {
         Key: storageObjectKey(relativePath),
       }),
     );
-    return bodyToBuffer(response.Body as S3Body | undefined);
+    const bytes = await response.Body?.transformToByteArray();
+    return bytes ? Buffer.from(bytes) : Buffer.alloc(0);
   }
 
   return fs.readFile(storagePath(relativePath));
@@ -142,8 +124,8 @@ export async function deleteFile(relativePath: string): Promise<void> {
 
   try {
     await fs.unlink(storagePath(relativePath));
-  } catch {
-    // Ignore if file doesn't exist
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 }
 
