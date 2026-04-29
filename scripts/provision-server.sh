@@ -113,8 +113,7 @@ WorkingDirectory=${APP_ROOT}
 EnvironmentFile=${APP_ROOT}/.env
 Environment=POSTGRES_BACKUP_DOCKER_SERVICE=db
 Environment=POSTGRES_BACKUP_COMPOSE_FILE=${APP_ROOT}/docker-compose.yml,${APP_ROOT}/docker-compose.prod.yml
-Environment=POSTGRES_BACKUP_ENV=production
-ExecStart=/usr/bin/tsx src/scripts/backup-postgres-to-s3.ts
+ExecStart=/usr/bin/npm run backup:db
 TimeoutStartSec=300
 EOF
 

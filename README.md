@@ -10,7 +10,7 @@ Application source code lives in `src/`:
 - `src/components`: React components
 - `src/lib`: shared application libraries
 - `src/workers` and `src/worker.ts`: background worker entrypoint and jobs
-- `src/scripts`: project scripts run through npm
+- `scripts`: project scripts and provisioning helpers run from the repository root
 
 Root-level config, Prisma schema/migrations, Docker files, environment files, and `public/` stay at the repository root for their respective tools.
 
@@ -52,14 +52,13 @@ npm run backup:db
 Required environment for backup to work:
 
 - `DATABASE_URL`: PostgreSQL connection URL to back up (constructed by Docker Compose; set manually only for non-Docker runs). You can override it with `POSTGRES_BACKUP_DATABASE_URL`.
-- `POSTGRES_BACKUP_S3_BUCKET` or `S3_BUCKET`: destination S3 bucket.
-- `AWS_REGION` or `AWS_DEFAULT_REGION`: destination bucket region.
+- `S3_BUCKET`: shared destination S3 bucket.
+- `AWS_REGION`: destination bucket region.
 - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: credentials with `s3:PutObject` access.
 
 Optional environment:
 
-- `POSTGRES_BACKUP_S3_PREFIX` or `S3_PREFIX`: S3 key prefix. Defaults to `postgres`.
-- `POSTGRES_BACKUP_ENV`: environment segment in the S3 key. Defaults to `NODE_ENV` or `local`.
+- `POSTGRES_BACKUP_S3_PREFIX`: S3 key prefix for database backups. Defaults to `postgres`.
 - `POSTGRES_BACKUP_DOCKER_SERVICE`: run `pg_dump` through `docker compose exec -T <service>`.
 - `POSTGRES_BACKUP_COMPOSE_FILE`: comma-separated compose files used with Docker mode.
 
@@ -74,6 +73,5 @@ For production compose:
 ```bash
 POSTGRES_BACKUP_DOCKER_SERVICE=db \
 POSTGRES_BACKUP_COMPOSE_FILE=docker-compose.yml,docker-compose.prod.yml \
-POSTGRES_BACKUP_ENV=prod \
 npm run backup:db
 ```

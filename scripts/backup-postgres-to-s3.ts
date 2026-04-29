@@ -33,10 +33,6 @@ function requiredEnv(name: string) {
   return value;
 }
 
-function parseBoolean(value: string | undefined) {
-  return value === "1" || value === "true" || value === "yes";
-}
-
 function timestamp() {
   return new Date()
     .toISOString()
@@ -136,21 +132,16 @@ async function runDump(outputPath: string, databaseUrl: string) {
 }
 
 function s3Key(fileName: string) {
-  const prefix = optionalEnv("POSTGRES_BACKUP_S3_PREFIX") ?? optionalEnv("S3_PREFIX") ?? "postgres";
-  const environment = optionalEnv("POSTGRES_BACKUP_ENV") ?? optionalEnv("NODE_ENV") ?? "local";
-  return [prefix, environment, fileName]
+  const prefix = optionalEnv("POSTGRES_BACKUP_S3_PREFIX") ?? "postgres";
+  return [prefix, fileName]
     .map((part) => part.replace(/^\/+|\/+$/g, ""))
     .filter(Boolean)
     .join("/");
 }
 
 function getS3Target(): S3Target {
-  const bucket = optionalEnv("POSTGRES_BACKUP_S3_BUCKET") ?? optionalEnv("S3_BUCKET");
-  if (!bucket) throw new Error("POSTGRES_BACKUP_S3_BUCKET or S3_BUCKET is required");
-
-  const region = optionalEnv("AWS_REGION") ?? optionalEnv("AWS_DEFAULT_REGION");
-  if (!region) throw new Error("AWS_REGION or AWS_DEFAULT_REGION is required");
-
+  const bucket = requiredEnv("S3_BUCKET");
+  const region = requiredEnv("AWS_REGION");
   requiredEnv("AWS_ACCESS_KEY_ID");
   requiredEnv("AWS_SECRET_ACCESS_KEY");
 
@@ -160,8 +151,6 @@ function getS3Target(): S3Target {
 async function uploadBackup(filePath: string, key: string, databaseUrl: string, target: S3Target) {
   const client = new S3Client({
     region: target.region,
-    endpoint: optionalEnv("AWS_ENDPOINT_URL_S3") ?? optionalEnv("AWS_ENDPOINT_URL"),
-    forcePathStyle: parseBoolean(optionalEnv("AWS_S3_FORCE_PATH_STYLE")),
   });
 
   const stat = statSync(filePath);

@@ -2,6 +2,7 @@ import "dotenv/config";
 import { hostname } from "node:os";
 import type { Job } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { assertStorageModeInitialized } from "@/lib/platform-config";
 import { jobRegistry } from "@/workers/registry";
 import type { JobDefinition, JobType } from "@/workers/types";
 
@@ -232,6 +233,7 @@ async function drainAvailableJobs(): Promise<void> {
 }
 
 export async function runWorker(): Promise<void> {
+  await assertStorageModeInitialized();
   log(`started workerId=${workerId} polling every ${POLL_INTERVAL_MS}ms`);
 
   const tick = async () => {

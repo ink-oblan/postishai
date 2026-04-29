@@ -1,10 +1,10 @@
 /**
  * Assigns a random HeyGen voice to avatars that have no voiceId set.
- * Run with: npx tsx src/scripts/assign-missing-voices.ts
+ * Run with: npx tsx scripts/assign-missing-voices.ts
  */
 import "dotenv/config";
-import { prisma } from "../lib/db";
-import { listVoices } from "../lib/heygen/client";
+import { prisma } from "../src/lib/db";
+import { listVoices } from "../src/lib/heygen/client";
 
 async function main() {
   const avatars = await prisma.avatar.findMany({

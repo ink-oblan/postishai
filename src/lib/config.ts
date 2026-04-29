@@ -1,3 +1,7 @@
+import type { StorageMode } from "./storage-mode";
+
+const TRUTHY_VALUES = new Set(["1", "true", "yes", "on"]);
+
 function required(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -12,6 +16,11 @@ function optional(name: string): string | undefined {
 
 function withDefault(name: string, fallback: string): string {
   return process.env[name] || fallback;
+}
+
+export function isTruthyEnv(value: string | undefined): boolean {
+  if (!value) return false;
+  return TRUTHY_VALUES.has(value.trim().toLowerCase());
 }
 
 export const config = {
@@ -34,6 +43,9 @@ export const config = {
   get storagePath() {
     return withDefault("STORAGE_PATH", "storage");
   },
+  get storageMode(): StorageMode {
+    return isTruthyEnv(optional("USE_S3_AS_STORAGE")) ? "s3" : "local";
+  },
 
   get sessionSecret() {
     return required("SESSION_SECRET");
@@ -54,6 +66,24 @@ export const config = {
   heygen: {
     get apiKey() {
       return required("HEYGEN_API_KEY");
+    },
+  },
+
+  s3: {
+    get bucket() {
+      return required("S3_BUCKET");
+    },
+    get region() {
+      return required("AWS_REGION");
+    },
+    get prefix() {
+      return optional("S3_PREFIX");
+    },
+    get accessKeyId() {
+      return required("AWS_ACCESS_KEY_ID");
+    },
+    get secretAccessKey() {
+      return required("AWS_SECRET_ACCESS_KEY");
     },
   },
 

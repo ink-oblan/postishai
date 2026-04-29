@@ -7,7 +7,7 @@
     "start": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d",
     "stop": "docker compose down",
     "logs": "docker compose logs -f app worker",
-    "backup:db": "tsx src/scripts/backup-postgres-to-s3.ts",
+    "backup:db": "tsx scripts/backup-postgres-to-s3.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --fix .",
     "format": "biome format --write .",
