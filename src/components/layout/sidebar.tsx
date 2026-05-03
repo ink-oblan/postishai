@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 type UserInfo = {
@@ -129,9 +128,6 @@ export function Sidebar({ user }: { user: UserInfo }) {
           <Menu className="h-5 w-5" />
         </button>
         <Logo />
-        <div className="ml-auto">
-          <ThemeToggle />
-        </div>
       </header>
 
       {/* ── Mobile backdrop ── */}

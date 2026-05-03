@@ -1,5 +1,3 @@
-import { ThemeSelector } from "@/components/ThemeSelector";
-
 export default function SettingsPage() {
   return (
     <div className="space-y-8 px-6 py-8 sm:px-10">
@@ -9,25 +7,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="max-w-xl space-y-4">
-        {/* Appearance */}
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <div className="border-border border-b px-5 py-4">
-            <h2 className="font-semibold text-sm">Appearance</h2>
-            <p className="mt-0.5 text-muted-foreground text-xs">
-              Choose your preferred color theme
-            </p>
-          </div>
-          <div className="flex flex-col items-start gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-0.5">
-              <p className="font-medium text-sm">Color scheme</p>
-              <p className="text-muted-foreground text-xs">Select light, dark, or system default</p>
-            </div>
-            <div className="w-full sm:w-auto">
-              <ThemeSelector />
-            </div>
-          </div>
-        </div>
-
         {/* Profile placeholder */}
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
           <div className="border-border border-b px-5 py-4">
