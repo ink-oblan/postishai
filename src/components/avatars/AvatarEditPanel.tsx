@@ -352,8 +352,8 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
           )}
         </div>
 
-        {/* Voice — spans full row */}
-        <div className="col-span-2">
+        {/* Voice */}
+        <div>
           <PropLabel>Voice</PropLabel>
           {editing ? (
             <AvatarVoiceField
