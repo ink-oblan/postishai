@@ -43,25 +43,6 @@ function VoiceWave({ className }: { className?: string }) {
   );
 }
 
-function GenderTag({ gender }: { gender: string }) {
-  const g = gender.trim().toLowerCase();
-  if (g === "male") {
-    return (
-      <span className="shrink-0 rounded-full bg-golden-earth-100 px-1.5 py-px font-semibold text-[9px] text-golden-earth-700 leading-none tracking-wide">
-        M
-      </span>
-    );
-  }
-  if (g === "female") {
-    return (
-      <span className="shrink-0 rounded-full bg-rosy-taupe-100 px-1.5 py-px font-semibold text-[9px] text-rosy-taupe-700 leading-none tracking-wide">
-        F
-      </span>
-    );
-  }
-  return null;
-}
-
 export function AvatarVoiceField({
   voices,
   value,
@@ -160,7 +141,6 @@ export function AvatarVoiceField({
           </button>
         )}
         <div className="flex min-w-0 items-center gap-1.5">
-          {selectedVoice && <GenderTag gender={selectedVoice.gender} />}
           <span className="truncate font-medium text-sm">
             {selectedVoice?.name.trim() || value || (
               <span className="text-muted-foreground">—</span>
@@ -194,7 +174,6 @@ export function AvatarVoiceField({
         >
           {selectedVoice ? (
             <>
-              <GenderTag gender={selectedVoice.gender} />
               <span className="flex-1 truncate text-left font-medium">
                 {selectedVoice.name.trim()}
               </span>
@@ -251,7 +230,6 @@ export function AvatarVoiceField({
                       setOpen(false);
                     }}
                   >
-                    <GenderTag gender={voice.gender} />
                     <span
                       className={cn(
                         "flex-1 truncate text-sm",
