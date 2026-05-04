@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatDistanceToNow } from "@/lib/utils";
@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "@/lib/utils";
 interface AvatarWithCount {
   id: string;
   name: string;
+  status: string;
   imagePath: string;
   imageModel: string | null;
   createdAt: Date;
@@ -50,13 +51,24 @@ export function AvatarGrid({ avatars }: { avatars: AvatarWithCount[] }) {
         <Link key={avatar.id} href={`/avatars/${avatar.id}`} className="group block">
           <div className="overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200 hover:border-primary/30 hover:shadow-md">
             <div className="relative aspect-[9/16] bg-muted">
-              <Image
-                src={`/api/avatars/${avatar.id}/image`}
-                alt={avatar.name}
-                fill
-                className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                unoptimized
-              />
+              {avatar.status === "GENERATING" ? (
+                <div className="flex h-full flex-col items-center justify-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <p className="text-muted-foreground text-xs">Generating…</p>
+                </div>
+              ) : avatar.status === "FAILED" ? (
+                <div className="flex h-full flex-col items-center justify-center gap-1 px-3 text-center">
+                  <p className="font-medium text-destructive text-xs">Failed</p>
+                </div>
+              ) : (
+                <Image
+                  src={`/api/avatars/${avatar.id}/image`}
+                  alt={avatar.name}
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                  unoptimized
+                />
+              )}
             </div>
             <div className="px-4 py-3">
               <p className="truncate font-semibold text-foreground text-sm transition-colors group-hover:text-primary">
