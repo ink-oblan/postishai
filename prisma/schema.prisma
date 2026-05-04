@@ -68,6 +68,22 @@ model Avatar {
   variations     AvatarVariation[]
 }
 
+model HeyGenVoice {
+  id           String   @id @default(cuid())
+  voiceId      String   @unique
+  name         String
+  language     String
+  gender       String
+  previewAudio String?
+  raw          Json?
+  active       Boolean  @default(true)
+  lastSeenAt   DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([language, gender, name])
+}
+
 model AvatarVariation {
   id             String   @id @default(cuid())
   avatarId       String

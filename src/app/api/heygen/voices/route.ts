@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
-import { listVoices } from "@/lib/heygen/client";
+import { listCachedHeyGenVoices } from "@/lib/heygen/voices-cache";
 
 export const GET = withAuth(async function GET() {
   try {
-    const voices = await listVoices();
+    const voices = await listCachedHeyGenVoices();
     const english = voices
       .filter((v) => v.language === "English")
       .sort((a, b) => a.name.trim().localeCompare(b.name.trim()));
