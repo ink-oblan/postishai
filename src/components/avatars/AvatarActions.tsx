@@ -1,11 +1,11 @@
 "use client";
 
-import { AlertDialog } from "@base-ui/react";
 import { Archive, Loader2, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Props {
   avatar: {
@@ -20,6 +20,7 @@ export function AvatarActions({ avatar }: Props) {
   const [loading, setLoading] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
 
   async function handleRegenerate() {
     setLoading(true);
@@ -68,7 +69,7 @@ export function AvatarActions({ avatar }: Props) {
             variant="outline"
             size="sm"
             className="w-full"
-            onClick={handleRegenerate}
+            onClick={() => setRegenerateDialogOpen(true)}
             disabled={loading}
           >
             {loading ? (
@@ -85,33 +86,31 @@ export function AvatarActions({ avatar }: Props) {
         </Button>
       </div>
 
-      <AlertDialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-          <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl transition-all duration-200 data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
-            <div className="mb-2 flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
-                <Archive className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <AlertDialog.Title className="font-semibold text-base">
-                Archive avatar?
-              </AlertDialog.Title>
-            </div>
-            <AlertDialog.Description className="mb-6 pl-12 text-muted-foreground text-sm">
-              This avatar will be hidden from your library. You can restore it later.
-            </AlertDialog.Description>
-            <div className="flex justify-end gap-2">
-              <AlertDialog.Close render={<Button variant="outline" size="sm" />}>
-                Cancel
-              </AlertDialog.Close>
-              <Button size="sm" onClick={handleArchiveConfirm} disabled={archiving}>
-                {archiving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-                Archive
-              </Button>
-            </div>
-          </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+      <ConfirmDialog
+        open={regenerateDialogOpen}
+        onOpenChange={setRegenerateDialogOpen}
+        title="Regenerate avatar?"
+        description="A new image will be generated. The current image will be replaced."
+        icon={<RefreshCw className="h-4 w-4" />}
+        confirmLabel="Regenerate"
+        onConfirm={() => {
+          setRegenerateDialogOpen(false);
+          handleRegenerate();
+        }}
+        loading={loading}
+        destructive
+      />
+
+      <ConfirmDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title="Archive avatar?"
+        description="This avatar will be hidden from your library. You can restore it later."
+        icon={<Archive className="h-4 w-4" />}
+        confirmLabel="Archive"
+        onConfirm={handleArchiveConfirm}
+        loading={archiving}
+      />
     </>
   );
 }

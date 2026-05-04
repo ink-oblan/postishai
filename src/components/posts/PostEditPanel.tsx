@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { AvatarPickerField, type AvatarPickerOption } from "@/components/posts/AvatarPickerField";
 import { MetadataSection } from "@/components/posts/MetadataSection";
 import { Button } from "@/components/ui/button";
+import { DialogShell } from "@/components/ui/dialog-shell";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -639,47 +640,42 @@ export function PostEditPanel({
     <>
       <div>{content}</div>
 
-      <AlertDialog.Root open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-          <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl transition-all duration-200 data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
-            <div className="mb-2 flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
-                <RefreshCw className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <AlertDialog.Title className="font-semibold text-base">
-                Regenerate metadata?
-              </AlertDialog.Title>
-            </div>
-            <AlertDialog.Description className="mb-6 pl-12 text-muted-foreground text-sm">
-              Save to keep the current metadata, or save and regenerate to wipe it and generate new
-              metadata.
-            </AlertDialog.Description>
-            <div className="flex justify-end gap-2">
-              <AlertDialog.Close render={<Button variant="outline" size="sm" />}>
-                Cancel
-              </AlertDialog.Close>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void handleSave(false)}
-                disabled={loading}
-              >
-                {pendingSaveAction === "save" ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : null}
-                Save
-              </Button>
-              <Button size="sm" onClick={() => void handleSave(true)} disabled={loading}>
-                {pendingSaveAction === "regenerate" ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : null}
-                Save and regenerate
-              </Button>
-            </div>
-          </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+      <DialogShell open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <div className="mb-2 flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <RefreshCw className="h-4 w-4" />
+          </div>
+          <AlertDialog.Title className="font-semibold text-base">
+            Regenerate metadata?
+          </AlertDialog.Title>
+        </div>
+        <AlertDialog.Description className="mb-6 pl-12 text-muted-foreground text-sm">
+          Save to keep the current metadata, or save and regenerate to wipe it and generate new
+          metadata.
+        </AlertDialog.Description>
+        <div className="flex justify-end gap-2">
+          <AlertDialog.Close render={<Button variant="outline" size="sm" />}>
+            Cancel
+          </AlertDialog.Close>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleSave(false)}
+            disabled={loading}
+          >
+            {pendingSaveAction === "save" ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : null}
+            Save
+          </Button>
+          <Button size="sm" onClick={() => void handleSave(true)} disabled={loading}>
+            {pendingSaveAction === "regenerate" ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : null}
+            Save and regenerate
+          </Button>
+        </div>
+      </DialogShell>
     </>
   );
 }

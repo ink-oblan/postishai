@@ -1,6 +1,5 @@
 "use client";
 
-import { AlertDialog } from "@base-ui/react";
 import { AlertCircle, Archive, Plus, RefreshCw, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -8,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -415,43 +415,20 @@ export function AvatarVariationsPanel({
         </CardContent>
       </Card>
 
-      <AlertDialog.Root
+      <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-      >
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-          <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl transition-all duration-200 data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
-            <div className="mb-2 flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
-                <Archive className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <AlertDialog.Title className="font-semibold text-base">
-                Archive variation?
-              </AlertDialog.Title>
-            </div>
-            <AlertDialog.Description className="mb-6 pl-12 text-muted-foreground text-sm">
-              &ldquo;{deleteTarget?.label}&rdquo; will be archived and hidden from this avatar.
-            </AlertDialog.Description>
-            <div className="flex justify-end gap-2">
-              <AlertDialog.Close render={<Button variant="outline" size="sm" />}>
-                Cancel
-              </AlertDialog.Close>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => void handleDeleteConfirm()}
-                disabled={deleting}
-              >
-                {deleting && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
-                Archive
-              </Button>
-            </div>
-          </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+        title="Archive variation?"
+        description={
+          <>&ldquo;{deleteTarget?.label}&rdquo; will be archived and hidden from this avatar.</>
+        }
+        icon={<Archive className="h-4 w-4" />}
+        confirmLabel="Archive"
+        onConfirm={() => void handleDeleteConfirm()}
+        loading={deleting}
+      />
     </>
   );
 }
