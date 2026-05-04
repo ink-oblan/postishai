@@ -1,9 +1,10 @@
 "use client";
 
-import { AlertTriangle, Loader2, Pencil, Play, Square } from "lucide-react";
+import { AlertTriangle, Loader2, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { type AvatarVoice, AvatarVoiceField } from "@/components/avatars/AvatarVoiceField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,16 +36,17 @@ const ETHNICITIES = [
 ];
 
 type Gender = "man" | "woman" | "neutral";
+
+function voiceGenderForAvatarGender(gender: Gender): string | null {
+  if (gender === "man") return "male";
+  if (gender === "woman") return "female";
+  return null;
+}
+
 interface ImageModel {
   id: string;
   name: string;
   description: string;
-}
-interface Voice {
-  voice_id: string;
-  name: string;
-  gender: string;
-  preview_audio?: string;
 }
 
 interface AvatarData {
@@ -84,34 +86,8 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
   const [imageModel, setImageModel] = useState(avatar.imageModel ?? "");
   const [voiceId, setVoiceId] = useState(avatar.voiceId);
   const [models, setModels] = useState<ImageModel[]>([]);
-  const [voices, setVoices] = useState<Voice[]>([]);
+  const [voices, setVoices] = useState<AvatarVoice[]>([]);
   const [loading, setLoading] = useState(false);
-  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const stopAudio = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    setPlayingVoiceId(null);
-  }, []);
-
-  function toggleVoicePreview(voice: Voice) {
-    if (!voice.preview_audio) return;
-    if (playingVoiceId === voice.voice_id) {
-      stopAudio();
-      return;
-    }
-    stopAudio();
-    const audio = new Audio(voice.preview_audio);
-    audio.onended = () => setPlayingVoiceId(null);
-    audio.play();
-    audioRef.current = audio;
-    setPlayingVoiceId(voice.voice_id);
-  }
-
-  useEffect(() => stopAudio, [stopAudio]);
 
   useEffect(() => {
     let cancelled = false;
@@ -380,81 +356,22 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
         <div className="col-span-2">
           <PropLabel>Voice</PropLabel>
           {editing ? (
-            voices.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 shrink-0 p-0"
-                  onClick={() => {
-                    const v = voices.find((v) => v.voice_id === voiceId);
-                    if (v) toggleVoicePreview(v);
-                  }}
-                  disabled={!voices.find((v) => v.voice_id === voiceId)?.preview_audio}
-                  title="Preview voice"
-                >
-                  {playingVoiceId === voiceId ? (
-                    <Square className="h-3 w-3 fill-current" />
-                  ) : (
-                    <Play className="h-3 w-3 fill-current" />
-                  )}
-                </Button>
-                <Select
-                  value={voiceId}
-                  onValueChange={(v) => {
-                    if (v) {
-                      stopAudio();
-                      setVoiceId(v);
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue>
-                      {voices.find((v) => v.voice_id === voiceId)?.name.trim() ?? voiceId}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {voices.map((v) => (
-                      <SelectItem key={v.voice_id} value={v.voice_id}>
-                        {v.name.trim()} ({v.gender})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div className="flex h-8 items-center">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-              </div>
-            )
+            <AvatarVoiceField
+              voices={voices}
+              value={voiceId}
+              onValueChange={setVoiceId}
+              genderFilter={voiceGenderForAvatarGender(gender)}
+              loading={voices.length === 0}
+              size="sm"
+              triggerClassName="h-8 text-sm"
+            />
           ) : (
-            <div className="flex items-center gap-2">
-              {(() => {
-                const v = voices.find((v) => v.voice_id === avatar.voiceId);
-                return v?.preview_audio ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleVoicePreview(v)}
-                    className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-                    title="Preview voice"
-                  >
-                    {playingVoiceId === avatar.voiceId ? (
-                      <Square className="h-3 w-3 fill-current" />
-                    ) : (
-                      <Play className="h-3 w-3 fill-current" />
-                    )}
-                  </button>
-                ) : null;
-              })()}
-              {voices.length === 0 ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-              ) : (
-                <PropValue>
-                  {voices.find((v) => v.voice_id === avatar.voiceId)?.name.trim() ?? avatar.voiceId}
-                </PropValue>
-              )}
-            </div>
+            <AvatarVoiceField
+              voices={voices}
+              value={avatar.voiceId}
+              loading={voices.length === 0}
+              readOnly
+            />
           )}
         </div>
       </div>

@@ -1,9 +1,10 @@
 "use client";
 
-import { Loader2, Play, Sparkles, Square, Upload } from "lucide-react";
+import { Loader2, Sparkles, Upload } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { type AvatarVoice, AvatarVoiceField } from "@/components/avatars/AvatarVoiceField";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,15 +42,30 @@ interface ImageModel {
   description: string;
 }
 
-interface Voice {
-  voice_id: string;
-  name: string;
-  gender: string;
-  preview_audio?: string;
-}
-
 type Mode = "generate" | "upload";
 type Gender = "man" | "woman" | "neutral";
+type GenderSelection = Gender | "";
+
+function voiceGenderForAvatarGender(gender: GenderSelection): string | null {
+  if (gender === "man") return "male";
+  if (gender === "woman") return "female";
+  return null;
+}
+
+function findRecommendedVoice(
+  voices: AvatarVoice[],
+  gender: GenderSelection,
+): AvatarVoice | undefined {
+  const voiceGender = voiceGenderForAvatarGender(gender);
+  if (!voiceGender) return undefined;
+
+  const matchingVoices = voices.filter(
+    (voice) => voice.gender.trim().toLowerCase() === voiceGender,
+  );
+  if (matchingVoices.length === 0) return undefined;
+
+  return matchingVoices[Math.floor(Math.random() * matchingVoices.length)];
+}
 
 export function NewAvatarForm() {
   const router = useRouter();
@@ -57,44 +73,19 @@ export function NewAvatarForm() {
   const [mode, setMode] = useState<Mode>("generate");
   const [name, setName] = useState("");
   const [voiceId, setVoiceId] = useState("");
-  const [gender, setGender] = useState<Gender>("man");
+  const [gender, setGender] = useState<GenderSelection>("");
   const [age, setAge] = useState("");
   const [ethnicity, setEthnicity] = useState("");
   const [origin, setOrigin] = useState("");
   const [occupation, setOccupation] = useState("");
   const [imageModel, setImageModel] = useState("nano-banana-2");
   const [models, setModels] = useState<ImageModel[]>([]);
-  const [voices, setVoices] = useState<Voice[]>([]);
+  const [voices, setVoices] = useState<AvatarVoice[]>([]);
+  const [voiceManuallySelected, setVoiceManuallySelected] = useState(false);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const stopAudio = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    setPlayingVoiceId(null);
-  }, []);
-
-  function toggleVoicePreview(voice: Voice) {
-    if (!voice.preview_audio) return;
-    if (playingVoiceId === voice.voice_id) {
-      stopAudio();
-      return;
-    }
-    stopAudio();
-    const audio = new Audio(voice.preview_audio);
-    audio.onended = () => setPlayingVoiceId(null);
-    audio.play();
-    audioRef.current = audio;
-    setPlayingVoiceId(voice.voice_id);
-  }
-
-  useEffect(() => stopAudio, [stopAudio]);
 
   useEffect(() => {
     fetch("/api/image-models")
@@ -107,7 +98,6 @@ export function NewAvatarForm() {
       .then((nextVoices) => {
         if (cancelled) return;
         setVoices(nextVoices);
-        if (nextVoices.length > 0) setVoiceId(nextVoices[0].voice_id);
       })
       .catch((error) => {
         if (cancelled) return;
@@ -118,6 +108,13 @@ export function NewAvatarForm() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (voiceManuallySelected || voices.length === 0) return;
+
+    const recommendedVoice = mode === "upload" ? voices[0] : findRecommendedVoice(voices, gender);
+    setVoiceId(recommendedVoice?.voice_id ?? "");
+  }, [gender, mode, voiceManuallySelected, voices]);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>): void {
     const file = e.target.files?.[0];
@@ -137,11 +134,11 @@ export function NewAvatarForm() {
       toast.error("Name is required");
       return;
     }
-    if (!voiceId) {
-      toast.error("Voice is required");
-      return;
-    }
     if (mode === "generate") {
+      if (!gender) {
+        toast.error("Gender is required");
+        return;
+      }
       if (!age || Number.isNaN(Number(age))) {
         toast.error("Valid age is required");
         return;
@@ -154,6 +151,10 @@ export function NewAvatarForm() {
         toast.error("Occupation is required");
         return;
       }
+    }
+    if (!voiceId) {
+      toast.error("Voice is required");
+      return;
     }
     if (mode === "upload" && !imageBase64) {
       toast.error("Please select an image");
@@ -237,51 +238,6 @@ export function NewAvatarForm() {
         />
       </div>
 
-      {/* Voice */}
-      <div className="space-y-2">
-        <Label>Voice</Label>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 w-9 shrink-0 p-0"
-            onClick={() => {
-              const v = voices.find((v) => v.voice_id === voiceId);
-              if (v) toggleVoicePreview(v);
-            }}
-            disabled={!voices.find((v) => v.voice_id === voiceId)?.preview_audio}
-            title="Preview voice"
-          >
-            {playingVoiceId === voiceId ? (
-              <Square className="h-3.5 w-3.5 fill-current" />
-            ) : (
-              <Play className="h-3.5 w-3.5 fill-current" />
-            )}
-          </Button>
-          <Select
-            value={voiceId}
-            onValueChange={(v: string | null) => {
-              if (v) {
-                stopAudio();
-                setVoiceId(v);
-              }
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select voice…" />
-            </SelectTrigger>
-            <SelectContent>
-              {voices.map((v) => (
-                <SelectItem key={v.voice_id} value={v.voice_id}>
-                  {v.name.trim()} ({v.gender})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {mode === "generate" ? (
         <>
           {/* Gender */}
@@ -359,6 +315,27 @@ export function NewAvatarForm() {
             />
           </div>
 
+          {/* Voice */}
+          <div className="space-y-2">
+            <Label>Voice</Label>
+            <AvatarVoiceField
+              voices={voices}
+              value={voiceId}
+              genderFilter={voiceGenderForAvatarGender(gender)}
+              onValueChange={(nextVoiceId) => {
+                setVoiceManuallySelected(true);
+                setVoiceId(nextVoiceId);
+              }}
+              allowClear={voiceManuallySelected}
+              onClear={() => {
+                setVoiceManuallySelected(false);
+                const recommendedVoice = findRecommendedVoice(voices, gender);
+                setVoiceId(recommendedVoice?.voice_id ?? "");
+              }}
+              clearTitle="Use recommended voice"
+            />
+          </div>
+
           {/* Image model */}
           <div className="space-y-2">
             <Label>Image Model</Label>
@@ -378,38 +355,58 @@ export function NewAvatarForm() {
           </div>
         </>
       ) : (
-        <div className="space-y-2">
-          <Label>Image</Label>
-          <Card
-            className="cursor-pointer border-dashed transition-colors hover:border-primary/50"
-            onClick={() => fileRef.current?.click()}
-          >
-            <CardContent className="flex flex-col items-center justify-center gap-3 py-8">
-              {previewUrl ? (
-                // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="max-h-48 rounded-md object-contain"
-                />
-              ) : (
-                <>
-                  <Upload className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-muted-foreground text-sm">
-                    Click to select an image (PNG or JPEG)
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/png,image/jpeg"
-            className="hidden"
-            onChange={handleFile}
-          />
-        </div>
+        <>
+          <div className="space-y-2">
+            <Label>Image</Label>
+            <Card
+              className="cursor-pointer border-dashed transition-colors hover:border-primary/50"
+              onClick={() => fileRef.current?.click()}
+            >
+              <CardContent className="flex flex-col items-center justify-center gap-3 py-8">
+                {previewUrl ? (
+                  // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="max-h-48 rounded-md object-contain"
+                  />
+                ) : (
+                  <>
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-muted-foreground text-sm">
+                      Click to select an image (PNG or JPEG)
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg"
+              className="hidden"
+              onChange={handleFile}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Voice</Label>
+            <AvatarVoiceField
+              voices={voices}
+              value={voiceId}
+              onValueChange={(nextVoiceId) => {
+                setVoiceManuallySelected(true);
+                setVoiceId(nextVoiceId);
+              }}
+              allowClear={voiceManuallySelected}
+              onClear={() => {
+                setVoiceManuallySelected(false);
+                setVoiceId(voices[0]?.voice_id ?? "");
+              }}
+              clearTitle="Use recommended voice"
+            />
+          </div>
+        </>
       )}
 
       <Button type="submit" disabled={loading} className="w-full">

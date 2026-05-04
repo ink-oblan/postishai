@@ -180,6 +180,20 @@
   --sidebar-ring: oklch(0.77 0.18 125);
 }
 
+@keyframes voiceWaveBar {
+  from {
+    height: 2px;
+  }
+  to {
+    height: calc(var(--wave-scale, 1) * 11px);
+  }
+}
+
+.voice-wave-bar {
+  height: 2px;
+  animation: voiceWaveBar 0.55s ease-in-out infinite alternate;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
