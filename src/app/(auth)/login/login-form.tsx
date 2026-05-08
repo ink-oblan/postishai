@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,12 +33,17 @@ function GoogleIcon() {
 
 export function LoginForm() {
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [emailValue, setEmailValue] = useState("");
   const [loginState, loginAction, loginPending] = useActionState(login, undefined);
   const [registerState, registerAction, registerPending] = useActionState(register, undefined);
   const searchParams = useSearchParams();
   const oauthError = searchParams.get("error");
 
   const state = mode === "login" ? loginState : registerState;
+
+  useEffect(() => {
+    if (state?.submittedEmail) setEmailValue(state.submittedEmail);
+  }, [state?.submittedEmail]);
   const action = mode === "login" ? loginAction : registerAction;
   const pending = mode === "login" ? loginPending : registerPending;
 
@@ -96,7 +101,14 @@ export function LoginForm() {
 
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" placeholder="you@example.com" />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="you@example.com"
+            value={emailValue}
+            onChange={(e) => setEmailValue(e.target.value)}
+          />
           {state?.errors?.email && (
             <p className="text-destructive text-xs">{state.errors.email[0]}</p>
           )}

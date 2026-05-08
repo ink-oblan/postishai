@@ -44,8 +44,8 @@ export default function LandingPage() {
               Sign In
             </Link>
             <Link
-              href="/signup"
-              className="rounded-lg bg-orange-500 px-4 py-2 text-center font-semibold text-sm text-white leading-tight transition hover:bg-orange-500 hover:shadow-lg sm:px-6 sm:text-base"
+              href="/login"
+              className="rounded-lg bg-primary px-4 py-2 text-center font-semibold text-sm text-white leading-tight transition hover:bg-primary hover:shadow-lg sm:px-6 sm:text-base"
             >
               Start for free
             </Link>
@@ -80,7 +80,7 @@ export default function LandingPage() {
             }}
           >
             <div className="text-4xl sm:text-5xl lg:text-6xl">Marketing content?</div>
-            <span className="text-6xl text-orange-500 underline decoration-2 underline-offset-4 sm:text-7xl lg:text-8xl">
+            <span className="text-6xl text-primary underline decoration-2 underline-offset-4 sm:text-7xl lg:text-8xl">
               Easy.
             </span>
           </motion.h1>
@@ -102,8 +102,8 @@ export default function LandingPage() {
             className="flex flex-col items-center justify-center gap-4 sm:flex-row"
           >
             <Link
-              href="/app"
-              className="group flex items-center gap-2 rounded-lg bg-orange-500 px-8 py-4 font-semibold text-lg text-white transition-all duration-300 hover:bg-orange-600 hover:shadow-orange-500/30 hover:shadow-xl"
+              href="/login"
+              className="group flex items-center gap-2 rounded-lg bg-primary px-8 py-4 font-semibold text-lg text-white transition-all duration-300 hover:bg-primary/90 hover:shadow-primary/30 hover:shadow-xl"
             >
               Start for free
               <motion.div className="transition-transform group-hover:translate-x-1">
@@ -160,7 +160,7 @@ export default function LandingPage() {
                 className="relative"
               >
                 <div className="text-center">
-                  <div className="mb-4 font-black text-6xl text-orange-500">{step.number}</div>
+                  <div className="mb-4 font-black text-6xl text-primary">{step.number}</div>
                   <h3 className="mb-3 font-bold text-gray-900 text-xl">{step.title}</h3>
                   <p className="text-gray-600 text-sm leading-relaxed">{step.desc}</p>
                 </div>
@@ -171,7 +171,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-orange-500 to-orange-600 px-6 py-24">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary to-primary/90 px-6 py-24">
         <div className="absolute inset-0 overflow-hidden opacity-5">
           <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-white blur-3xl" />
           <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-white blur-3xl" />
@@ -212,8 +212,8 @@ export default function LandingPage() {
             className="flex flex-col justify-center gap-4 sm:flex-row"
           >
             <Link
-              href="/app"
-              className="group flex items-center justify-center gap-2 rounded-lg bg-white px-8 py-4 font-semibold text-lg text-orange-500 transition-all duration-300 hover:shadow-black/20 hover:shadow-xl"
+              href="/login"
+              className="group flex items-center justify-center gap-2 rounded-lg bg-white px-8 py-4 font-semibold text-lg text-primary transition-all duration-300 hover:shadow-black/20 hover:shadow-xl"
             >
               Start for free
               <motion.div className="transition-transform group-hover:translate-x-1">

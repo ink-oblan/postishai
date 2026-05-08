@@ -74,19 +74,22 @@ export async function login(_prevState: AuthFormState, formData: FormData): Prom
   });
 
   if (!validated.success) {
-    return { errors: validated.error.flatten().fieldErrors };
+    return {
+      errors: validated.error.flatten().fieldErrors,
+      submittedEmail: (formData.get("email") as string) || undefined,
+    };
   }
 
   const { email, password } = validated.data;
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user?.passwordHash) {
-    return { message: "Invalid email or password." };
+    return { message: "Invalid email or password.", submittedEmail: email };
   }
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
-    return { message: "Invalid email or password." };
+    return { message: "Invalid email or password.", submittedEmail: email };
   }
 
   await createSession(user.id);

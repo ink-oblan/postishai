@@ -37,5 +37,6 @@ export type AuthFormState =
         useCaseDetails?: string[];
       };
       message?: string;
+      submittedEmail?: string;
     }
   | undefined;
