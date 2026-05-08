@@ -91,9 +91,13 @@ npx prisma generate
 # Branching & deployment model
 
 - **Direct pushes to `main` are prohibited.** All changes reach `main` via pull requests.
-- **Deployments are triggered by semver release tags** matching `v<major>.<minor>.<patch>` (e.g. `v0.1.0`, `v1.2.3`). Pushing a tag triggers the GitHub Actions deploy workflow; pushing to `main` alone does not deploy.
-- To release: merge your PR to `main`, then tag the merge commit:
+- **Deployments are triggered by semver release tags** matching `v<major>.<minor>.<patch>` (e.g. `v0.1.0`, `v1.2.3`). Assigning and pushing a new release tag is a deployment action because it triggers the GitHub Actions deploy workflow; pushing to `main` alone does not deploy.
+- Before creating a release tag, bump `package.json` and `package-lock.json` to the same version as the tag, without the leading `v`.
+- To release: merge your PR to `main`, bump the package version, then tag the merge commit:
   ```bash
+  npm version 0.1.0 --no-git-tag-version
+  git add package.json package-lock.json
+  git commit -m "chore(release): bump version to 0.1.0" -m "- bump package metadata for v0.1.0 release"
   git tag v0.1.0
   git push origin v0.1.0
   ```
