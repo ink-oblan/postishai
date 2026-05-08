@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 <!-- BEGIN:runtime-log-files -->
 # Runtime log files
-
+Use this files for debugging:
 - `dev.log` stores the local Next.js dev server output.
 - `worker.log` stores the local worker process output.
 <!-- END:runtime-log-files -->
@@ -92,10 +92,11 @@ npx prisma generate
 
 - **Direct pushes to `main` are prohibited.** All changes reach `main` via pull requests.
 - **Deployments are triggered by semver release tags** matching `v<major>.<minor>.<patch>` (e.g. `v0.1.0`, `v1.2.3`). Pushing a tag triggers the GitHub Actions deploy workflow; pushing to `main` alone does not deploy.
-- To release: merge your PR to `main`, then tag the merge commit:
+- To release: merge all PRs to `main`, then on the `main` branch run:
   ```bash
-  git tag v0.1.0
-  git push origin v0.1.0
+  npm version 0.1.0
+  git push && git push --tags
   ```
+  `npm version` bumps `package.json`/`package-lock.json`, commits, and creates the `v0.1.0` tag in one step. The subsequent push sends both the commit and the tag to origin.
 - Docker images are tagged with `latest`, the semver tag (e.g. `v0.1.0`), and the commit SHA.
 <!-- END:branching-and-deploy -->
