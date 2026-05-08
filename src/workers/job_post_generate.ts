@@ -56,41 +56,51 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
       throw new Error(`Post ${payload.postId} not found`);
     }
 
-    const variation = post.avatarVariation?.status === "COMPLETED" ? post.avatarVariation : null;
-    let heygenAssetId = variation ? variation.heygenAssetId : post.avatar.heygenAssetId;
+    let heygenVideoId = post.heygenVideoId;
 
-    if (!heygenAssetId) {
-      const imagePath = variation ? variation.imagePath : post.avatar.imagePath;
-      const mimeType = imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
-      const imageBuffer = await readFile(imagePath);
-      const uploaded = await uploadAvatarImage(imageBuffer, mimeType);
-      heygenAssetId = uploaded.assetId;
-      if (variation) {
-        await ctx.db.avatarVariation.update({
-          where: { id: variation.id },
-          data: { heygenAssetId: uploaded.assetId, heygenAssetUrl: uploaded.assetUrl },
-        });
-      } else {
-        await ctx.db.avatar.update({
-          where: { id: post.avatar.id },
-          data: { heygenAssetId: uploaded.assetId, heygenAssetUrl: uploaded.assetUrl },
-        });
+    if (heygenVideoId) {
+      ctx.log(`[post.generate] resuming HeyGen videoId=${heygenVideoId} postId=${payload.postId}`);
+      await ctx.db.post.update({
+        where: { id: payload.postId },
+        data: { errorMessage: null },
+      });
+    } else {
+      const variation = post.avatarVariation?.status === "COMPLETED" ? post.avatarVariation : null;
+      let heygenAssetId = variation ? variation.heygenAssetId : post.avatar.heygenAssetId;
+
+      if (!heygenAssetId) {
+        const imagePath = variation ? variation.imagePath : post.avatar.imagePath;
+        const mimeType = imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
+        const imageBuffer = await readFile(imagePath);
+        const uploaded = await uploadAvatarImage(imageBuffer, mimeType);
+        heygenAssetId = uploaded.assetId;
+        if (variation) {
+          await ctx.db.avatarVariation.update({
+            where: { id: variation.id },
+            data: { heygenAssetId: uploaded.assetId, heygenAssetUrl: uploaded.assetUrl },
+          });
+        } else {
+          await ctx.db.avatar.update({
+            where: { id: post.avatar.id },
+            data: { heygenAssetId: uploaded.assetId, heygenAssetUrl: uploaded.assetUrl },
+          });
+        }
       }
+
+      heygenVideoId = await createVideo({
+        image_asset_id: heygenAssetId,
+        script: post.script,
+        voice_id: post.avatar.voiceId,
+        title: post.title,
+        aspect_ratio: "9:16",
+        resolution: "1080p",
+      });
+
+      await ctx.db.post.update({
+        where: { id: payload.postId },
+        data: { heygenVideoId, errorMessage: null },
+      });
     }
-
-    const heygenVideoId = await createVideo({
-      image_asset_id: heygenAssetId,
-      script: post.script,
-      voice_id: post.avatar.voiceId,
-      title: post.title,
-      aspect_ratio: "9:16",
-      resolution: "1080p",
-    });
-
-    await ctx.db.post.update({
-      where: { id: payload.postId },
-      data: { heygenVideoId, errorMessage: null },
-    });
 
     const pollStart = Date.now();
     while (Date.now() - pollStart <= HEYGEN_POLL_TIMEOUT_MS) {

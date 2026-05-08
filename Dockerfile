@@ -3,7 +3,7 @@ FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y ffmpeg openssl && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -27,7 +27,7 @@ CMD ["npx", "prisma", "migrate", "deploy"]
 FROM node:22-bookworm-slim AS prod
 
 WORKDIR /app
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y ffmpeg openssl && rm -rf /var/lib/apt/lists/*
 
 COPY --from=prod-build /app/.next/standalone ./
 COPY --from=prod-build /app/.next/static ./.next/static
