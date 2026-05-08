@@ -189,6 +189,15 @@
   }
 }
 
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(20px);
+  }
+}
+
 .voice-wave-bar {
   height: 2px;
   animation: voiceWaveBar 0.55s ease-in-out infinite alternate;

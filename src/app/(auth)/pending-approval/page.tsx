@@ -29,13 +29,13 @@ export default async function PendingApprovalPage({
       <div className="space-y-3 text-center">
         <h1 className="font-bold text-2xl">Thanks for signing up 🥳🎉</h1>
         <p className="text-muted-foreground text-sm leading-6">
-          Thanks for signing up for the beta testing. Your account will be approved soon.
+          Thanks for signing up for the platform preview! Your account will be approved soon.
         </p>
       </div>
 
       <form action={submitApprovalDetails} className="space-y-3">
         <div className="space-y-1.5">
-          <Label htmlFor="useCaseDetails">Add details for approval</Label>
+          <Label htmlFor="useCaseDetails">Comment for the creator</Label>
           <Textarea
             id="useCaseDetails"
             name="useCaseDetails"
