@@ -90,6 +90,11 @@ function PropValue({ children }: { children: React.ReactNode }) {
   );
 }
 
+function resizeTextarea(element: HTMLTextAreaElement) {
+  element.style.height = "0px";
+  element.style.height = `${element.scrollHeight}px`;
+}
+
 export function PostEditPanel({
   post,
   editable,
@@ -277,8 +282,7 @@ export function PostEditPanel({
   useEffect(() => {
     const element = scriptRef.current;
     if (!element) return;
-    element.style.height = "0px";
-    element.style.height = `${element.scrollHeight}px`;
+    resizeTextarea(element);
   }, []);
 
   const hasChanges =
@@ -605,10 +609,13 @@ export function PostEditPanel({
               <Textarea
                 ref={scriptRef}
                 value={script}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setScript(e.target.value)}
-                rows={1}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                  setScript(e.target.value);
+                  resizeTextarea(e.currentTarget);
+                }}
+                rows={8}
                 required
-                className="min-h-9 resize-none text-sm"
+                className="min-h-40 resize-y text-sm leading-relaxed"
                 style={{ height: "auto", overflow: "hidden" }}
               />
               <p className="text-muted-foreground text-xs">{script.length} characters</p>

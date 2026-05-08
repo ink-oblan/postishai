@@ -28,18 +28,29 @@ export default function LandingPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-end gap-0.5">
-            <Image src="/logo.svg" alt="Postishai" width={40} height={40} />
-            <span className="-mb-0.2 font-bold text-gray-900 text-xl">ostishAI</span>
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-6 sm:py-4">
+          <div className="flex min-w-0 items-end gap-0.5">
+            <Image
+              src="/logo.svg"
+              alt="Postishai"
+              width={40}
+              height={40}
+              className="h-8 w-8 sm:h-10 sm:w-10"
+            />
+            <span className="-mb-0.2 truncate font-bold text-gray-900 text-lg sm:text-xl">
+              ostishAI
+            </span>
           </div>
-          <div className="flex items-center gap-8">
-            <Link href="/login" className="text-gray-600 transition hover:text-gray-900">
+          <div className="flex shrink-0 items-center gap-3 sm:gap-8">
+            <Link
+              href="/login"
+              className="text-gray-600 text-sm transition hover:text-gray-900 sm:text-base"
+            >
               Sign In
             </Link>
             <Link
               href="/signup"
-              className="rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-2 font-semibold text-white transition hover:shadow-amber-400/30 hover:shadow-lg"
+              className="rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-2 text-center font-semibold text-sm text-white leading-tight transition hover:shadow-amber-400/30 hover:shadow-lg sm:px-6 sm:text-base"
             >
               Get Started
             </Link>
@@ -134,15 +145,15 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.5 }}
-            className="mt-16 grid grid-cols-3 gap-8 border-amber-200 border-t pt-12"
+            className="mt-16 grid grid-cols-3 gap-3 border-amber-200 border-t pt-12 sm:gap-8"
           >
             {[
               { label: "Videos Generated", value: "50K+" },
               { label: "Faster Creation", value: "10x" },
               { label: "Cost Saved", value: "90%" },
             ].map((stat) => (
-              <div key={stat.label}>
-                <div className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text font-bold text-3xl text-transparent sm:text-4xl">
+              <div key={stat.label} className="min-w-0">
+                <div className="whitespace-nowrap bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text font-bold text-[1.65rem] text-transparent leading-none sm:text-4xl">
                   {stat.value}
                 </div>
                 <div className="mt-2 text-gray-600 text-sm">{stat.label}</div>

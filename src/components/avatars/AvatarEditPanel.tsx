@@ -184,7 +184,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
   const content = (
     <>
       {/* Name row */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <PropLabel>Name</PropLabel>
           {editing ? (
@@ -198,9 +198,9 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
             <h1 className="truncate font-semibold text-xl">{avatar.name}</h1>
           )}
         </div>
-        <div className="mt-5 shrink-0">
+        <div className="shrink-0 sm:mt-5">
           {editing ? (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button type="submit" size="sm" disabled={loading}>
                 {loading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                 {visualChanged ? "Save & Regenerate" : voiceChanged ? "Save" : "Save"}
@@ -227,12 +227,12 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
       )}
 
       {/* Properties grid */}
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+      <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
         {/* Gender */}
-        <div>
+        <div className="min-w-0">
           <PropLabel>Gender</PropLabel>
           {editing ? (
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {(["man", "woman", "neutral"] as Gender[]).map((g) => (
                 <Button
                   key={g}
@@ -254,7 +254,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
         </div>
 
         {/* Age */}
-        <div>
+        <div className="min-w-0">
           <PropLabel>Age</PropLabel>
           {editing ? (
             <Input
@@ -263,7 +263,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
               max={90}
               value={age}
               onChange={(e) => setAge(e.target.value)}
-              className="h-8 w-24 text-sm"
+              className="h-8 w-full text-sm sm:w-24"
               placeholder="35"
             />
           ) : (
@@ -272,11 +272,11 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
         </div>
 
         {/* Ethnicity */}
-        <div>
+        <div className="min-w-0">
           <PropLabel>Ethnicity</PropLabel>
           {editing ? (
             <Select value={ethnicity} onValueChange={(v) => v && setEthnicity(v)}>
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger className="h-8 w-full text-sm">
                 <SelectValue placeholder="Select…" />
               </SelectTrigger>
               <SelectContent>
@@ -293,7 +293,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
         </div>
 
         {/* Origin */}
-        <div>
+        <div className="min-w-0">
           <PropLabel>
             Origin{editing && <span className="text-muted-foreground/70"> (optional)</span>}
           </PropLabel>
@@ -310,7 +310,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
         </div>
 
         {/* Occupation */}
-        <div>
+        <div className="min-w-0">
           <PropLabel>Occupation</PropLabel>
           {editing ? (
             <Input
@@ -325,12 +325,12 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
         </div>
 
         {/* Image Model */}
-        <div>
+        <div className="min-w-0">
           <PropLabel>Image Model</PropLabel>
           {editing ? (
             models.length > 0 ? (
               <Select value={imageModel} onValueChange={(v) => v && setImageModel(v)}>
-                <SelectTrigger className="h-8 text-sm">
+                <SelectTrigger className="h-8 w-full text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
