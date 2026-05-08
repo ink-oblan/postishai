@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getSessionSecret } from "@/lib/auth/secret";
 
-const PUBLIC_PATHS = ["/login", "/api/auth"];
+const PUBLIC_PATHS = ["/", "/login", "/api/auth"];
 const STATIC_PATHS = ["/_next", "/favicon.ico", "/logo.svg", "/logo-dark.svg"];
 
 function isPublicPath(pathname: string): boolean {
