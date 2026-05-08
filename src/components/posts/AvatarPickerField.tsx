@@ -81,7 +81,7 @@ export function AvatarPickerField({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <div ref={pickerRef} className="relative min-w-0 flex-1">
         <span className="pointer-events-none absolute top-1/2 left-2.5 z-10 -translate-y-1/2">
           <span className="relative block h-6 w-6 overflow-hidden rounded-md border border-border bg-muted">
@@ -148,7 +148,14 @@ export function AvatarPickerField({
           </div>
         )}
       </div>
-      <Link href={newAvatarHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
+      <Link
+        href={newAvatarHref}
+        className={buttonVariants({
+          variant: "outline",
+          size: "sm",
+          className: "w-full sm:w-auto",
+        })}
+      >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         New avatar
       </Link>

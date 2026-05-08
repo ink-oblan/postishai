@@ -238,7 +238,7 @@ function TokenEditor({
         ))}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Input
           value={inputValue}
           onChange={(e) => handleInputChange(e.target.value)}
@@ -253,6 +253,7 @@ function TokenEditor({
           variant="outline"
           onClick={handleAdd}
           disabled={!inputValue.trim()}
+          className="w-full sm:w-auto"
         >
           <Plus className="h-3.5 w-3.5" />
           Add

@@ -206,9 +206,21 @@
   }
   html {
     @apply font-sans;
-    font-size: 130%;
+    font-size: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  @media (min-width: 768px) {
+    html {
+      font-size: 112.5%;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    html {
+      font-size: 130%;
+    }
   }
   button:not(:disabled) {
     cursor: pointer;

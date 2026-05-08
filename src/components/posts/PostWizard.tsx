@@ -203,7 +203,7 @@ export function PostWizard() {
       {step === 1 && (
         <div className="space-y-3">
           <p className="text-muted-foreground text-sm">Select the avatar for this post</p>
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <button
               type="button"
               onClick={() => router.push("/avatars/new")}
@@ -303,7 +303,7 @@ export function PostWizard() {
 
           <div className="space-y-2">
             <Label>Platform</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {PLATFORMS.map((p) => (
                 <Button
                   key={p}
@@ -344,7 +344,7 @@ export function PostWizard() {
           <Dialog.Root open={aiScriptOpen} onOpenChange={setAiScriptOpen}>
             <Dialog.Portal>
               <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-              <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl transition-all duration-200 data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
+              <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl transition-all duration-200 data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 sm:p-6">
                 <div className="mb-4 flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                     <Sparkles className="h-4 w-4 text-primary" />
@@ -366,7 +366,7 @@ export function PostWizard() {
                   rows={3}
                   disabled={aiScriptLoading}
                 />
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <Dialog.Close
                     render={<Button variant="outline" size="sm" disabled={aiScriptLoading} />}
                   >
@@ -401,7 +401,7 @@ export function PostWizard() {
                   {llmModels.find((m) => m.id === data.llmModelId)?.name ?? data.llmModelId}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent className="w-max">
+              <SelectContent className="max-w-[calc(100vw-2rem)]">
                 {llmModels.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     {m.name}

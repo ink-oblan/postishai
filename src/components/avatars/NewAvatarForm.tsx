@@ -205,7 +205,7 @@ export function NewAvatarForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Mode toggle */}
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Button
           type="button"
           variant={mode === "generate" ? "default" : "outline"}
@@ -243,7 +243,7 @@ export function NewAvatarForm() {
           {/* Gender */}
           <div className="space-y-2">
             <Label>Gender</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {(["man", "woman", "neutral"] as Gender[]).map((g) => (
                 <Button
                   key={g}

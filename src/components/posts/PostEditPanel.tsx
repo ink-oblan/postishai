@@ -398,7 +398,7 @@ export function PostEditPanel({
     <>
       <div className="mb-6">
         <PropLabel>Title</PropLabel>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
             {editing ? (
               <Input
@@ -413,7 +413,7 @@ export function PostEditPanel({
           </div>
           <div className="shrink-0">
             {editing ? (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   size="sm"
@@ -430,7 +430,7 @@ export function PostEditPanel({
                 </Button>
               </div>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {editable && (
                   <Button
                     type="button"
@@ -464,7 +464,7 @@ export function PostEditPanel({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+      <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
         <div>
           <PropLabel>Platform</PropLabel>
           <PropValue>{post.platformLabel}</PropValue>
@@ -598,7 +598,7 @@ export function PostEditPanel({
           <PropValue>{post.createdAtLabel}</PropValue>
         </div>
 
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <PropLabel>Script</PropLabel>
           {editing ? (
             <div className="space-y-2">
@@ -649,11 +649,11 @@ export function PostEditPanel({
             Regenerate metadata?
           </AlertDialog.Title>
         </div>
-        <AlertDialog.Description className="mb-6 pl-12 text-muted-foreground text-sm">
+        <AlertDialog.Description className="mb-6 text-muted-foreground text-sm sm:pl-12">
           Save to keep the current metadata, or save and regenerate to wipe it and generate new
           metadata.
         </AlertDialog.Description>
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <AlertDialog.Close render={<Button variant="outline" size="sm" />}>
             Cancel
           </AlertDialog.Close>
