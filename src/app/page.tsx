@@ -14,16 +14,16 @@ const scrollReveal = {
 
 export default function LandingPage() {
   return (
-    <div className="overflow-hidden bg-white">
+    <div className="overflow-hidden bg-background">
       {/* Navigation */}
       <motion.nav
-        className="fixed top-0 right-0 left-0 z-50 border-orange-100 border-b bg-white/80 backdrop-blur-md"
+        className="fixed top-0 right-0 left-0 z-50 border-orange-100 border-b bg-background/80 backdrop-blur-md"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-6 sm:py-4">
-          <div className="flex min-w-0 items-end">
+          <Link href="/" className="flex min-w-0 items-end">
             <Image
               src="/logo.svg"
               alt="Postishai"
@@ -35,7 +35,7 @@ export default function LandingPage() {
             <span className="-mb-0.2 truncate font-bold text-gray-900 text-lg sm:text-xl">
               ostishAI
             </span>
-          </div>
+          </Link>
           <div className="flex shrink-0 items-center gap-3 sm:gap-8">
             <Link
               href="/login"
@@ -54,7 +54,7 @@ export default function LandingPage() {
       </motion.nav>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-white px-6 pt-32 pb-20">
+      <section className="relative flex min-h-screen items-center overflow-hidden bg-background px-6">
         {/* Refined background with subtle depth */}
         <div className="absolute inset-0 overflow-hidden">
           <div
@@ -79,7 +79,7 @@ export default function LandingPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            <div className="text-4xl sm:text-5xl lg:text-6xl">Marketing content?</div>
+            <div className="text-4xl sm:text-5xl lg:text-6xl">Social media marketing?</div>
             <span className="text-6xl text-primary underline decoration-2 underline-offset-4 sm:text-7xl lg:text-8xl">
               Easy.
             </span>
@@ -114,8 +114,73 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Who It's For */}
+      <section className="relative flex min-h-screen items-center bg-sidebar px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <motion.div {...scrollReveal} className="mb-5 flex items-center justify-center gap-4">
+            <span className="h-px w-12 bg-primary/40" />
+            <span className="font-semibold text-primary text-xs uppercase tracking-widest">
+              Who it&apos;s for
+            </span>
+            <span className="h-px w-12 bg-primary/40" />
+          </motion.div>
+          <motion.h2
+            {...scrollReveal}
+            className="mb-16 text-center font-black text-5xl text-gray-900 sm:text-6xl"
+            style={{
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontWeight: 900,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Made for founders.
+            <br />
+            <span className="text-primary">Made for creators.</span>
+          </motion.h2>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              {
+                icon: "📣",
+                label: "Social Sellers",
+                title: "Turn products into scroll-stopping videos",
+                desc: "Go from product idea to polished video in minutes — ready to post on Instagram, TikTok, and LinkedIn without a studio or crew.",
+              },
+              {
+                icon: "🚀",
+                label: "Bootstrap Teams",
+                title: "Marketing muscle without the headcount",
+                desc: "Small teams move fast. PostishAI moves faster — generate a week's worth of content in an afternoon, without hiring a single contractor.",
+              },
+              {
+                icon: "⚡",
+                label: "Solopreneurs",
+                title: "Professional content on a founder's budget",
+                desc: "You wear every hat. Let AI handle the marketing hat. Create polished video content without an agency, a studio, or a big budget.",
+              },
+            ].map((item, idx) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.8, delay: idx * 0.15 }}
+                className="group relative rounded-2xl border border-orange-100 bg-background p-8 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+              >
+                <div className="mb-5 text-4xl">{item.icon}</div>
+                <p className="mb-2 font-semibold text-primary text-xs uppercase tracking-widest">
+                  {item.label}
+                </p>
+                <h3 className="mb-3 font-bold text-gray-900 text-xl leading-tight">{item.title}</h3>
+                <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
-      <section className="relative bg-white px-6 py-20">
+      <section className="relative flex min-h-screen items-center bg-background px-6 py-20">
         <div className="mx-auto max-w-6xl">
           <motion.div {...scrollReveal} className="mb-16 text-center">
             <h2
@@ -171,7 +236,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary to-primary/90 px-6 py-24">
+      <section className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-primary to-primary/90 px-6 py-24">
         <div className="absolute inset-0 overflow-hidden opacity-5">
           <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-white blur-3xl" />
           <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-white blur-3xl" />
@@ -192,17 +257,6 @@ export default function LandingPage() {
           >
             Ready to Transform Your Content?
           </motion.h2>
-
-          <motion.p
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.9, delay: 0.1, ease: "easeOut" }}
-            className="mb-10 text-lg opacity-95"
-          >
-            Join hundreds of brands creating production-grade content at scale. No credit card
-            required.
-          </motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 40 }}
