@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Briefcase, Megaphone, Rocket } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -9,7 +9,7 @@ const scrollReveal = {
   initial: { opacity: 0, y: 40 },
   whileInView: { opacity: 1, y: 0 },
   transition: { duration: 0.9 },
-  viewport: { once: true, margin: "-80px" },
+  viewport: { once: true },
 };
 
 export default function LandingPage() {
@@ -141,38 +141,51 @@ export default function LandingPage() {
           <div className="grid gap-6 md:grid-cols-3">
             {[
               {
-                icon: "📣",
+                Icon: Megaphone,
                 label: "Social Sellers",
                 title: "Turn products into scroll-stopping videos",
                 desc: "Go from product idea to polished video in minutes — ready to post on Instagram, TikTok, and LinkedIn without a studio or crew.",
+                iconBg: "bg-orange-100",
+                iconColor: "text-orange-500",
+                labelColor: "text-orange-500",
               },
               {
-                icon: "🚀",
+                Icon: Rocket,
                 label: "Bootstrap Teams",
                 title: "Marketing muscle without the headcount",
                 desc: "Small teams move fast. PostishAI moves faster — generate a week's worth of content in an afternoon, without hiring a single contractor.",
+                iconBg: "bg-blue-100",
+                iconColor: "text-blue-500",
+                labelColor: "text-blue-500",
               },
               {
-                icon: "⚡",
+                Icon: Briefcase,
                 label: "Solopreneurs",
                 title: "Professional content on a founder's budget",
                 desc: "You wear every hat. Let AI handle the marketing hat. Create polished video content without an agency, a studio, or a big budget.",
+                iconBg: "bg-emerald-100",
+                iconColor: "text-emerald-600",
+                labelColor: "text-emerald-600",
               },
-            ].map((item, idx) => (
+            ].map(({ Icon, label, title, desc, iconBg, iconColor, labelColor }, idx) => (
               <motion.div
-                key={item.label}
+                key={label}
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
+                viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: idx * 0.15 }}
-                className="group relative rounded-2xl border border-orange-100 bg-background p-8 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+                className="group relative rounded-2xl border border-orange-100 bg-background p-8 transition-all duration-300 hover:shadow-lg"
               >
-                <div className="mb-5 text-4xl">{item.icon}</div>
-                <p className="mb-2 font-semibold text-primary text-xs uppercase tracking-widest">
-                  {item.label}
+                <div
+                  className={`mb-6 flex h-12 w-12 items-center justify-center rounded-xl ${iconBg}`}
+                >
+                  <Icon className={`h-6 w-6 ${iconColor}`} strokeWidth={1.5} />
+                </div>
+                <p className={`mb-2 font-semibold text-xs uppercase tracking-widest ${labelColor}`}>
+                  {label}
                 </p>
-                <h3 className="mb-3 font-bold text-gray-900 text-xl leading-tight">{item.title}</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
+                <h3 className="mb-3 font-bold text-gray-900 text-xl leading-tight">{title}</h3>
+                <p className="text-gray-600 text-sm leading-relaxed">{desc}</p>
               </motion.div>
             ))}
           </div>
@@ -220,7 +233,7 @@ export default function LandingPage() {
                 key={step.number}
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
+                viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: idx * 0.15 }}
                 className="relative"
               >
@@ -246,7 +259,7 @@ export default function LandingPage() {
           <motion.h2
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
+            viewport={{ once: true }}
             transition={{ duration: 0.9 }}
             className="mb-6 font-black text-5xl leading-tight sm:text-6xl"
             style={{
@@ -261,7 +274,7 @@ export default function LandingPage() {
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
+            viewport={{ once: true }}
             transition={{ duration: 0.9, delay: 0.2, ease: "easeOut" }}
             className="flex flex-col justify-center gap-4 sm:flex-row"
           >
