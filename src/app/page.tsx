@@ -1,5 +1,6 @@
 "use client";
 
+import type { Variants } from "framer-motion";
 import { motion } from "framer-motion";
 import { ArrowRight, Briefcase, Megaphone, Rocket } from "lucide-react";
 import Image from "next/image";
@@ -10,6 +11,25 @@ const scrollReveal = {
   whileInView: { opacity: 1, y: 0 },
   transition: { duration: 0.9 },
   viewport: { once: true },
+};
+
+const audienceCards: Variants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+    },
+  },
+};
+
+const audienceCard: Variants = {
+  hidden: { opacity: 0, y: 40 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+  },
 };
 
 export default function LandingPage() {
@@ -138,7 +158,13 @@ export default function LandingPage() {
             <span className="text-primary">Made for creators.</span>
           </motion.h2>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <motion.div
+            className="grid gap-6 md:grid-cols-3"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.25 }}
+            variants={audienceCards}
+          >
             {[
               {
                 Icon: Megaphone,
@@ -167,14 +193,11 @@ export default function LandingPage() {
                 iconColor: "text-emerald-600",
                 labelColor: "text-emerald-600",
               },
-            ].map(({ Icon, label, title, desc, iconBg, iconColor, labelColor }, idx) => (
+            ].map(({ Icon, label, title, desc, iconBg, iconColor, labelColor }) => (
               <motion.div
                 key={label}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8, delay: idx * 0.15 }}
-                className="group relative rounded-2xl border border-orange-100 bg-background p-8 transition-all duration-300 hover:shadow-lg"
+                variants={audienceCard}
+                className="group relative rounded-2xl border border-orange-100 bg-background p-8 transition-shadow duration-300 hover:shadow-lg"
               >
                 <div
                   className={`mb-6 flex h-12 w-12 items-center justify-center rounded-xl ${iconBg}`}
@@ -188,7 +211,7 @@ export default function LandingPage() {
                 <p className="text-gray-600 text-sm leading-relaxed">{desc}</p>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
