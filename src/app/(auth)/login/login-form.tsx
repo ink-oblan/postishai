@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAppConfig } from "@/lib/app-config-context";
 import { login, register } from "@/lib/auth/actions";
 
 function GoogleIcon() {
@@ -32,6 +33,7 @@ function GoogleIcon() {
 }
 
 export function LoginForm() {
+  const { selfDeployment } = useAppConfig();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [emailValue, setEmailValue] = useState("");
   const [loginState, loginAction, loginPending] = useActionState(login, undefined);
@@ -49,29 +51,33 @@ export function LoginForm() {
 
   return (
     <div className="space-y-6">
-      {/* Google Sign In */}
-      <a href="/api/auth/google">
-        <Button variant="outline" size="lg" className="w-full gap-2">
-          <GoogleIcon />
-          Continue with Google
-        </Button>
-      </a>
+      {!selfDeployment && (
+        <>
+          {/* Google Sign In */}
+          <a href="/api/auth/google">
+            <Button variant="outline" size="lg" className="w-full gap-2">
+              <GoogleIcon />
+              Continue with Google
+            </Button>
+          </a>
 
-      {oauthError && (
-        <p className="text-center text-destructive text-sm">
-          Google sign-in failed. Please try again.
-        </p>
+          {oauthError && (
+            <p className="text-center text-destructive text-sm">
+              Google sign-in failed. Please try again.
+            </p>
+          )}
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-border border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
+        </>
       )}
-
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-border border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">or</span>
-        </div>
-      </div>
 
       {/* Email/Password Form */}
       <form action={action} className="space-y-4">

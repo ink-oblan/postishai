@@ -11,6 +11,10 @@ vi.mock("@/lib/auth/actions", () => ({
   register: vi.fn(),
 }));
 
+vi.mock("@/lib/app-config-context", () => ({
+  useAppConfig: () => ({ selfDeployment: false }),
+}));
+
 // React 19 useActionState mock - spread actual module to preserve useState etc.
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();

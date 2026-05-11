@@ -3,6 +3,8 @@ import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { AppConfigProvider } from "@/lib/app-config-context";
+import { config } from "@/lib/config";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -24,10 +26,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <body className="h-full bg-background text-foreground">
-        <ThemeProvider>
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        <AppConfigProvider config={{ selfDeployment: config.selfDeployment }}>
+          <ThemeProvider>
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </AppConfigProvider>
       </body>
     </html>
   );

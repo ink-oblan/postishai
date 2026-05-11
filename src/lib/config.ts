@@ -24,6 +24,12 @@ export function isTruthyEnv(value: string | undefined): boolean {
 }
 
 export const config = {
+  get selfDeployment() {
+    const val = process.env.SELF_DEPLOYMENT;
+    if (val === undefined) return true;
+    return isTruthyEnv(val);
+  },
+
   get nodeEnv() {
     return process.env.NODE_ENV ?? "production";
   },
