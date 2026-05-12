@@ -3,8 +3,8 @@
 import type { Variants } from "framer-motion";
 import { motion } from "framer-motion";
 import { ArrowRight, Briefcase, Megaphone, Rocket } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 
 const scrollReveal = {
   initial: { opacity: 0, y: 40 },
@@ -43,19 +43,7 @@ export default function LandingPage() {
         transition={{ duration: 0.5 }}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-6 sm:py-4">
-          <Link href="/" className="flex min-w-0 items-end">
-            <Image
-              src="/logo.svg"
-              alt="Postishai"
-              width={40}
-              height={40}
-              className="h-8 w-8 sm:h-10 sm:w-10"
-              loading="eager"
-            />
-            <span className="-mb-0.2 truncate font-bold text-gray-900 text-lg sm:text-xl">
-              ostishAI
-            </span>
-          </Link>
+          <BrandLogo href="/" className="text-xl" />
           <div className="flex shrink-0 items-center gap-3 sm:gap-8">
             <Link
               href="/login"
@@ -319,9 +307,8 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 grid gap-12 md:grid-cols-4">
             <div>
-              <div className="mb-4 flex items-end gap-0">
-                <Image src="/logo.svg" alt="Postishai" width={24} height={24} loading="eager" />
-                <span className="-mb-0.5 font-bold text-lg text-white">ostishAI</span>
+              <div className="mb-4">
+                <BrandLogo className="text-lg text-white" />
               </div>
               <p className="text-sm">AI-powered content automation for the modern marketer.</p>
             </div>
