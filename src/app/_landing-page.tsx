@@ -47,12 +47,6 @@ export default function LandingPage() {
           <div className="flex shrink-0 items-center gap-3 sm:gap-8">
             <Link
               href="/login"
-              className="text-gray-600 text-sm transition hover:text-gray-900 sm:text-base"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/login"
               className="rounded-lg bg-primary px-4 py-2 text-center font-semibold text-sm text-white leading-tight transition hover:bg-primary hover:shadow-lg sm:px-6 sm:text-base"
             >
               Start for free
