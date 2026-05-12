@@ -98,5 +98,6 @@ npx prisma generate
   git push && git push --tags
   ```
   `npm version` bumps `package.json`/`package-lock.json`, commits, and creates the `v0.1.0` tag in one step. The subsequent push sends both the commit and the tag to origin.
+- **Never create release tags directly with `git tag`.** Release tags must be created by `npm version` so the package version bump commit and semver tag stay in sync.
 - Docker images are tagged with `latest`, the semver tag (e.g. `v0.1.0`), and the commit SHA.
 <!-- END:branching-and-deploy -->
