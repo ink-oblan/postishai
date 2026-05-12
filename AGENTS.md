@@ -90,7 +90,6 @@ npx prisma generate
 <!-- BEGIN:branching-and-deploy -->
 # Branching & deployment model
 
-- **Direct pushes to `main` are prohibited.** All changes reach `main` via pull requests.
 - **Deployments are triggered by semver release tags** matching `v<major>.<minor>.<patch>` (e.g. `v0.1.0`, `v1.2.3`). Pushing a tag triggers the GitHub Actions deploy workflow; pushing to `main` alone does not deploy.
 - To release: merge all PRs to `main`, then on the `main` branch run:
   ```bash
