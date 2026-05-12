@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { connection } from "next/server";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
@@ -18,7 +19,9 @@ export const metadata: Metadata = {
   description: "AI-powered social media content creation",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await connection();
+
   return (
     <html
       lang="en"
