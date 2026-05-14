@@ -49,6 +49,9 @@ export const config = {
   get storagePath() {
     return withDefault("STORAGE_PATH", "storage");
   },
+  get workerHealthPath() {
+    return withDefault("WORKER_HEALTH_PATH", "/tmp/postishai-worker-health.json");
+  },
   get storageArchivePrefix() {
     return withDefault("STORAGE_ARCHIVE_PREFIX", "archive");
   },

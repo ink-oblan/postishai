@@ -22,6 +22,7 @@
     "app:build": "next build",
     "app:start": "node .next/standalone/server.js",
     "app:start:logged": "node .next/standalone/server.js 2>&1 | tee dev.log",
+    "worker:healthcheck": "tsx scripts/healthcheck-worker.ts",
     "worker:dev": "tsx watch src/worker.ts 2>&1 | tee worker.log",
     "worker:start": "tsx src/worker.ts 2>&1 | tee worker.log"
   },

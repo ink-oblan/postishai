@@ -3,16 +3,19 @@ import { hostname } from "node:os";
 import type { Job } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { assertStorageModeInitialized } from "@/lib/platform-config";
+import { removeWorkerHeartbeat, updateWorkerHeartbeat } from "@/lib/worker/health";
 import { jobRegistry } from "@/workers/registry";
 import type { JobDefinition, JobType } from "@/workers/types";
 
 const POLL_INTERVAL_MS = 3000;
 const RECOVERY_BUFFER_MS = 30_000;
 const RETRY_DELAYS_MS = [10_000, 30_000, 60_000];
+const HEALTHCHECK_INTERVAL_MS = 5000;
 const workerId = `${hostname()}:${process.pid}`;
 
 let shuttingDown = false;
 let currentJobPromise: Promise<void> | null = null;
+let currentJobId: string | null = null;
 
 const log = (...args: unknown[]) => console.log(`[${new Date().toISOString()}] [worker]`, ...args);
 const logError = (...args: unknown[]) =>
@@ -137,6 +140,7 @@ async function requeueJob(job: Job, error: string): Promise<void> {
 async function processJob(job: Job): Promise<void> {
   const definition = getJobDefinition(job.type);
   const payload = definition.parse(job.payload);
+  currentJobId = job.id;
 
   log(`processing job ${job.id} type=${job.type} attempt=${job.attempts}/${job.maxAttempts}`);
 
@@ -168,6 +172,8 @@ async function processJob(job: Job): Promise<void> {
       `job ${job.id} failed permanently (attempt ${job.attempts}/${job.maxAttempts}): ${error}`,
     );
     await failJob(job, definition, payload, error);
+  } finally {
+    currentJobId = null;
   }
 }
 
@@ -236,6 +242,14 @@ export async function runWorker(): Promise<void> {
   await assertStorageModeInitialized();
   log(`started workerId=${workerId} polling every ${POLL_INTERVAL_MS}ms`);
 
+  const heartbeat = async () => {
+    try {
+      await updateWorkerHeartbeat({ currentJobId, shuttingDown, workerId });
+    } catch (error) {
+      logError("heartbeat error:", error);
+    }
+  };
+
   const tick = async () => {
     try {
       await recoverInterruptedJobs();
@@ -245,17 +259,22 @@ export async function runWorker(): Promise<void> {
     }
   };
 
+  await heartbeat();
   await tick();
   const interval = setInterval(tick, POLL_INTERVAL_MS);
+  const heartbeatInterval = setInterval(heartbeat, HEALTHCHECK_INTERVAL_MS);
 
   const shutdown = async () => {
     clearInterval(interval);
+    clearInterval(heartbeatInterval);
     shuttingDown = true;
+    await heartbeat();
     log("shutting down...");
     if (currentJobPromise) {
       log("waiting for in-progress job to finish...");
       await currentJobPromise;
     }
+    await removeWorkerHeartbeat();
     await prisma.$disconnect();
     process.exit(0);
   };
