@@ -3,7 +3,7 @@ import { hostname } from "node:os";
 import type { Job } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { assertStorageModeInitialized } from "@/lib/platform-config";
-import { removeWorkerHeartbeat, updateWorkerHeartbeat } from "@/lib/worker/health";
+import { removeWorkerHeartbeat, updateWorkerHeartbeat } from "@/workers/health";
 import { jobRegistry } from "@/workers/registry";
 import type { JobDefinition, JobType } from "@/workers/types";
 
