@@ -338,6 +338,7 @@ function MetadataDisplay({
             value={metadata.title}
             onChange={(e) => onChange?.({ ...metadata, title: e.target.value })}
             className="h-9 text-sm"
+            placeholder="e.g. 5 Morning Habits That Changed My Life"
           />
         ) : (
           <p className="font-medium">{metadata.title}</p>
