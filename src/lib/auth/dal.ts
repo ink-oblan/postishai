@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { cache } from "react";
+import { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSessionCookie, verifySessionToken } from "./session";
 
@@ -15,6 +16,13 @@ export class ApprovalRequiredError extends Error {
   constructor() {
     super("Approval required");
     this.name = "ApprovalRequiredError";
+  }
+}
+
+export class ForbiddenError extends Error {
+  constructor() {
+    super("Forbidden");
+    this.name = "ForbiddenError";
   }
 }
 
@@ -50,36 +58,62 @@ export async function requireSession() {
 
 export type AuthSession = NonNullable<Awaited<ReturnType<typeof verifySession>>>;
 
-/**
- * Wraps an API route handler with session verification and passes the
- * authenticated session as the final handler argument.
- */
-export function withAuth<TContext = unknown>(
-  handler: (
-    request: NextRequest,
-    context: TContext,
-    session: AuthSession,
-  ) => Response | Promise<Response>,
-) {
-  return async (request: NextRequest, context: TContext): Promise<Response> => {
-    const session = await verifySession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (!session.user.approvedAt) {
-      return NextResponse.json({ error: "Approval required" }, { status: 403 });
-    }
+type RouteHandler<TContext> = (
+  request: NextRequest,
+  context: TContext,
+  session: AuthSession,
+) => Response | Promise<Response>;
 
-    try {
-      return await handler(request, context, session);
-    } catch (err) {
-      if (err instanceof AuthError) {
+function makeAuthWrapper<TContext>(roleCheck?: (role: Role) => boolean) {
+  return (handler: RouteHandler<TContext>) =>
+    async (request: NextRequest, context: TContext): Promise<Response> => {
+      const session = await verifySession();
+      if (!session) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-      if (err instanceof ApprovalRequiredError) {
+      if (!session.user.approvedAt) {
         return NextResponse.json({ error: "Approval required" }, { status: 403 });
       }
-      throw err;
-    }
-  };
+      if (roleCheck && !roleCheck(session.user.role)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      try {
+        return await handler(request, context, session);
+      } catch (err) {
+        if (err instanceof AuthError) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        if (err instanceof ApprovalRequiredError) {
+          return NextResponse.json({ error: "Approval required" }, { status: 403 });
+        }
+        if (err instanceof ForbiddenError) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        if (err instanceof SyntaxError) {
+          return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+        }
+        if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "P2025") {
+          return NextResponse.json({ error: "Not found" }, { status: 404 });
+        }
+        throw err;
+      }
+    };
+}
+
+/** Any authenticated + approved user. */
+export function withAuth<TContext = unknown>(handler: RouteHandler<TContext>) {
+  return makeAuthWrapper<TContext>()(handler);
+}
+
+/** ADMIN or SUPER_ADMIN only. */
+export function withAdminAuth<TContext = unknown>(handler: RouteHandler<TContext>) {
+  return makeAuthWrapper<TContext>(
+    (role) => role === Role.ADMIN || role === Role.SUPER_ADMIN,
+  )(handler);
+}
+
+/** SUPER_ADMIN only. */
+export function withSuperAdminAuth<TContext = unknown>(handler: RouteHandler<TContext>) {
+  return makeAuthWrapper<TContext>((role) => role === Role.SUPER_ADMIN)(handler);
 }
