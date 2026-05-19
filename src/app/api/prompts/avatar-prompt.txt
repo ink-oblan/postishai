@@ -14,5 +14,4 @@ Background:
 - static indoor environment, no movement, no dynamic elements
 - no people, no animals, no screens, no vehicles, no windows showing outdoor motion
 - no text, no logos, no symbols
-- slightly blurred (shallow depth of field), subject in sharp focus
 - realistic lighting consistent with subject (soft, diffused light)

@@ -211,11 +211,11 @@ export function AvatarVariationsPanel({
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="font-medium text-sm">Variations ({variations.length})</CardTitle>
-            {hasPrompt && !showForm && (
+            {hasPrompt && !showForm && variations.length > 0 && (
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 className="h-7 gap-1 px-2.5 text-[0.8rem]"
                 onClick={() => setShowForm(true)}
               >
@@ -227,11 +227,23 @@ export function AvatarVariationsPanel({
         </CardHeader>
         <CardContent>
           {variations.length === 0 && !showForm && (
-            <p className="py-4 text-center text-muted-foreground text-sm">
-              {hasPrompt
-                ? "No variations yet. Add one to explore different looks."
-                : "Variations are only available for AI-generated avatars."}
-            </p>
+            <div className="flex min-h-28 flex-col items-center justify-center gap-3 py-4 text-center">
+              {hasPrompt ? (
+                <>
+                  <Button type="button" variant="secondary" onClick={() => setShowForm(true)}>
+                    <Plus className="h-4 w-4" />
+                    Add variation
+                  </Button>
+                  <p className="text-muted-foreground text-sm">
+                    No variations yet. Add one to explore different looks.
+                  </p>
+                </>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Variations are only available for AI-generated avatars.
+                </p>
+              )}
+            </div>
           )}
 
           {variations.length > 0 && (

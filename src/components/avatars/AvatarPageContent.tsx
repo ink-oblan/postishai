@@ -9,8 +9,9 @@ import { AvatarEditPanel } from "@/components/avatars/AvatarEditPanel";
 import { AvatarStatusPoller } from "@/components/avatars/AvatarStatusPoller";
 import { AvatarVariationsPanel } from "@/components/avatars/AvatarVariationsPanel";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PLATFORM_LABELS, STATUS_CONFIG } from "@/lib/utils";
+import { cn, PLATFORM_LABELS, STATUS_CONFIG } from "@/lib/utils";
 
 interface AvatarVariation {
   id: string;
@@ -125,32 +126,33 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
           }}
         />
 
-        <AvatarVariationsPanel
-          avatarId={avatar.id}
-          initialVariations={initialVariations}
-          hasPrompt={true}
-          defaultImageModel={avatar.imageModel}
-          selectedVariationId={selectedVariation?.id ?? null}
-          onVariationClick={handleVariationClick}
-          onVariationDelete={handleVariationDelete}
-        />
-
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="font-medium text-sm">Posts ({posts.length})</CardTitle>
-              <Link
-                href={`/posts/new?avatarId=${avatar.id}${selectedVariation ? `&variationId=${selectedVariation.id}` : ""}`}
-                className="inline-flex h-7 items-center gap-1 rounded-lg border border-border bg-background px-2.5 font-medium text-[0.8rem] text-sm transition-colors hover:bg-muted"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {selectedVariation ? "New Post with variation" : "New Post"}
-              </Link>
+              {posts.length > 0 && (
+                <Link
+                  href={`/posts/new?avatarId=${avatar.id}${selectedVariation ? `&variationId=${selectedVariation.id}` : ""}`}
+                  className={buttonVariants({ size: "sm", className: "h-7 px-2.5" })}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {selectedVariation ? "New post with variation" : "New post"}
+                </Link>
+              )}
             </div>
           </CardHeader>
           <CardContent>
             {posts.length === 0 ? (
-              <p className="py-4 text-center text-muted-foreground text-sm">No posts yet.</p>
+              <div className="flex min-h-28 flex-col items-center justify-center gap-3 py-4 text-center">
+                <Link
+                  href={`/posts/new?avatarId=${avatar.id}${selectedVariation ? `&variationId=${selectedVariation.id}` : ""}`}
+                  className={cn(buttonVariants(), "gap-1.5")}
+                >
+                  <Plus className="h-4 w-4" />
+                  {selectedVariation ? "New post with variation" : "New post"}
+                </Link>
+                <p className="text-muted-foreground text-sm">No posts yet.</p>
+              </div>
             ) : (
               <div className="divide-y divide-border">
                 {posts.map((post) => {
@@ -179,6 +181,16 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
             )}
           </CardContent>
         </Card>
+
+        <AvatarVariationsPanel
+          avatarId={avatar.id}
+          initialVariations={initialVariations}
+          hasPrompt={true}
+          defaultImageModel={avatar.imageModel}
+          selectedVariationId={selectedVariation?.id ?? null}
+          onVariationClick={handleVariationClick}
+          onVariationDelete={handleVariationDelete}
+        />
       </div>
     </div>
   );
