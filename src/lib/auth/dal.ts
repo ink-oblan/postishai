@@ -90,6 +90,12 @@ function makeAuthWrapper<TContext>(roleCheck?: (role: Role) => boolean) {
         if (err instanceof ForbiddenError) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
+        if (err instanceof SyntaxError) {
+          return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+        }
+        if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "P2025") {
+          return NextResponse.json({ error: "Not found" }, { status: 404 });
+        }
         throw err;
       }
     };

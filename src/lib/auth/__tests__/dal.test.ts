@@ -252,6 +252,42 @@ describe("withAuth", () => {
       wrapped(request as unknown as NextRequest, {} as unknown as NextRouteContext),
     ).rejects.toThrow("unexpected");
   });
+
+  it("catches P2025 Prisma error from handler and returns 404", async () => {
+    mockGetSessionCookie.mockResolvedValue("good-token");
+    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "sess-1",
+      userId: "user-1",
+      expiresAt: new Date(Date.now() + 86400000),
+      user: fakeUser,
+    });
+
+    const handler = vi.fn().mockRejectedValue(Object.assign(new Error("not found"), { code: "P2025" }));
+    const response = await withAuth(handler)(
+      new Request("http://localhost/api/test") as unknown as NextRequest,
+      {} as unknown as NextRouteContext,
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("catches SyntaxError from handler and returns 400", async () => {
+    mockGetSessionCookie.mockResolvedValue("good-token");
+    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "sess-1",
+      userId: "user-1",
+      expiresAt: new Date(Date.now() + 86400000),
+      user: fakeUser,
+    });
+
+    const handler = vi.fn().mockRejectedValue(new SyntaxError("Unexpected token"));
+    const response = await withAuth(handler)(
+      new Request("http://localhost/api/test") as unknown as NextRequest,
+      {} as unknown as NextRouteContext,
+    );
+    expect(response.status).toBe(400);
+  });
 });
 
 function mockValidSession(role: "USER" | "ADMIN" | "SUPER_ADMIN") {
@@ -342,6 +378,31 @@ describe("withAdminAuth", () => {
 describe("withSuperAdminAuth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    mockGetSessionCookie.mockResolvedValue(undefined);
+    const response = await withSuperAdminAuth(vi.fn())(
+      new Request("http://localhost/api/test") as unknown as NextRequest,
+      {} as unknown as NextRouteContext,
+    );
+    expect(response.status).toBe(401);
+  });
+
+  it("returns 403 when user is pending approval", async () => {
+    mockGetSessionCookie.mockResolvedValue("good-token");
+    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "sess-1",
+      userId: "user-1",
+      expiresAt: new Date(Date.now() + 86400000),
+      user: { ...fakeUser, approvedAt: null },
+    });
+    const response = await withSuperAdminAuth(vi.fn())(
+      new Request("http://localhost/api/test") as unknown as NextRequest,
+      {} as unknown as NextRouteContext,
+    );
+    expect(response.status).toBe(403);
   });
 
   it("returns 403 when user role is USER", async () => {
