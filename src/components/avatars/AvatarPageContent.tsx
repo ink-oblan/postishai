@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageIcon, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -89,19 +89,23 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
               unoptimized
             />
             {selectedVariation && (
-              <div className="absolute top-2.5 right-2.5 left-2.5 flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/60 px-2.5 py-1 font-medium text-white text-xs backdrop-blur-sm">
-                  {selectedVariation.label}
+              <button
+                type="button"
+                onClick={() => setSelectedVariation(null)}
+                className="absolute top-2.5 right-2.5 overflow-hidden rounded-lg border-2 border-background bg-muted opacity-70 shadow-sm transition hover:scale-105 hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                aria-label="Show base photo"
+                title="Base photo"
+              >
+                <span className="relative block h-16 w-11 sm:h-20 sm:w-14">
+                  <Image
+                    src={avatarImageUrl}
+                    alt="Base photo"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedVariation(null)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-black/60 px-2.5 py-1 font-medium text-white text-xs backdrop-blur-sm transition-colors hover:bg-black/80"
-                >
-                  <ImageIcon className="h-3 w-3" />
-                  Base photo
-                </button>
-              </div>
+              </button>
             )}
           </div>
         )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   Archive,
@@ -75,6 +76,8 @@ export function AvatarVariationsPanel({
   const [clothes, setClothes] = useState("");
   const [background, setBackground] = useState("");
   const [pose, setPose] = useState("");
+  const [label, setLabel] = useState("");
+  const [labelEdited, setLabelEdited] = useState(false);
   const [sourceVariationId, setSourceVariationId] = useState<string | null>(null);
   const [replaceVariationId, setReplaceVariationId] = useState<string | null>(null);
   const [imageModel, setImageModel] = useState(defaultImageModel ?? "nano-banana-2");
@@ -182,6 +185,7 @@ export function AvatarVariationsPanel({
             };
 
   const generatedLabel = generateAvatarVariationLabel(activeValues);
+  const resolvedLabel = labelEdited ? label.trim() || generatedLabel : generatedLabel;
   const canGenerate = !!(activeValues.clothes || activeValues.background || activeValues.pose);
   const selectedVariation = variations.find((v) => v.id === selectedVariationId) ?? null;
   const canUseSelectedVariation = selectedVariation?.status === "COMPLETED";
@@ -221,6 +225,8 @@ export function AvatarVariationsPanel({
   }) {
     setShowForm(true);
     setScope(null);
+    setLabel("");
+    setLabelEdited(false);
     setSourceVariationId(options?.sourceVariationId ?? null);
     setReplaceVariationId(options?.replaceVariationId ?? null);
   }
@@ -230,6 +236,8 @@ export function AvatarVariationsPanel({
     setClothes("");
     setBackground("");
     setPose("");
+    setLabel("");
+    setLabelEdited(false);
     setSourceVariationId(null);
     setReplaceVariationId(null);
     setShowForm(false);
@@ -267,7 +275,7 @@ export function AvatarVariationsPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          label: generatedLabel,
+          label: resolvedLabel,
           ...activeValues,
           sourceVariationId: sourceVariationId ?? undefined,
           replaceVariationId: replaceVariationId ?? undefined,
@@ -343,15 +351,6 @@ export function AvatarVariationsPanel({
                       size="sm"
                       variant="secondary"
                       className="h-7 gap-1 px-2.5 text-[0.8rem]"
-                      onClick={() => openForm({ sourceVariationId: selectedVariation.id })}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      New from selected
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-7 gap-1 px-2.5 text-[0.8rem]"
                       onClick={() =>
                         openForm({
                           sourceVariationId: selectedVariation.id,
@@ -361,6 +360,15 @@ export function AvatarVariationsPanel({
                     >
                       <RefreshCw className="h-3.5 w-3.5" />
                       Update selected
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 gap-1 px-2.5 text-[0.8rem]"
+                      onClick={() => openForm({ sourceVariationId: selectedVariation.id })}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      New from selected
                     </Button>
                   </>
                 ) : (
@@ -400,253 +408,285 @@ export function AvatarVariationsPanel({
             </div>
           )}
 
-          {variations.length > 0 && (
-            <div className="mb-4 flex gap-3 overflow-x-auto pb-2">
-              {variations.map((variation) => {
-                const isSelected = selectedVariationId === variation.id;
-                const isClickable = variation.status === "COMPLETED" && !!onVariationClick;
-                return (
-                  <div key={variation.id} className="w-24 flex-none">
-                    {/* biome-ignore lint/a11y/noStaticElementInteractions: contains nested buttons, can't be a <button> */}
-                    {/* biome-ignore lint/a11y/useKeyWithClickEvents: click-only thumbnail selector */}
-                    <div
-                      className={`relative aspect-[9/16] overflow-hidden rounded-lg border-2 bg-muted transition-colors ${
-                        isSelected ? "border-primary" : "border-transparent"
-                      } ${isClickable ? "cursor-pointer" : ""}`}
-                      onClick={() => isClickable && onVariationClick(variation)}
-                    >
-                      {variation.status === "COMPLETED" && variation.imagePath ? (
-                        <Image
-                          src={`/api/avatars/${avatarId}/variations/${variation.id}/image?t=${new Date(variation.updatedAt).getTime()}`}
-                          alt={variation.label}
-                          fill
-                          className={`object-cover transition-[filter] duration-200 ${isSelected ? "blur-[2px] brightness-90" : ""}`}
-                          unoptimized
-                        />
-                      ) : variation.status === "FAILED" ? (
-                        <div className="flex h-full flex-col items-center justify-center gap-1 px-2">
-                          <AlertCircle className="h-5 w-5 text-destructive" />
-                          <p className="text-center text-[0.65rem] text-destructive leading-tight">
-                            Failed
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <Spinner className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="absolute top-1 right-1 flex flex-col gap-1">
-                        {variation.status === "FAILED" && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void handleRegenerate(variation);
-                            }}
-                            className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/80 backdrop-blur-sm transition-colors hover:bg-muted"
-                            title="Retry"
-                          >
-                            <RefreshCw className="h-3 w-3" />
-                          </button>
-                        )}
-                        {variation.status !== "PENDING" && variation.status !== "GENERATING" && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteTarget(variation);
-                            }}
-                            className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/80 backdrop-blur-sm transition-colors hover:border-destructive/30 hover:bg-destructive/10"
-                            title="Archive"
-                          >
-                            <Archive className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <p
-                      className="mt-1 truncate text-center text-[0.7rem] text-muted-foreground"
-                      title={variation.label}
-                    >
-                      {variation.label}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {showForm && (
-            <div className="space-y-3 pt-1">
-              {!scope ? (
-                <>
-                  <div>
-                    <h3 className="font-medium text-sm">What do you want to change?</h3>
-                  </div>
-
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(["clothes", "background", "pose", "all"] as const).map((option) => {
-                      const { title, description, icon: Icon, iconClassName } = optionMeta[option];
-                      return (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => setScope(option)}
-                          className="rounded-xl border border-border bg-background px-4 py-3 text-left transition-colors hover:bg-muted/60"
+          <AnimatePresence mode="wait" initial={false}>
+            {variations.length > 0 && !showForm && (
+              <motion.div
+                key="variation-selector"
+                initial={{ opacity: 0, height: 0, y: 8 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -8 }}
+                transition={{ duration: 0.35, ease: "easeInOut" }}
+                className="mb-4 overflow-hidden"
+              >
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {variations.map((variation) => {
+                    const isSelected = selectedVariationId === variation.id;
+                    const isClickable = variation.status === "COMPLETED" && !!onVariationClick;
+                    return (
+                      <div key={variation.id} className="w-24 flex-none">
+                        {/* biome-ignore lint/a11y/noStaticElementInteractions: contains nested buttons, can't be a <button> */}
+                        {/* biome-ignore lint/a11y/useKeyWithClickEvents: click-only thumbnail selector */}
+                        <div
+                          className={`relative aspect-[9/16] overflow-hidden rounded-lg border-2 bg-muted transition-colors ${
+                            isSelected ? "border-primary" : "border-transparent"
+                          } ${isClickable ? "cursor-pointer" : ""}`}
+                          onClick={() => isClickable && onVariationClick(variation)}
                         >
-                          <div
-                            className={cn(
-                              "mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg",
-                              iconClassName,
+                          {variation.status === "COMPLETED" && variation.imagePath ? (
+                            <Image
+                              src={`/api/avatars/${avatarId}/variations/${variation.id}/image?t=${new Date(variation.updatedAt).getTime()}`}
+                              alt={variation.label}
+                              fill
+                              className={`object-cover transition-[filter] duration-200 ${isSelected ? "blur-[2px] brightness-90" : ""}`}
+                              unoptimized
+                            />
+                          ) : variation.status === "FAILED" ? (
+                            <div className="flex h-full flex-col items-center justify-center gap-1 px-2">
+                              <AlertCircle className="h-5 w-5 text-destructive" />
+                              <p className="text-center text-[0.65rem] text-destructive leading-tight">
+                                Failed
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                              <Spinner className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="absolute top-1 right-1 flex flex-col gap-1">
+                            {variation.status === "FAILED" && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleRegenerate(variation);
+                                }}
+                                className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/80 backdrop-blur-sm transition-colors hover:bg-muted"
+                                title="Retry"
+                              >
+                                <RefreshCw className="h-3 w-3" />
+                              </button>
                             )}
-                          >
-                            <Icon className="h-5 w-5" />
+                            {variation.status !== "PENDING" &&
+                              variation.status !== "GENERATING" && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteTarget(variation);
+                                  }}
+                                  className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/80 backdrop-blur-sm transition-colors hover:border-destructive/30 hover:bg-destructive/10"
+                                  title="Archive"
+                                >
+                                  <Archive className="h-3 w-3" />
+                                </button>
+                              )}
                           </div>
-                          <p className="font-medium text-sm">{title}</p>
-                          <p className="mt-1 text-muted-foreground text-sm leading-relaxed">
-                            {description}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
+                        </div>
+                        <p
+                          className="mt-1 truncate text-center text-[0.7rem] text-muted-foreground"
+                          title={variation.label}
+                        >
+                          {variation.label}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
 
-                  <div className="flex gap-2 pt-1">
-                    <Button type="button" size="sm" variant="outline" onClick={resetForm}>
-                      Cancel
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="mb-1 flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-medium text-sm">
-                        {scope === "all"
-                          ? "Customize the full variation"
-                          : `Update ${scopeConfig[scope].title.toLowerCase()}`}
-                      </h3>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-6 gap-1 px-2 text-xs"
-                      onClick={handleSuggest}
-                      disabled={suggesting}
-                    >
-                      {suggesting ? (
-                        <Spinner className="h-3 w-3" />
-                      ) : (
-                        <Sparkles className="h-3 w-3" />
-                      )}
-                      Suggest with AI
-                    </Button>
-                  </div>
-
-                  {scope === "all" ? (
+            {showForm && (
+              <motion.div
+                key="variation-form"
+                initial={{ opacity: 0, height: 0, y: 10 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -6 }}
+                transition={{ duration: 0.35, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-3 pt-1">
+                  {!scope ? (
                     <>
                       <div>
-                        <p className="mb-1 text-muted-foreground text-xs">Clothes</p>
-                        <Input
-                          value={clothes}
-                          onChange={(e) => setClothes(e.target.value)}
-                          placeholder={scopeConfig.clothes.placeholder}
-                          className="h-8 text-sm"
-                        />
+                        <h3 className="font-medium text-sm">What do you want to change?</h3>
                       </div>
 
-                      <div>
-                        <p className="mb-1 text-muted-foreground text-xs">Background</p>
-                        <Input
-                          value={background}
-                          onChange={(e) => setBackground(e.target.value)}
-                          placeholder={scopeConfig.background.placeholder}
-                          className="h-8 text-sm"
-                        />
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {(["clothes", "background", "pose", "all"] as const).map((option) => {
+                          const {
+                            title,
+                            description,
+                            icon: Icon,
+                            iconClassName,
+                          } = optionMeta[option];
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => setScope(option)}
+                              className="rounded-xl border border-border bg-background px-4 py-3 text-left transition-colors hover:bg-muted/60"
+                            >
+                              <div
+                                className={cn(
+                                  "mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg",
+                                  iconClassName,
+                                )}
+                              >
+                                <Icon className="h-5 w-5" />
+                              </div>
+                              <p className="font-medium text-sm">{title}</p>
+                              <p className="mt-1 text-muted-foreground text-sm leading-relaxed">
+                                {description}
+                              </p>
+                            </button>
+                          );
+                        })}
                       </div>
 
-                      <div>
-                        <p className="mb-1 text-muted-foreground text-xs">Pose</p>
-                        <Input
-                          value={pose}
-                          onChange={(e) => setPose(e.target.value)}
-                          placeholder={scopeConfig.pose.placeholder}
-                          className="h-8 text-sm"
-                        />
+                      <div className="flex gap-2 pt-1">
+                        <Button type="button" size="sm" variant="outline" onClick={resetForm}>
+                          Cancel
+                        </Button>
                       </div>
                     </>
                   ) : (
-                    <div>
-                      <Input
-                        value={scopeConfig[scope].value}
-                        onChange={(e) => scopeConfig[scope].setValue(e.target.value)}
-                        placeholder={scopeConfig[scope].placeholder}
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <p className="mb-1 text-muted-foreground text-xs">Variation name</p>
-                    <div className="rounded-lg border border-border border-dashed bg-muted/30 px-3 py-2 text-sm">
-                      {generatedLabel}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="mb-1 text-muted-foreground text-xs">Image Model</p>
-                    {imageModels.length > 0 ? (
-                      <Select
-                        value={imageModel}
-                        onValueChange={(v: string | null) => v && setImageModel(v)}
-                      >
-                        <SelectTrigger className="h-8 w-full text-sm">
-                          <SelectValue>
-                            {imageModels.find((m) => m.id === imageModel)?.name ?? imageModel}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {imageModels.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="flex h-8 items-center">
-                        <Spinner className="h-3.5 w-3.5 text-muted-foreground" />
+                    <>
+                      <div className="mb-1 flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-medium text-sm">
+                            {scope === "all"
+                              ? "Customize the full variation"
+                              : `Update ${scopeConfig[scope].title.toLowerCase()}`}
+                          </h3>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-6 gap-1 px-2 text-xs"
+                          onClick={handleSuggest}
+                          disabled={suggesting}
+                        >
+                          {suggesting ? (
+                            <Spinner className="h-3 w-3" />
+                          ) : (
+                            <Sparkles className="h-3 w-3" />
+                          )}
+                          Suggest with AI
+                        </Button>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="flex gap-2 pt-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => void handleGenerate()}
-                      disabled={submitting || !canGenerate}
-                    >
-                      {submitting && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
-                      Generate
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setScope(null)}
-                    >
-                      Back
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={resetForm}>
-                      Cancel
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+                      {scope === "all" ? (
+                        <>
+                          <div>
+                            <p className="mb-1 text-muted-foreground text-xs">Clothes</p>
+                            <Input
+                              value={clothes}
+                              onChange={(e) => setClothes(e.target.value)}
+                              placeholder={scopeConfig.clothes.placeholder}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+
+                          <div>
+                            <p className="mb-1 text-muted-foreground text-xs">Background</p>
+                            <Input
+                              value={background}
+                              onChange={(e) => setBackground(e.target.value)}
+                              placeholder={scopeConfig.background.placeholder}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+
+                          <div>
+                            <p className="mb-1 text-muted-foreground text-xs">Pose</p>
+                            <Input
+                              value={pose}
+                              onChange={(e) => setPose(e.target.value)}
+                              placeholder={scopeConfig.pose.placeholder}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <div>
+                          <Input
+                            value={scopeConfig[scope].value}
+                            onChange={(e) => scopeConfig[scope].setValue(e.target.value)}
+                            placeholder={scopeConfig[scope].placeholder}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <p className="mb-1 text-muted-foreground text-xs">Variation name</p>
+                        <Input
+                          value={labelEdited ? label : generatedLabel}
+                          onChange={(e) => {
+                            setLabel(e.target.value);
+                            setLabelEdited(true);
+                          }}
+                          placeholder={generatedLabel}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-muted-foreground text-xs">Image Model</p>
+                        {imageModels.length > 0 ? (
+                          <Select
+                            value={imageModel}
+                            onValueChange={(v: string | null) => v && setImageModel(v)}
+                          >
+                            <SelectTrigger className="h-8 w-full text-sm">
+                              <SelectValue>
+                                {imageModels.find((m) => m.id === imageModel)?.name ?? imageModel}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {imageModels.map((m) => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div className="flex h-8 items-center">
+                            <Spinner className="h-3.5 w-3.5 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => void handleGenerate()}
+                          disabled={submitting || !canGenerate}
+                        >
+                          {submitting && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
+                          Generate
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setScope(null)}
+                        >
+                          Back
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" onClick={resetForm}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </CardContent>
       </Card>
 
