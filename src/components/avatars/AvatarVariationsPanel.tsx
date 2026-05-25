@@ -502,7 +502,7 @@ export function AvatarVariationsPanel({
                 animate={{ opacity: 1, height: "auto", y: 0 }}
                 exit={{ opacity: 0, height: 0, y: -6 }}
                 transition={{ duration: 0.35, ease: "easeInOut" }}
-                className="overflow-hidden"
+                className="overflow-hidden px-0.5"
               >
                 <div className="space-y-3 pt-1">
                   {!scope ? (
