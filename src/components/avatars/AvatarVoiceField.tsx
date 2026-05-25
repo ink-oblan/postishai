@@ -86,7 +86,9 @@ export function AvatarVoiceField({
     stopAudio();
     const audio = new Audio(voice.preview_audio);
     audio.onended = () => setPlayingVoiceId(null);
-    audio.play();
+    audio.play().catch((err: unknown) => {
+      if (err instanceof Error && err.name !== "AbortError") throw err;
+    });
     audioRef.current = audio;
     setPlayingVoiceId(voice.voice_id);
   }

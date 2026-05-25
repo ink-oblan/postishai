@@ -10,6 +10,7 @@ export type AvatarVariationGeneratePayload = {
   variationId: string;
   prompt: string;
   imageModel: string;
+  sourceImagePath?: string;
 };
 
 export type PostGeneratePayload = {

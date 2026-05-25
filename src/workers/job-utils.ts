@@ -21,6 +21,18 @@ export function readRequiredString(payload: Record<string, unknown>, key: string
   return value;
 }
 
+export function readOptionalString(
+  payload: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const value = payload[key];
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`Invalid job payload: ${key} must be a string`);
+  }
+  return value;
+}
+
 export function isRetryableError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   const normalized = message.toLowerCase();

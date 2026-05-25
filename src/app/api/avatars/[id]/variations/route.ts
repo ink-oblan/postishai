@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { generateAvatarVariationLabel } from "@/lib/avatar-variation-label";
 import { renderAvatarVariationPrompt } from "@/lib/avatar-variation-prompt";
 import { prisma } from "@/lib/db";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
@@ -31,24 +32,63 @@ export const POST = withAuth(async function POST(
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
-  const { label, clothes, background, pose, imageModel } = body as {
-    label?: string;
-    clothes?: string;
-    background?: string;
-    pose?: string;
-    imageModel?: string;
-  };
+  const { label, clothes, background, pose, imageModel, sourceVariationId, replaceVariationId } =
+    body as {
+      label?: string;
+      clothes?: string;
+      background?: string;
+      pose?: string;
+      imageModel?: string;
+      sourceVariationId?: string;
+      replaceVariationId?: string;
+    };
+  const trimmedClothes = clothes?.trim() || undefined;
+  const trimmedBackground = background?.trim() || undefined;
+  const trimmedPose = pose?.trim() || undefined;
+  const trimmedSourceVariationId = sourceVariationId?.trim() || undefined;
+  const trimmedReplaceVariationId = replaceVariationId?.trim() || undefined;
+  const resolvedLabel =
+    label?.trim() ||
+    generateAvatarVariationLabel({
+      clothes: trimmedClothes,
+      background: trimmedBackground,
+      pose: trimmedPose,
+    });
 
-  if (!label?.trim()) {
-    return NextResponse.json({ error: "label is required" }, { status: 400 });
+  const sourceVariation = trimmedSourceVariationId
+    ? await prisma.avatarVariation.findFirst({
+        where: {
+          id: trimmedSourceVariationId,
+          avatarId: id,
+          archivedAt: null,
+          status: "COMPLETED",
+        },
+      })
+    : null;
+  if (trimmedSourceVariationId && !sourceVariation) {
+    return NextResponse.json({ error: "Invalid source variation" }, { status: 400 });
+  }
+
+  const replaceVariation = trimmedReplaceVariationId
+    ? await prisma.avatarVariation.findFirst({
+        where: {
+          id: trimmedReplaceVariationId,
+          avatarId: id,
+          archivedAt: null,
+          status: "COMPLETED",
+        },
+      })
+    : null;
+  if (trimmedReplaceVariationId && !replaceVariation) {
+    return NextResponse.json({ error: "Invalid variation to update" }, { status: 400 });
   }
 
   const usedModel = imageModel ?? avatar.imageModel ?? DEFAULT_IMAGE_MODEL_ID;
   const prompt = await renderAvatarVariationPrompt(
     {
-      clothes: clothes?.trim() || undefined,
-      background: background?.trim() || undefined,
-      pose: pose?.trim() || undefined,
+      clothes: trimmedClothes,
+      background: trimmedBackground,
+      pose: trimmedPose,
     },
     !avatar.prompt,
   );
@@ -57,10 +97,10 @@ export const POST = withAuth(async function POST(
     const created = await tx.avatarVariation.create({
       data: {
         avatarId: id,
-        label: label.trim(),
-        clothes: clothes?.trim() ?? null,
-        background: background?.trim() ?? null,
-        pose: pose?.trim() ?? null,
+        label: resolvedLabel,
+        clothes: trimmedClothes ?? null,
+        background: trimmedBackground ?? null,
+        pose: trimmedPose ?? null,
         prompt,
         imageModel: usedModel,
         status: "PENDING",
@@ -71,7 +111,15 @@ export const POST = withAuth(async function POST(
       variationId: created.id,
       prompt,
       imageModel: usedModel,
+      sourceImagePath: sourceVariation?.imagePath,
     });
+
+    if (replaceVariation) {
+      await tx.avatarVariation.update({
+        where: { id: replaceVariation.id },
+        data: { archivedAt: new Date() },
+      });
+    }
 
     return created;
   });

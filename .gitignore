@@ -59,3 +59,6 @@ backups/
 /prisma/dev.db-shm
 /prisma/dev.db-wal
 /tmp/
+
+# Local Claude Code instructions (not committed)
+.claude/

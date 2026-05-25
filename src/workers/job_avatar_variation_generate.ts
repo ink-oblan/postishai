@@ -1,6 +1,11 @@
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { archiveFile, readFile, writeFile } from "@/lib/storage";
-import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
+import {
+  isRetryableError,
+  parseObjectPayload,
+  readOptionalString,
+  readRequiredString,
+} from "@/workers/job-utils";
 import type { JobDefinition } from "@/workers/types";
 
 type AvatarVariationGenerateResult = {
@@ -21,6 +26,7 @@ export const avatarVariationGenerateJob: JobDefinition<
       variationId: readRequiredString(payload, "variationId"),
       prompt: readRequiredString(payload, "prompt"),
       imageModel: readRequiredString(payload, "imageModel"),
+      sourceImagePath: readOptionalString(payload, "sourceImagePath"),
     };
   },
   async onEnqueue(db, payload) {
@@ -36,7 +42,7 @@ export const avatarVariationGenerateJob: JobDefinition<
     });
   },
   async run(ctx, payload) {
-    const { variationId, prompt, imageModel } = payload;
+    const { variationId, prompt, imageModel, sourceImagePath } = payload;
     const t = Date.now();
     const elapsed = () => `${((Date.now() - t) / 1000).toFixed(1)}s`;
     ctx.log(`[variation.generate] start variationId=${variationId} model=${imageModel}`);
@@ -48,8 +54,9 @@ export const avatarVariationGenerateJob: JobDefinition<
     if (!variation) throw new Error(`AvatarVariation ${variationId} not found`);
 
     ctx.log(`[variation.generate] reading source image (${elapsed()})`);
-    const sourceImageBuffer = await readFile(variation.avatar.imagePath);
-    const sourceMimeType: "image/png" | "image/jpeg" = variation.avatar.imagePath.endsWith(".jpg")
+    const sourcePath = sourceImagePath ?? variation.avatar.imagePath;
+    const sourceImageBuffer = await readFile(sourcePath);
+    const sourceMimeType: "image/png" | "image/jpeg" = sourcePath.endsWith(".jpg")
       ? "image/jpeg"
       : "image/png";
     const sourceBase64 = sourceImageBuffer.toString("base64");

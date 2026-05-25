@@ -1,6 +1,16 @@
 "use client";
 
-import { AlertCircle, Archive, Plus, RefreshCw, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  Archive,
+  Layers,
+  Mountain,
+  PersonStanding,
+  Plus,
+  RefreshCw,
+  Shirt,
+  Sparkles,
+} from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -17,6 +27,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { generateAvatarVariationLabel } from "@/lib/avatar-variation-label";
+import { cn } from "@/lib/utils";
 
 interface AvatarVariation {
   id: string;
@@ -34,6 +46,8 @@ interface ImageModel {
   id: string;
   name: string;
 }
+
+type VariationScope = "clothes" | "background" | "pose" | "all";
 
 interface Props {
   avatarId: string;
@@ -57,10 +71,12 @@ export function AvatarVariationsPanel({
   const router = useRouter();
   const [variations, setVariations] = useState<AvatarVariation[]>(initialVariations);
   const [showForm, setShowForm] = useState(false);
-  const [label, setLabel] = useState("");
+  const [scope, setScope] = useState<VariationScope | null>(null);
   const [clothes, setClothes] = useState("");
   const [background, setBackground] = useState("");
   const [pose, setPose] = useState("");
+  const [sourceVariationId, setSourceVariationId] = useState<string | null>(null);
+  const [replaceVariationId, setReplaceVariationId] = useState<string | null>(null);
   const [imageModel, setImageModel] = useState(defaultImageModel ?? "nano-banana-2");
   const [imageModels, setImageModels] = useState<ImageModel[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -115,11 +131,107 @@ export function AvatarVariationsPanel({
     }
   }, [showForm, imageModels.length]);
 
+  const scopeConfig: Record<
+    Exclude<VariationScope, "all">,
+    {
+      title: string;
+      description: string;
+      placeholder: string;
+      value: string;
+      setValue: (value: string) => void;
+      iconClassName: string;
+    }
+  > = {
+    clothes: {
+      title: "Clothes",
+      description: "Update the outfit while keeping the rest of the look intact.",
+      placeholder: "e.g. Navy blue blazer over white shirt",
+      value: clothes,
+      setValue: setClothes,
+      iconClassName: "bg-amber-100 text-amber-700",
+    },
+    background: {
+      title: "Background",
+      description: "Change the scene or location around the avatar.",
+      placeholder: "e.g. Modern office with bookshelves",
+      value: background,
+      setValue: setBackground,
+      iconClassName: "bg-emerald-100 text-emerald-700",
+    },
+    pose: {
+      title: "Pose",
+      description: "Adjust posture, gesture, or body positioning.",
+      placeholder: "e.g. Standing with arms crossed, confident",
+      value: pose,
+      setValue: setPose,
+      iconClassName: "bg-sky-100 text-sky-700",
+    },
+  };
+
+  const activeValues =
+    scope === "clothes"
+      ? { clothes: clothes.trim() || undefined }
+      : scope === "background"
+        ? { background: background.trim() || undefined }
+        : scope === "pose"
+          ? { pose: pose.trim() || undefined }
+          : {
+              clothes: clothes.trim() || undefined,
+              background: background.trim() || undefined,
+              pose: pose.trim() || undefined,
+            };
+
+  const generatedLabel = generateAvatarVariationLabel(activeValues);
+  const canGenerate = !!(activeValues.clothes || activeValues.background || activeValues.pose);
+  const selectedVariation = variations.find((v) => v.id === selectedVariationId) ?? null;
+  const canUseSelectedVariation = selectedVariation?.status === "COMPLETED";
+  const optionMeta: Record<
+    VariationScope,
+    { icon: typeof Shirt; iconClassName: string; title: string; description: string }
+  > = {
+    clothes: {
+      icon: Shirt,
+      iconClassName: scopeConfig.clothes.iconClassName,
+      title: scopeConfig.clothes.title,
+      description: scopeConfig.clothes.description,
+    },
+    background: {
+      icon: Mountain,
+      iconClassName: scopeConfig.background.iconClassName,
+      title: scopeConfig.background.title,
+      description: scopeConfig.background.description,
+    },
+    pose: {
+      icon: PersonStanding,
+      iconClassName: scopeConfig.pose.iconClassName,
+      title: scopeConfig.pose.title,
+      description: scopeConfig.pose.description,
+    },
+    all: {
+      icon: Layers,
+      iconClassName: "bg-primary/10 text-primary",
+      title: "Everything listed",
+      description: "Open the full form and update clothes, background, and pose together.",
+    },
+  };
+
+  function openForm(options?: {
+    replaceVariationId?: string | null;
+    sourceVariationId?: string | null;
+  }) {
+    setShowForm(true);
+    setScope(null);
+    setSourceVariationId(options?.sourceVariationId ?? null);
+    setReplaceVariationId(options?.replaceVariationId ?? null);
+  }
+
   function resetForm() {
-    setLabel("");
+    setScope(null);
     setClothes("");
     setBackground("");
     setPose("");
+    setSourceVariationId(null);
+    setReplaceVariationId(null);
     setShowForm(false);
   }
 
@@ -129,9 +241,17 @@ export function AvatarVariationsPanel({
       const res = await fetch(`/api/avatars/${avatarId}/variations/suggest`, { method: "POST" });
       if (!res.ok) throw new Error("Failed to get suggestion");
       const data = (await res.json()) as { clothes: string; background: string; pose: string };
-      setClothes(data.clothes);
-      setBackground(data.background);
-      setPose(data.pose);
+      if (scope === "clothes") {
+        setClothes(data.clothes);
+      } else if (scope === "background") {
+        setBackground(data.background);
+      } else if (scope === "pose") {
+        setPose(data.pose);
+      } else {
+        setClothes(data.clothes);
+        setBackground(data.background);
+        setPose(data.pose);
+      }
     } catch {
       toast.error("Failed to get AI suggestion");
     } finally {
@@ -140,17 +260,17 @@ export function AvatarVariationsPanel({
   }
 
   async function handleGenerate() {
-    if (!label.trim()) return;
+    if (!canGenerate) return;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/avatars/${avatarId}/variations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          label: label.trim(),
-          clothes: clothes.trim() || undefined,
-          background: background.trim() || undefined,
-          pose: pose.trim() || undefined,
+          label: generatedLabel,
+          ...activeValues,
+          sourceVariationId: sourceVariationId ?? undefined,
+          replaceVariationId: replaceVariationId ?? undefined,
           imageModel,
         }),
       });
@@ -159,9 +279,12 @@ export function AvatarVariationsPanel({
         throw new Error(err.error ?? "Failed to create variation");
       }
       const created = (await res.json()) as AvatarVariation;
-      setVariations((prev) => [...prev, created]);
+      setVariations((prev) => [...prev.filter((v) => v.id !== replaceVariationId), created]);
+      if (replaceVariationId) onVariationDelete?.(replaceVariationId);
       resetForm();
-      toast.success("Variation generation started");
+      toast.success(
+        replaceVariationId ? "Variation update started" : "Variation generation started",
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create variation");
     } finally {
@@ -212,16 +335,47 @@ export function AvatarVariationsPanel({
           <div className="flex items-center justify-between">
             <CardTitle className="font-medium text-sm">Variations ({variations.length})</CardTitle>
             {hasPrompt && !showForm && variations.length > 0 && (
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="h-7 gap-1 px-2.5 text-[0.8rem]"
-                onClick={() => setShowForm(true)}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add variation
-              </Button>
+              <div className="flex flex-wrap justify-end gap-2">
+                {canUseSelectedVariation ? (
+                  <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 gap-1 px-2.5 text-[0.8rem]"
+                      onClick={() => openForm({ sourceVariationId: selectedVariation.id })}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      New from selected
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 gap-1 px-2.5 text-[0.8rem]"
+                      onClick={() =>
+                        openForm({
+                          sourceVariationId: selectedVariation.id,
+                          replaceVariationId: selectedVariation.id,
+                        })
+                      }
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Update selected
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-7 gap-1 px-2.5 text-[0.8rem]"
+                    onClick={() => openForm()}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add variation
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </CardHeader>
@@ -230,7 +384,7 @@ export function AvatarVariationsPanel({
             <div className="flex min-h-28 flex-col items-center justify-center gap-3 py-4 text-center">
               {hasPrompt ? (
                 <>
-                  <Button type="button" variant="secondary" onClick={() => setShowForm(true)}>
+                  <Button type="button" variant="secondary" onClick={() => openForm()}>
                     <Plus className="h-4 w-4" />
                     Add variation
                   </Button>
@@ -324,104 +478,173 @@ export function AvatarVariationsPanel({
 
           {showForm && (
             <div className="space-y-3 pt-1">
-              <div className="mb-1 flex items-center justify-between">
-                <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                  New variation
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-6 gap-1 px-2 text-xs"
-                  onClick={handleSuggest}
-                  disabled={suggesting}
-                >
-                  {suggesting ? <Spinner className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
-                  Suggest with AI
-                </Button>
-              </div>
-
-              <div>
-                <p className="mb-1 text-muted-foreground text-xs">Label *</p>
-                <Input
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  placeholder="e.g. Business casual"
-                  className="h-8 text-sm"
-                />
-              </div>
-
-              <div>
-                <p className="mb-1 text-muted-foreground text-xs">Clothes</p>
-                <Input
-                  value={clothes}
-                  onChange={(e) => setClothes(e.target.value)}
-                  placeholder="e.g. Navy blue blazer over white shirt"
-                  className="h-8 text-sm"
-                />
-              </div>
-
-              <div>
-                <p className="mb-1 text-muted-foreground text-xs">Background</p>
-                <Input
-                  value={background}
-                  onChange={(e) => setBackground(e.target.value)}
-                  placeholder="e.g. Modern office with bookshelves"
-                  className="h-8 text-sm"
-                />
-              </div>
-
-              <div>
-                <p className="mb-1 text-muted-foreground text-xs">Pose</p>
-                <Input
-                  value={pose}
-                  onChange={(e) => setPose(e.target.value)}
-                  placeholder="e.g. Standing with arms crossed, confident"
-                  className="h-8 text-sm"
-                />
-              </div>
-
-              <div>
-                <p className="mb-1 text-muted-foreground text-xs">Image Model</p>
-                {imageModels.length > 0 ? (
-                  <Select
-                    value={imageModel}
-                    onValueChange={(v: string | null) => v && setImageModel(v)}
-                  >
-                    <SelectTrigger className="h-8 w-full text-sm">
-                      <SelectValue>
-                        {imageModels.find((m) => m.id === imageModel)?.name ?? imageModel}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {imageModels.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="flex h-8 items-center">
-                    <Spinner className="h-3.5 w-3.5 text-muted-foreground" />
+              {!scope ? (
+                <>
+                  <div>
+                    <h3 className="font-medium text-sm">What do you want to change?</h3>
                   </div>
-                )}
-              </div>
 
-              <div className="flex gap-2 pt-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void handleGenerate()}
-                  disabled={submitting || !label.trim()}
-                >
-                  {submitting && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
-                  Generate
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-              </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(["clothes", "background", "pose", "all"] as const).map((option) => {
+                      const { title, description, icon: Icon, iconClassName } = optionMeta[option];
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setScope(option)}
+                          className="rounded-xl border border-border bg-background px-4 py-3 text-left transition-colors hover:bg-muted/60"
+                        >
+                          <div
+                            className={cn(
+                              "mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg",
+                              iconClassName,
+                            )}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <p className="font-medium text-sm">{title}</p>
+                          <p className="mt-1 text-muted-foreground text-sm leading-relaxed">
+                            {description}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button type="button" size="sm" variant="outline" onClick={resetForm}>
+                      Cancel
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-1 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-medium text-sm">
+                        {scope === "all"
+                          ? "Customize the full variation"
+                          : `Update ${scopeConfig[scope].title.toLowerCase()}`}
+                      </h3>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-6 gap-1 px-2 text-xs"
+                      onClick={handleSuggest}
+                      disabled={suggesting}
+                    >
+                      {suggesting ? (
+                        <Spinner className="h-3 w-3" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                      Suggest with AI
+                    </Button>
+                  </div>
+
+                  {scope === "all" ? (
+                    <>
+                      <div>
+                        <p className="mb-1 text-muted-foreground text-xs">Clothes</p>
+                        <Input
+                          value={clothes}
+                          onChange={(e) => setClothes(e.target.value)}
+                          placeholder={scopeConfig.clothes.placeholder}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-muted-foreground text-xs">Background</p>
+                        <Input
+                          value={background}
+                          onChange={(e) => setBackground(e.target.value)}
+                          placeholder={scopeConfig.background.placeholder}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-muted-foreground text-xs">Pose</p>
+                        <Input
+                          value={pose}
+                          onChange={(e) => setPose(e.target.value)}
+                          placeholder={scopeConfig.pose.placeholder}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <Input
+                        value={scopeConfig[scope].value}
+                        onChange={(e) => scopeConfig[scope].setValue(e.target.value)}
+                        placeholder={scopeConfig[scope].placeholder}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="mb-1 text-muted-foreground text-xs">Variation name</p>
+                    <div className="rounded-lg border border-border border-dashed bg-muted/30 px-3 py-2 text-sm">
+                      {generatedLabel}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-1 text-muted-foreground text-xs">Image Model</p>
+                    {imageModels.length > 0 ? (
+                      <Select
+                        value={imageModel}
+                        onValueChange={(v: string | null) => v && setImageModel(v)}
+                      >
+                        <SelectTrigger className="h-8 w-full text-sm">
+                          <SelectValue>
+                            {imageModels.find((m) => m.id === imageModel)?.name ?? imageModel}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {imageModels.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="flex h-8 items-center">
+                        <Spinner className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void handleGenerate()}
+                      disabled={submitting || !canGenerate}
+                    >
+                      {submitting && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
+                      Generate
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setScope(null)}
+                    >
+                      Back
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={resetForm}>
+                      Cancel
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </CardContent>
