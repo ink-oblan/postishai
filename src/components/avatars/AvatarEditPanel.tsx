@@ -104,11 +104,10 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
   }, []);
 
   useEffect(() => {
-    if (editing)
-      fetch("/api/image-models")
-        .then((r) => r.json())
-        .then(setModels);
-  }, [editing]);
+    fetch("/api/image-models")
+      .then((r) => r.json())
+      .then(setModels);
+  }, []);
 
   const visualChanged =
     gender !== (avatar.gender ?? "man") ||
@@ -304,13 +303,14 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
             models.length > 0 ? (
               <Select value={imageModel} onValueChange={(v) => v && setImageModel(v)}>
                 <SelectTrigger className="h-8 w-full text-sm">
-                  <SelectValue />
+                  <SelectValue>
+                    {models.find((m) => m.id === imageModel)?.name ?? imageModel}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {models.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
+                    <SelectItem key={m.id} value={m.id} description={m.description}>
                       <span className="font-medium">{m.name}</span>
-                      <span className="ml-2 text-muted-foreground text-xs">{m.description}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -321,7 +321,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
               </div>
             )
           ) : (
-            <PropValue>{avatar.imageModel}</PropValue>
+            <PropValue>{models.find((m) => m.id === avatar.imageModel)?.name ?? avatar.imageModel}</PropValue>
           )}
         </div>
 

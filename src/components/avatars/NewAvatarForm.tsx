@@ -314,13 +314,6 @@ export function NewAvatarForm() {
                 setVoiceManuallySelected(true);
                 setVoiceId(nextVoiceId);
               }}
-              allowClear={voiceManuallySelected}
-              onClear={() => {
-                setVoiceManuallySelected(false);
-                const recommendedVoice = findRecommendedVoice(voices, gender);
-                setVoiceId(recommendedVoice?.voice_id ?? "");
-              }}
-              clearTitle="Use recommended voice"
             />
           </div>
 
@@ -328,14 +321,15 @@ export function NewAvatarForm() {
           <div className="space-y-2">
             <Label>Image Model</Label>
             <Select value={imageModel} onValueChange={(v: string | null) => v && setImageModel(v)}>
-              <SelectTrigger>
-                <SelectValue />
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {models.find((m) => m.id === imageModel)?.name ?? imageModel}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {models.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
+                  <SelectItem key={m.id} value={m.id} description={m.description}>
                     <span className="font-medium">{m.name}</span>
-                    <span className="ml-2 text-muted-foreground text-xs">{m.description}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -386,12 +380,6 @@ export function NewAvatarForm() {
                 setVoiceManuallySelected(true);
                 setVoiceId(nextVoiceId);
               }}
-              allowClear={voiceManuallySelected}
-              onClear={() => {
-                setVoiceManuallySelected(false);
-                setVoiceId(voices[0]?.voice_id ?? "");
-              }}
-              clearTitle="Use recommended voice"
             />
           </div>
         </>

@@ -11,35 +11,35 @@ register(
   new GeminiAdapter(
     "models/gemini-flash-lite-latest",
     "Gemini Flash Lite Latest",
-    "Lowest-latency Gemini alias for lightweight text generation",
+    "Fastest",
   ),
 );
 register(
   new GeminiAdapter(
     "models/gemini-flash-latest",
     "Gemini Flash Latest",
-    "Fast general-purpose Gemini alias for text generation",
+    "Fast",
   ),
 );
 register(
   new GeminiAdapter(
     "models/gemini-pro-latest",
     "Gemini Pro Latest",
-    "Frontier Gemini alias for high-quality text generation",
+    "Balanced speed and quality",
   ),
 );
 register(
   new GeminiAdapter(
     "gemini-3-flash-preview",
     "Gemini 3 Flash",
-    "Fast and capable, ideal for content generation",
+    "Great quality",
   ),
 );
 register(
   new GeminiAdapter(
     "gemini-3.1-pro-preview",
     "Gemini 3.1 Pro",
-    "Most capable, best quality metadata",
+    "State of the art quality",
   ),
 );
 

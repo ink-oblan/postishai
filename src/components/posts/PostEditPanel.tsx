@@ -576,13 +576,8 @@ export function PostEditPanel({
                 </SelectTrigger>
                 <SelectContent className="max-h-64 w-max">
                   {llmModels.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      <div className="flex min-w-0 flex-1 items-baseline gap-3 pr-4">
-                        <span className="shrink-0 whitespace-nowrap font-medium">{m.name}</span>
-                        <span className="min-w-0 whitespace-normal break-words text-muted-foreground text-xs">
-                          {m.description}
-                        </span>
-                      </div>
+                    <SelectItem key={m.id} value={m.id} description={m.description}>
+                      <span className="font-medium">{m.name}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>

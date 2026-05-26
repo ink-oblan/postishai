@@ -61,7 +61,7 @@ async function generateWithGeminiImage(
 export class NanaBanana2Adapter implements ImageModelAdapter {
   readonly id = "nano-banana-2";
   readonly name = "Nano Banana 2";
-  readonly description = "Gemini 3.1 Flash Image — fast, high quality";
+  readonly description = "High quality";
 
   async generate(options: ImageGenerationOptions): Promise<ImageGenerationResult> {
     return generateWithGeminiImage("gemini-3.1-flash-image-preview", options, options.aspectRatio);
@@ -71,7 +71,7 @@ export class NanaBanana2Adapter implements ImageModelAdapter {
 export class NanaBananaProAdapter implements ImageModelAdapter {
   readonly id = "nano-banana-pro";
   readonly name = "Nano Banana Pro";
-  readonly description = "Gemini 3 Pro Image — state-of-the-art quality";
+  readonly description = "State of the art quality";
 
   async generate(options: ImageGenerationOptions): Promise<ImageGenerationResult> {
     return generateWithGeminiImage("gemini-3-pro-image-preview", options, options.aspectRatio);
