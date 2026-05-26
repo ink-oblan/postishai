@@ -265,7 +265,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
         </div>
 
         {/* Origin */}
-        <div className="col-span-1 min-w-0 sm:col-span-2">
+        <div className="min-w-0">
           <PropLabel>Origin</PropLabel>
           {editing ? (
             <Combobox
@@ -297,21 +297,6 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
           )}
         </div>
 
-        {/* Occupation */}
-        <div className="min-w-0">
-          <PropLabel>Occupation</PropLabel>
-          {editing ? (
-            <Input
-              value={occupation}
-              onChange={(e) => setOccupation(e.target.value)}
-              className="h-8 text-sm"
-              placeholder="Doctor"
-            />
-          ) : (
-            <PropValue>{avatar.occupation}</PropValue>
-          )}
-        </div>
-
         {/* Image Model */}
         <div className="min-w-0">
           <PropLabel>Image Model</PropLabel>
@@ -337,6 +322,21 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
             )
           ) : (
             <PropValue>{avatar.imageModel}</PropValue>
+          )}
+        </div>
+
+        {/* Occupation */}
+        <div className="min-w-0">
+          <PropLabel>Occupation</PropLabel>
+          {editing ? (
+            <Input
+              value={occupation}
+              onChange={(e) => setOccupation(e.target.value)}
+              className="h-8 text-sm"
+              placeholder="Doctor"
+            />
+          ) : (
+            <PropValue>{avatar.occupation}</PropValue>
           )}
         </div>
 
