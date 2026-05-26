@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Loader2, Pause, Play, X } from "lucide-react";
+import { ChevronDown, Dices, Loader2, Pause, Play } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -21,9 +21,6 @@ interface AvatarVoiceFieldProps {
   size?: "sm" | "default";
   className?: string;
   triggerClassName?: string;
-  allowClear?: boolean;
-  onClear?: () => void;
-  clearTitle?: string;
 }
 
 // Animated waveform shown while audio plays
@@ -53,9 +50,6 @@ export function AvatarVoiceField({
   size = "default",
   className,
   triggerClassName,
-  allowClear = false,
-  onClear,
-  clearTitle = "Clear voice selection",
 }: AvatarVoiceFieldProps) {
   const [open, setOpen] = useState(false);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
@@ -289,22 +283,23 @@ export function AvatarVoiceField({
         </button>
       )}
 
-      {/* Clear button */}
-      {allowClear && (
+      {/* Pick random button */}
+      {filteredVoices.length > 0 && (
         <button
           type="button"
           onClick={() => {
             stopAudio();
-            onClear?.();
+            const pick = filteredVoices[Math.floor(Math.random() * filteredVoices.length)];
+            onValueChange?.(pick.voice_id);
           }}
           className={cn(
             "flex shrink-0 items-center justify-center rounded-md border border-input bg-background text-muted-foreground transition-all",
-            "hover:border-destructive/60 hover:text-destructive focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            "hover:border-ring/50 hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             btnH,
           )}
-          title={clearTitle}
+          title="Pick random voice"
         >
-          <X className="h-3 w-3" />
+          <Dices className="h-3.5 w-3.5" />
         </button>
       )}
     </div>
