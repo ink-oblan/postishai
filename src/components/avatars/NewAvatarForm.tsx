@@ -32,7 +32,7 @@ interface ImageModel {
   description: string;
 }
 
-type Mode = "generate" | "upload";
+export type Mode = "generate" | "upload";
 type Gender = "man" | "woman" | "neutral";
 type GenderSelection = Gender | "";
 
@@ -57,10 +57,14 @@ function findRecommendedVoice(
   return matchingVoices[Math.floor(Math.random() * matchingVoices.length)];
 }
 
-export function NewAvatarForm() {
+interface NewAvatarFormProps {
+  mode: Mode;
+  onModeChange: (mode: Mode) => void;
+}
+
+export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<Mode>("generate");
   const [name, setName] = useState("");
   const [voiceId, setVoiceId] = useState("");
   const [gender, setGender] = useState<GenderSelection>("");
@@ -202,7 +206,7 @@ export function NewAvatarForm() {
           type="button"
           variant={mode === "generate" ? "default" : "outline"}
           size="sm"
-          onClick={() => setMode("generate")}
+          onClick={() => onModeChange("generate")}
         >
           <Sparkles className="mr-1.5 h-3.5 w-3.5" />
           Generate with AI
@@ -211,7 +215,7 @@ export function NewAvatarForm() {
           type="button"
           variant={mode === "upload" ? "default" : "outline"}
           size="sm"
-          onClick={() => setMode("upload")}
+          onClick={() => onModeChange("upload")}
         >
           <Upload className="mr-1.5 h-3.5 w-3.5" />
           Upload Image
