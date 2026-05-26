@@ -1,4 +1,4 @@
-Ultra-realistic portrait photo of {{genderLabel}}, {{age}}-year-old {{ethnicity}}{{#if origin}} from {{origin}}{{/if}} {{occupation}}
+Ultra-realistic portrait photo of {{genderLabel}}, {{age}}-year-old {{origin}} {{occupation}}
 Standing straight, facing forward, in a neutral upright pose, no folded arms, no crossed arms, no hands clasped, no gestures, no text.
 
 Framing:

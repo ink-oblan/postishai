@@ -52,7 +52,6 @@ model Avatar {
   imagePath      String
   gender         String?           // "man" | "woman" | "neutral"
   age            Int?
-  ethnicity      String?
   origin         String?
   occupation     String?
   status         String            @default("COMPLETED")  // GENERATING | COMPLETED | FAILED

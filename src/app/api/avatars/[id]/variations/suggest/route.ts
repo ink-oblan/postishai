@@ -15,7 +15,7 @@ export const POST = withAuth(async function POST(
   const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const avatarDescription = `${avatar.age}-year-old ${avatar.ethnicity}${avatar.origin ? ` from ${avatar.origin}` : ""} ${avatar.occupation} (${avatar.gender})`;
+  const avatarDescription = `${avatar.age}-year-old ${avatar.origin ? `${avatar.origin} ` : ""}${avatar.occupation} (${avatar.gender})`;
   const prompt = await renderPromptTemplate("avatar-variation-suggest-prompt.txt", {
     avatarDescription,
   });

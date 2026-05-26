@@ -43,7 +43,6 @@ interface Props {
     voiceId: string | null;
     gender: string | null;
     age: number | null;
-    ethnicity: string | null;
     origin: string | null;
     occupation: string | null;
     createdAt: string;
@@ -122,7 +121,6 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
             voiceId: avatar.voiceId ?? "",
             gender: avatar.gender,
             age: avatar.age,
-            ethnicity: avatar.ethnicity,
             origin: avatar.origin,
             occupation: avatar.occupation,
             imageModel: avatar.imageModel,

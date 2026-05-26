@@ -33,7 +33,6 @@ export const PATCH = withAuth(async function PATCH(
     prompt,
     gender,
     age,
-    ethnicity,
     origin,
     occupation,
     imageModel,
@@ -46,7 +45,6 @@ export const PATCH = withAuth(async function PATCH(
     prompt?: string;
     gender?: "man" | "woman" | "neutral";
     age?: number;
-    ethnicity?: string;
     origin?: string;
     occupation?: string;
     imageModel?: string;
@@ -104,18 +102,16 @@ export const PATCH = withAuth(async function PATCH(
 
       // Re-render prompt if structured fields provided, otherwise fall back to stored prompt
       let usedPrompt = avatar.prompt;
-      if (gender && age && ethnicity && occupation) {
+      if (gender && age && origin && occupation) {
         usedPrompt = await renderAvatarPrompt({
           gender,
           age,
-          ethnicity,
           origin,
           occupation,
         });
         updateData.gender = gender;
         updateData.age = age;
-        updateData.ethnicity = ethnicity;
-        updateData.origin = origin ?? null;
+        updateData.origin = origin;
         updateData.occupation = occupation;
         updateData.prompt = usedPrompt;
       }

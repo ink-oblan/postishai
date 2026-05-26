@@ -17,13 +17,12 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx: unknown,
 
 export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown, { userId }) {
   const body = await req.json();
-  const { name, voiceId, gender, age, ethnicity, origin, occupation, imageModel, imageBase64 } =
+  const { name, voiceId, gender, age, origin, occupation, imageModel, imageBase64 } =
     body as {
       name: string;
       voiceId: string;
       gender?: "man" | "woman" | "neutral";
       age?: number;
-      ethnicity?: string;
       origin?: string;
       occupation?: string;
       imageModel?: string;
@@ -55,15 +54,15 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
     return NextResponse.json(updated, { status: 201 });
   } else {
     // AI generation: render prompt, enqueue job, return immediately
-    if (!gender || !age || !ethnicity || !occupation) {
+    if (!gender || !age || !origin || !occupation) {
       return NextResponse.json(
-        { error: "gender, age, ethnicity, and occupation are required for AI generation" },
+        { error: "gender, age, origin, and occupation are required for AI generation" },
         { status: 400 },
       );
     }
 
     const usedModel = imageModel ?? DEFAULT_IMAGE_MODEL_ID;
-    const prompt = await renderAvatarPrompt({ gender, age, ethnicity, origin, occupation });
+    const prompt = await renderAvatarPrompt({ gender, age, origin, occupation });
 
     const avatar = await prisma.$transaction(async (tx) => {
       const createdAvatar = await tx.avatar.create({
@@ -73,8 +72,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
           prompt,
           gender,
           age,
-          ethnicity,
-          origin: origin ?? null,
+          origin,
           occupation,
           imageModel: usedModel,
           imagePath: "",

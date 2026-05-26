@@ -39,8 +39,21 @@ async function generateWithGeminiImage(
     contents,
     config: generateConfig,
   });
-  const part = response.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
-  if (!part?.inlineData?.data) throw new Error("No image returned from Gemini");
+  const candidate = response.candidates?.[0];
+  const part = candidate?.content?.parts?.find((p) => p.inlineData);
+  if (!part?.inlineData?.data) {
+    const finishReason = candidate?.finishReason ?? "unknown";
+    const blockReason = response.promptFeedback?.blockReason ?? null;
+    const textPart = candidate?.content?.parts?.find((p) => p.text)?.text ?? null;
+    const detail = [
+      `finishReason=${finishReason}`,
+      blockReason ? `blockReason=${blockReason}` : null,
+      textPart ? `text="${textPart.slice(0, 200)}"` : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    throw new Error(`No image returned from Gemini (${detail})`);
+  }
   const mimeType = (part.inlineData.mimeType ?? "image/png") as "image/png" | "image/jpeg";
   return { base64: part.inlineData.data, mimeType };
 }

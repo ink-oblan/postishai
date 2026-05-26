@@ -4,9 +4,17 @@ import { Loader2, Sparkles, Upload } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ALL_BACKGROUND_OPTIONS } from "@/components/avatars/avatar-background-options";
 import { type AvatarVoice, AvatarVoiceField } from "@/components/avatars/AvatarVoiceField";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+} from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,24 +25,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
-
-const ETHNICITIES = [
-  "Eastern European",
-  "Western European",
-  "Mediterranean",
-  "Scandinavian",
-  "Middle Eastern",
-  "South Asian",
-  "East Asian",
-  "Southeast Asian",
-  "Central Asian",
-  "Sub-Saharan African",
-  "North African",
-  "Latin American",
-  "Caribbean",
-  "North American",
-  "Pacific Islander",
-];
 
 interface ImageModel {
   id: string;
@@ -75,7 +65,6 @@ export function NewAvatarForm() {
   const [voiceId, setVoiceId] = useState("");
   const [gender, setGender] = useState<GenderSelection>("");
   const [age, setAge] = useState("");
-  const [ethnicity, setEthnicity] = useState("");
   const [origin, setOrigin] = useState("");
   const [occupation, setOccupation] = useState("");
   const [imageModel, setImageModel] = useState("nano-banana-2");
@@ -86,6 +75,10 @@ export function NewAvatarForm() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const backgroundOptions = origin.trim()
+    ? ALL_BACKGROUND_OPTIONS.filter((opt) => opt.toLowerCase().includes(origin.toLowerCase()))
+    : ALL_BACKGROUND_OPTIONS;
 
   useEffect(() => {
     fetch("/api/image-models")
@@ -143,8 +136,8 @@ export function NewAvatarForm() {
         toast.error("Valid age is required");
         return;
       }
-      if (!ethnicity) {
-        toast.error("Ethnicity is required");
+      if (!origin.trim()) {
+        toast.error("Please enter where your avatar is from");
         return;
       }
       if (!occupation.trim()) {
@@ -171,8 +164,7 @@ export function NewAvatarForm() {
               voiceId,
               gender,
               age: Number(age),
-              ethnicity,
-              origin: origin.trim() || undefined,
+              origin: origin.trim(),
               occupation,
               imageModel,
             };
@@ -233,7 +225,7 @@ export function NewAvatarForm() {
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Dr. James"
+          placeholder="Dr. James"
           required
         />
       </div>
@@ -274,34 +266,30 @@ export function NewAvatarForm() {
             />
           </div>
 
-          {/* Ethnicity */}
+          {/* Where is your avatar from? */}
           <div className="space-y-2">
-            <Label>Ethnicity</Label>
-            <Select value={ethnicity} onValueChange={(v: string | null) => v && setEthnicity(v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select ethnicity…" />
-              </SelectTrigger>
-              <SelectContent>
-                {ETHNICITIES.map((e) => (
-                  <SelectItem key={e} value={e}>
-                    {e}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Origin (optional) */}
-          <div className="space-y-2">
-            <Label htmlFor="origin">
-              Origin <span className="font-normal text-muted-foreground">(optional)</span>
-            </Label>
-            <Input
-              id="origin"
-              value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
-              placeholder="e.g. Germany, Brazil, Japan"
-            />
+            <Label>Where is your avatar from?</Label>
+            <Combobox
+              inputValue={origin}
+              onInputValueChange={(val, details) => {
+                if (details.reason === "input-change" || details.reason === "item-press") {
+                  setOrigin(val);
+                }
+              }}
+            >
+              <ComboboxInputGroup>
+                <ComboboxInput placeholder="Eastern European, German, South Asian…" />
+              </ComboboxInputGroup>
+              {backgroundOptions.length > 0 && (
+                <ComboboxContent>
+                  {backgroundOptions.map((opt) => (
+                    <ComboboxItem key={opt} value={opt}>
+                      {opt}
+                    </ComboboxItem>
+                  ))}
+                </ComboboxContent>
+              )}
+            </Combobox>
           </div>
 
           {/* Occupation */}
@@ -311,7 +299,7 @@ export function NewAvatarForm() {
               id="occupation"
               value={occupation}
               onChange={(e) => setOccupation(e.target.value)}
-              placeholder="e.g. Doctor, Retired teacher, Software engineer"
+              placeholder="Doctor, Retired teacher, Software engineer"
             />
           </div>
 

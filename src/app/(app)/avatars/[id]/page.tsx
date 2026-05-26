@@ -38,7 +38,6 @@ export default async function AvatarDetailPage({ params }: { params: Promise<{ i
           voiceId: avatar.voiceId,
           gender: avatar.gender,
           age: avatar.age,
-          ethnicity: avatar.ethnicity,
           origin: avatar.origin,
           occupation: avatar.occupation,
           createdAt: avatar.createdAt.toISOString(),

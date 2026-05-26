@@ -4,8 +4,16 @@ import { AlertTriangle, Loader2, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ALL_BACKGROUND_OPTIONS } from "@/components/avatars/avatar-background-options";
 import { type AvatarVoice, AvatarVoiceField } from "@/components/avatars/AvatarVoiceField";
 import { Button } from "@/components/ui/button";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+} from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -16,24 +24,6 @@ import {
 } from "@/components/ui/select";
 import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
 import { formatDistanceToNow } from "@/lib/utils";
-
-const ETHNICITIES = [
-  "Eastern European",
-  "Western European",
-  "Mediterranean",
-  "Scandinavian",
-  "Middle Eastern",
-  "South Asian",
-  "East Asian",
-  "Southeast Asian",
-  "Central Asian",
-  "Sub-Saharan African",
-  "North African",
-  "Latin American",
-  "Caribbean",
-  "North American",
-  "Pacific Islander",
-];
 
 type Gender = "man" | "woman" | "neutral";
 
@@ -55,7 +45,6 @@ interface AvatarData {
   voiceId: string;
   gender: string | null;
   age: number | null;
-  ethnicity: string | null;
   origin: string | null;
   occupation: string | null;
   imageModel: string | null;
@@ -74,20 +63,27 @@ function PropValue({ children }: { children: React.ReactNode }) {
   );
 }
 
+function backgroundInitialValue(avatar: AvatarData): string {
+  return avatar.origin ?? "";
+}
+
 export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(avatar.name);
   const [gender, setGender] = useState<Gender>((avatar.gender as Gender) ?? "man");
   const [age, setAge] = useState(avatar.age?.toString() ?? "");
-  const [ethnicity, setEthnicity] = useState(avatar.ethnicity ?? "");
-  const [origin, setOrigin] = useState(avatar.origin ?? "");
+  const [origin, setOrigin] = useState(backgroundInitialValue(avatar));
   const [occupation, setOccupation] = useState(avatar.occupation ?? "");
   const [imageModel, setImageModel] = useState(avatar.imageModel ?? "");
   const [voiceId, setVoiceId] = useState(avatar.voiceId);
   const [models, setModels] = useState<ImageModel[]>([]);
   const [voices, setVoices] = useState<AvatarVoice[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const backgroundOptions = origin.trim()
+    ? ALL_BACKGROUND_OPTIONS.filter((opt) => opt.toLowerCase().includes(origin.toLowerCase()))
+    : ALL_BACKGROUND_OPTIONS;
 
   useEffect(() => {
     let cancelled = false;
@@ -117,8 +113,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
   const visualChanged =
     gender !== (avatar.gender ?? "man") ||
     age !== (avatar.age?.toString() ?? "") ||
-    ethnicity !== (avatar.ethnicity ?? "") ||
-    origin !== (avatar.origin ?? "") ||
+    origin !== backgroundInitialValue(avatar) ||
     occupation !== (avatar.occupation ?? "") ||
     imageModel !== (avatar.imageModel ?? "");
 
@@ -128,8 +123,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
     setName(avatar.name);
     setGender((avatar.gender as Gender) ?? "man");
     setAge(avatar.age?.toString() ?? "");
-    setEthnicity(avatar.ethnicity ?? "");
-    setOrigin(avatar.origin ?? "");
+    setOrigin(backgroundInitialValue(avatar));
     setOccupation(avatar.occupation ?? "");
     setImageModel(avatar.imageModel ?? "");
     setVoiceId(avatar.voiceId);
@@ -143,8 +137,8 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
         toast.error("Valid age is required");
         return;
       }
-      if (!ethnicity) {
-        toast.error("Ethnicity is required");
+      if (!origin.trim()) {
+        toast.error("Please enter where your avatar is from");
         return;
       }
       if (!occupation.trim()) {
@@ -159,8 +153,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
       if (visualChanged) {
         body.gender = gender;
         body.age = Number(age);
-        body.ethnicity = ethnicity;
-        body.origin = origin.trim() || undefined;
+        body.origin = origin.trim();
         body.occupation = occupation;
         if (imageModel) body.imageModel = imageModel;
         body.regenerate = true;
@@ -271,41 +264,36 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
           )}
         </div>
 
-        {/* Ethnicity */}
-        <div className="min-w-0">
-          <PropLabel>Ethnicity</PropLabel>
+        {/* Where is your avatar from? */}
+        <div className="col-span-1 min-w-0 sm:col-span-2">
+          <PropLabel>Where is your avatar from?</PropLabel>
           {editing ? (
-            <Select value={ethnicity} onValueChange={(v) => v && setEthnicity(v)}>
-              <SelectTrigger className="h-8 w-full text-sm">
-                <SelectValue placeholder="Select…" />
-              </SelectTrigger>
-              <SelectContent>
-                {ETHNICITIES.map((e) => (
-                  <SelectItem key={e} value={e}>
-                    {e}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              inputValue={origin}
+              onInputValueChange={(val, details) => {
+                if (details.reason === "input-change" || details.reason === "item-press") {
+                  setOrigin(val);
+                }
+              }}
+            >
+              <ComboboxInputGroup>
+                <ComboboxInput
+                  className="text-sm"
+                  placeholder="Eastern European, German, South Asian…"
+                />
+              </ComboboxInputGroup>
+              {backgroundOptions.length > 0 && (
+                <ComboboxContent>
+                  {backgroundOptions.map((opt) => (
+                    <ComboboxItem key={opt} value={opt}>
+                      {opt}
+                    </ComboboxItem>
+                  ))}
+                </ComboboxContent>
+              )}
+            </Combobox>
           ) : (
-            <PropValue>{avatar.ethnicity}</PropValue>
-          )}
-        </div>
-
-        {/* Origin */}
-        <div className="min-w-0">
-          <PropLabel>
-            Origin{editing && <span className="text-muted-foreground/70"> (optional)</span>}
-          </PropLabel>
-          {editing ? (
-            <Input
-              value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
-              className="h-8 text-sm"
-              placeholder="e.g. Germany"
-            />
-          ) : (
-            <PropValue>{avatar.origin}</PropValue>
+            <PropValue>{backgroundInitialValue(avatar)}</PropValue>
           )}
         </div>
 
@@ -317,7 +305,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
               value={occupation}
               onChange={(e) => setOccupation(e.target.value)}
               className="h-8 text-sm"
-              placeholder="e.g. Doctor"
+              placeholder="Doctor"
             />
           ) : (
             <PropValue>{avatar.occupation}</PropValue>
