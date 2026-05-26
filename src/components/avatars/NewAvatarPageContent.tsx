@@ -11,12 +11,12 @@ export function NewAvatarPageContent() {
 
   return (
     <div className="flex gap-12 pt-8">
-      <div className="w-full max-w-lg shrink-0">
+      <div className="flex-1">
         <NewAvatarForm mode={mode} onModeChange={setMode} />
       </div>
 
       {mode === "upload" && (
-        <div className="hidden w-full max-w-sm lg:block">
+        <div className="hidden flex-1 lg:flex lg:justify-center">
           <UploadImageGuide />
         </div>
       )}

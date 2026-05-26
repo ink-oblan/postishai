@@ -27,7 +27,7 @@ export function UploadImageGuide() {
         ))}
       </ul>
 
-      <div className="w-2/3 overflow-hidden rounded-xl border bg-muted/30">
+      <div className="mx-auto w-2/3 max-w-[220px] overflow-hidden rounded-xl border bg-muted/30">
         <div className="px-3 pt-3 pb-1.5">
           <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
             Example

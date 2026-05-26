@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ALL_BACKGROUND_OPTIONS } from "@/components/avatars/avatar-background-options";
+import { UploadImageGuide } from "@/components/avatars/UploadImageGuide";
 import { type AvatarVoice, AvatarVoiceField } from "@/components/avatars/AvatarVoiceField";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -233,6 +234,12 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
           required
         />
       </div>
+
+      {mode === "upload" && (
+        <div className="mx-auto max-w-xs lg:hidden">
+          <UploadImageGuide />
+        </div>
+      )}
 
       {mode === "generate" ? (
         <>
