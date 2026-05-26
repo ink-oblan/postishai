@@ -82,7 +82,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
   const [loading, setLoading] = useState(false);
 
   const backgroundOptions = origin.trim()
-    ? ALL_BACKGROUND_OPTIONS.filter((opt) => opt.toLowerCase().includes(origin.toLowerCase()))
+    ? ALL_BACKGROUND_OPTIONS.filter((opt) => opt.display.toLowerCase().includes(origin.toLowerCase()))
     : ALL_BACKGROUND_OPTIONS;
 
   useEffect(() => {
@@ -264,9 +264,9 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
           )}
         </div>
 
-        {/* Where is your avatar from? */}
+        {/* Origin */}
         <div className="col-span-1 min-w-0 sm:col-span-2">
-          <PropLabel>Where is your avatar from?</PropLabel>
+          <PropLabel>Origin</PropLabel>
           {editing ? (
             <Combobox
               inputValue={origin}
@@ -285,8 +285,8 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
               {backgroundOptions.length > 0 && (
                 <ComboboxContent>
                   {backgroundOptions.map((opt) => (
-                    <ComboboxItem key={opt} value={opt}>
-                      {opt}
+                    <ComboboxItem key={opt.value} value={opt.value}>
+                      {opt.display}
                     </ComboboxItem>
                   ))}
                 </ComboboxContent>

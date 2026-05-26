@@ -77,7 +77,7 @@ export function NewAvatarForm() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const backgroundOptions = origin.trim()
-    ? ALL_BACKGROUND_OPTIONS.filter((opt) => opt.toLowerCase().includes(origin.toLowerCase()))
+    ? ALL_BACKGROUND_OPTIONS.filter((opt) => opt.display.toLowerCase().includes(origin.toLowerCase()))
     : ALL_BACKGROUND_OPTIONS;
 
   useEffect(() => {
@@ -283,8 +283,8 @@ export function NewAvatarForm() {
               {backgroundOptions.length > 0 && (
                 <ComboboxContent>
                   {backgroundOptions.map((opt) => (
-                    <ComboboxItem key={opt} value={opt}>
-                      {opt}
+                    <ComboboxItem key={opt.value} value={opt.value}>
+                      {opt.display}
                     </ComboboxItem>
                   ))}
                 </ComboboxContent>
