@@ -34,7 +34,7 @@ export function UploadImageGuide() {
           </p>
         </div>
         <Image
-          src="/avatar-photo-guide.jpg"
+          src="/static/avatar-photo-guide.jpg"
           alt="Good avatar photo example"
           width={480}
           height={640}

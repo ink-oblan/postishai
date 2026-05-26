@@ -99,7 +99,7 @@ function Logo({ onClick }: { onClick?: () => void }) {
     <Link href="/dashboard" onClick={onClick} className="group flex items-center gap-2.5">
       <div className="h-12 w-12 shrink-0 transition-opacity group-hover:opacity-90">
         <Image
-          src="/logo.svg"
+          src="/static/logo.svg"
           alt="Logo"
           width={32}
           height={32}
