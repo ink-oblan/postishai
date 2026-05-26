@@ -76,8 +76,9 @@ export function AvatarVariationsPanel({
   const [clothes, setClothes] = useState("");
   const [background, setBackground] = useState("");
   const [pose, setPose] = useState("");
-  const [label, setLabel] = useState("");
-  const [labelEdited, setLabelEdited] = useState(false);
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [editingLabelValue, setEditingLabelValue] = useState("");
+  const editingInputRef = useRef<HTMLInputElement>(null);
   const [sourceVariationId, setSourceVariationId] = useState<string | null>(null);
   const [replaceVariationId, setReplaceVariationId] = useState<string | null>(null);
   const [imageModel, setImageModel] = useState(defaultImageModel ?? "nano-banana-2");
@@ -185,7 +186,6 @@ export function AvatarVariationsPanel({
             };
 
   const generatedLabel = generateAvatarVariationLabel(activeValues);
-  const resolvedLabel = labelEdited ? label.trim() || generatedLabel : generatedLabel;
   const canGenerate = !!(activeValues.clothes || activeValues.background || activeValues.pose);
   const selectedVariation = variations.find((v) => v.id === selectedVariationId) ?? null;
   const canUseSelectedVariation = selectedVariation?.status === "COMPLETED";
@@ -225,8 +225,6 @@ export function AvatarVariationsPanel({
   }) {
     setShowForm(true);
     setScope(null);
-    setLabel("");
-    setLabelEdited(false);
     setSourceVariationId(options?.sourceVariationId ?? null);
     setReplaceVariationId(options?.replaceVariationId ?? null);
   }
@@ -236,8 +234,6 @@ export function AvatarVariationsPanel({
     setClothes("");
     setBackground("");
     setPose("");
-    setLabel("");
-    setLabelEdited(false);
     setSourceVariationId(null);
     setReplaceVariationId(null);
     setShowForm(false);
@@ -270,12 +266,26 @@ export function AvatarVariationsPanel({
   async function handleGenerate() {
     if (!canGenerate) return;
     setSubmitting(true);
+    let variationLabel = generatedLabel;
+    try {
+      const nameRes = await fetch(`/api/avatars/${avatarId}/variations/name`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(activeValues),
+      });
+      if (nameRes.ok) {
+        const nameData = (await nameRes.json()) as { name: string };
+        if (nameData.name) variationLabel = nameData.name;
+      }
+    } catch {
+      // fall back to generated label
+    }
     try {
       const res = await fetch(`/api/avatars/${avatarId}/variations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          label: resolvedLabel,
+          label: variationLabel,
           ...activeValues,
           sourceVariationId: sourceVariationId ?? undefined,
           replaceVariationId: replaceVariationId ?? undefined,
@@ -333,6 +343,30 @@ export function AvatarVariationsPanel({
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
+    }
+  }
+
+  useEffect(() => {
+    if (editingLabelId && editingInputRef.current) {
+      editingInputRef.current.focus();
+      editingInputRef.current.select();
+    }
+  }, [editingLabelId]);
+
+  async function handleLabelSave(variationId: string) {
+    const trimmed = editingLabelValue.trim();
+    setEditingLabelId(null);
+    if (!trimmed) return;
+    setVariations((prev) => prev.map((v) => (v.id === variationId ? { ...v, label: trimmed } : v)));
+    try {
+      const res = await fetch(`/api/avatars/${avatarId}/variations/${variationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: trimmed }),
+      });
+      if (!res.ok) throw new Error("Failed to update name");
+    } catch {
+      toast.error("Failed to update name");
     }
   }
 
@@ -482,12 +516,41 @@ export function AvatarVariationsPanel({
                               )}
                           </div>
                         </div>
-                        <p
-                          className="mt-1 truncate text-center text-[0.7rem] text-muted-foreground"
-                          title={variation.label}
-                        >
-                          {variation.label}
-                        </p>
+                        {variation.status === "COMPLETED" &&
+                        editingLabelId === variation.id ? (
+                          <input
+                            ref={editingInputRef}
+                            value={editingLabelValue}
+                            onChange={(e) => setEditingLabelValue(e.target.value)}
+                            onBlur={() => void handleLabelSave(variation.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") void handleLabelSave(variation.id);
+                              if (e.key === "Escape") setEditingLabelId(null);
+                            }}
+                            className="mt-1 w-full border-0 border-b border-border bg-transparent text-center text-[0.7rem] focus:outline-none"
+                          />
+                        ) : (
+                          <p
+                            className={`mt-1 truncate text-center text-[0.7rem] text-muted-foreground ${
+                              variation.status === "COMPLETED"
+                                ? "cursor-text hover:text-foreground"
+                                : ""
+                            }`}
+                            title={
+                              variation.status === "COMPLETED"
+                                ? `${variation.label} — click to rename`
+                                : variation.label
+                            }
+                            onClick={(e) => {
+                              if (variation.status !== "COMPLETED") return;
+                              e.stopPropagation();
+                              setEditingLabelId(variation.id);
+                              setEditingLabelValue(variation.label);
+                            }}
+                          >
+                            {variation.label}
+                          </p>
+                        )}
                       </div>
                     );
                   })}
@@ -618,19 +681,6 @@ export function AvatarVariationsPanel({
                           />
                         </div>
                       )}
-
-                      <div>
-                        <p className="mb-1 text-muted-foreground text-xs">Variation name</p>
-                        <Input
-                          value={labelEdited ? label : generatedLabel}
-                          onChange={(e) => {
-                            setLabel(e.target.value);
-                            setLabelEdited(true);
-                          }}
-                          placeholder={generatedLabel}
-                          className="h-8 text-sm"
-                        />
-                      </div>
 
                       <div>
                         <p className="mb-1 text-muted-foreground text-xs">Image Model</p>

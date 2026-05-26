@@ -1,0 +1,8 @@
+You are naming avatar photo variations for a social media content tool.
+
+Given the variation description below, respond ONLY with a short name (3–5 words, no quotes, no trailing punctuation) that captures the look.
+
+{{#if clothes}}Clothes: {{clothes}}
+{{/if}}{{#if background}}Background: {{background}}
+{{/if}}{{#if pose}}Pose: {{pose}}
+{{/if}}
