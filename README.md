@@ -20,6 +20,7 @@ Copy `.env.example` to `.env` and fill in the API credentials:
 
 ```bash
 cp .env.example .env
+npm install
 npm run dev
 ```
 
