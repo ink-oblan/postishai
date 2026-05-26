@@ -79,6 +79,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const backgroundOptions = origin.trim()
@@ -114,9 +115,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
     setVoiceId(recommendedVoice?.voice_id ?? "");
   }, [gender, mode, voiceManuallySelected, voices]);
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>): void {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function processFile(file: File): void {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const result = ev.target?.result as string;
@@ -125,6 +124,50 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
     };
     reader.readAsDataURL(file);
   }
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>): void {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processFile(file);
+  }
+
+  useEffect(() => {
+    if (mode !== "upload") return;
+
+    let counter = 0;
+
+    function onDragEnter() {
+      counter++;
+      setIsDragging(true);
+    }
+    function onDragLeave() {
+      counter--;
+      if (counter === 0) setIsDragging(false);
+    }
+    function onDragOver(e: DragEvent) {
+      e.preventDefault();
+    }
+    function onDrop(e: DragEvent) {
+      e.preventDefault();
+      counter = 0;
+      setIsDragging(false);
+      const file = e.dataTransfer?.files?.[0];
+      if (!file || !["image/png", "image/jpeg"].includes(file.type)) return;
+      processFile(file);
+    }
+
+    window.addEventListener("dragenter", onDragEnter);
+    window.addEventListener("dragleave", onDragLeave);
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("drop", onDrop);
+
+    return () => {
+      window.removeEventListener("dragenter", onDragEnter);
+      window.removeEventListener("dragleave", onDragLeave);
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, [mode]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
@@ -351,28 +394,38 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
         <>
           <div className="space-y-2">
             <Label>Image</Label>
+            <div className="flex justify-center">
             <Card
-              className="cursor-pointer border-dashed transition-colors hover:border-primary/50"
-              onClick={() => fileRef.current?.click()}
+              className={`aspect-[3/4] w-1/2 cursor-pointer border-dashed transition-colors hover:border-primary/50 ${isDragging ? "border-primary bg-primary/5" : ""}`}
+              onClick={() => {
+                if (previewUrl) {
+                  setPreviewUrl(null);
+                  setImageBase64(null);
+                  if (fileRef.current) fileRef.current.value = "";
+                } else {
+                  fileRef.current?.click();
+                }
+              }}
             >
-              <CardContent className="flex flex-col items-center justify-center gap-3 py-8">
+              <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-4">
                 {previewUrl ? (
                   // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
                   <img
                     src={previewUrl}
                     alt="Preview"
-                    className="max-h-48 rounded-md object-contain"
+                    className="h-full w-full rounded-md object-cover"
                   />
                 ) : (
                   <>
                     <Upload className="h-8 w-8 text-muted-foreground" />
                     <p className="text-muted-foreground text-sm">
-                      Click to select an image (PNG or JPEG)
+                      {isDragging ? "Drop image here" : "Click or drag & drop an image (PNG or JPEG)"}
                     </p>
                   </>
                 )}
               </CardContent>
             </Card>
+            </div>
             <input
               ref={fileRef}
               type="file"
