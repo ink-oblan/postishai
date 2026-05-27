@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  turbopack: {},
   webpack(config) {
     // Webpack ignores all of node_modules by default, so the dev server doesn't
     // detect when `prisma generate` regenerates the client. Let the two Prisma
