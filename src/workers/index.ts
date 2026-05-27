@@ -11,11 +11,17 @@ const POLL_INTERVAL_MS = 3000;
 const RECOVERY_BUFFER_MS = 30_000;
 const RETRY_DELAYS_MS = [10_000, 30_000, 60_000];
 const HEALTHCHECK_INTERVAL_MS = 5000;
+const NO_JOBS_LOG_INTERVAL_MS = 10_000;
 const workerId = `${hostname()}:${process.pid}`;
 
 let shuttingDown = false;
 let currentJobPromise: Promise<void> | null = null;
 let currentJobId: string | null = null;
+let lastNoJobsLogAt = 0;
+
+function shouldLogNoJobs(): boolean {
+  return Date.now() - lastNoJobsLogAt >= NO_JOBS_LOG_INTERVAL_MS;
+}
 
 const log = (...args: unknown[]) => console.log(`[${new Date().toISOString()}] [worker]`, ...args);
 const logError = (...args: unknown[]) =>
@@ -227,7 +233,10 @@ async function drainAvailableJobs(): Promise<void> {
   while (!shuttingDown) {
     const job = await claimNextJob();
     if (!job) {
-      if (processed === 0) log("poll: no pending jobs");
+      if (processed === 0 && shouldLogNoJobs()) {
+        log("poll: no pending jobs");
+        lastNoJobsLogAt = Date.now();
+      }
       return;
     }
 

@@ -1,0 +1,6 @@
+{
+  "watch": ["src/worker.ts", "src/workers", "src/lib"],
+  "ext": "ts",
+  "exec": "tsx src/worker.ts",
+  "exitcrash": true
+}

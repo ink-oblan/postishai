@@ -49,6 +49,7 @@ services:
     build:
       context: .
       target: dev
+    restart: on-failure
     env_file:
       - .env
     environment:

@@ -23,7 +23,7 @@
     "app:start": "node .next/standalone/server.js",
     "app:start:logged": "node .next/standalone/server.js 2>&1 | tee dev.log",
     "worker:healthcheck": "tsx scripts/healthcheck-worker.ts",
-    "worker:dev": "tsx watch src/worker.ts 2>&1 | tee worker.log",
+    "worker:dev": "bash -c 'set -o pipefail && nodemon 2>&1 | tee worker.log'",
     "worker:start": "tsx src/worker.ts 2>&1 | tee worker.log"
   },
   "dependencies": {
@@ -74,6 +74,7 @@
     "husky": "^9.1.7",
     "jsdom": "^29.0.2",
     "lint-staged": "^16.4.0",
+    "nodemon": "^3.1.14",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^6",
