@@ -98,6 +98,13 @@ export const PATCH = withAuth(async function PATCH(
       if (prompt) updateData.prompt = prompt;
     } else {
       // AI regeneration: enqueue job
+      if (avatar.source === "UPLOADED") {
+        return NextResponse.json(
+          { error: "Cannot regenerate an avatar created from a user upload" },
+          { status: 400 },
+        );
+      }
+
       const usedModel = imageModel ?? avatar.imageModel ?? DEFAULT_IMAGE_MODEL_ID;
 
       // Re-render prompt if structured fields provided, otherwise fall back to stored prompt

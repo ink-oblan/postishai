@@ -37,6 +37,7 @@ interface Props {
     id: string;
     name: string;
     status: string;
+    source: string;
     updatedAt: string;
     prompt: string | null;
     imageModel: string | null;
@@ -109,7 +110,7 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
           </div>
         )}
         <AvatarActions
-          avatar={{ id: avatar.id, prompt: avatar.prompt, imageModel: avatar.imageModel }}
+          avatar={{ id: avatar.id, source: avatar.source, imageModel: avatar.imageModel }}
         />
       </div>
 
@@ -119,6 +120,7 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
             id: avatar.id,
             name: avatar.name,
             voiceId: avatar.voiceId ?? "",
+            source: avatar.source,
             gender: avatar.gender,
             age: avatar.age,
             origin: avatar.origin,
@@ -187,7 +189,7 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
         <AvatarVariationsPanel
           avatarId={avatar.id}
           initialVariations={initialVariations}
-          hasPrompt={true}
+          isGenerated={avatar.source === "GENERATED"}
           defaultImageModel={avatar.imageModel}
           selectedVariationId={selectedVariation?.id ?? null}
           onVariationClick={handleVariationClick}

@@ -4,8 +4,8 @@ import { AlertTriangle, Loader2, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ALL_BACKGROUND_OPTIONS } from "@/components/avatars/avatar-background-options";
 import { type AvatarVoice, AvatarVoiceField } from "@/components/avatars/AvatarVoiceField";
+import { ALL_BACKGROUND_OPTIONS } from "@/components/avatars/avatar-background-options";
 import { Button } from "@/components/ui/button";
 import {
   Combobox,
@@ -43,6 +43,7 @@ interface AvatarData {
   id: string;
   name: string;
   voiceId: string;
+  source: string;
   gender: string | null;
   age: number | null;
   origin: string | null;
@@ -82,7 +83,9 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
   const [loading, setLoading] = useState(false);
 
   const backgroundOptions = origin.trim()
-    ? ALL_BACKGROUND_OPTIONS.filter((opt) => opt.display.toLowerCase().includes(origin.toLowerCase()))
+    ? ALL_BACKGROUND_OPTIONS.filter((opt) =>
+        opt.display.toLowerCase().includes(origin.toLowerCase()),
+      )
     : ALL_BACKGROUND_OPTIONS;
 
   useEffect(() => {
@@ -110,11 +113,12 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
   }, []);
 
   const visualChanged =
-    gender !== (avatar.gender ?? "man") ||
-    age !== (avatar.age?.toString() ?? "") ||
-    origin !== backgroundInitialValue(avatar) ||
-    occupation !== (avatar.occupation ?? "") ||
-    imageModel !== (avatar.imageModel ?? "");
+    avatar.source === "GENERATED" &&
+    (gender !== (avatar.gender ?? "man") ||
+      age !== (avatar.age?.toString() ?? "") ||
+      origin !== backgroundInitialValue(avatar) ||
+      occupation !== (avatar.occupation ?? "") ||
+      imageModel !== (avatar.imageModel ?? ""));
 
   const voiceChanged = voiceId !== avatar.voiceId;
 
@@ -220,125 +224,131 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
 
       {/* Properties grid */}
       <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-        {/* Gender */}
-        <div className="min-w-0">
-          <PropLabel>Gender</PropLabel>
-          {editing ? (
-            <div className="flex flex-wrap gap-1.5">
-              {(["man", "woman", "neutral"] as Gender[]).map((g) => (
-                <Button
-                  key={g}
-                  type="button"
-                  size="sm"
-                  className="h-7 px-2.5 text-xs capitalize"
-                  variant={gender === g ? "default" : "outline"}
-                  onClick={() => setGender(g)}
-                >
-                  {g}
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <PropValue>
-              {avatar.gender && <span className="capitalize">{avatar.gender}</span>}
-            </PropValue>
-          )}
-        </div>
-
-        {/* Age */}
-        <div className="min-w-0">
-          <PropLabel>Age</PropLabel>
-          {editing ? (
-            <Input
-              type="number"
-              min={18}
-              max={90}
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              className="h-8 w-full text-sm sm:w-24"
-              placeholder="35"
-            />
-          ) : (
-            <PropValue>{avatar.age ? `${avatar.age} yrs` : null}</PropValue>
-          )}
-        </div>
-
-        {/* Origin */}
-        <div className="min-w-0">
-          <PropLabel>Origin</PropLabel>
-          {editing ? (
-            <Combobox
-              inputValue={origin}
-              onInputValueChange={(val, details) => {
-                if (details.reason === "input-change" || details.reason === "item-press") {
-                  setOrigin(val);
-                }
-              }}
-            >
-              <ComboboxInputGroup>
-                <ComboboxInput
-                  className="text-sm"
-                  placeholder="Eastern European, German, South Asian…"
-                />
-              </ComboboxInputGroup>
-              {backgroundOptions.length > 0 && (
-                <ComboboxContent>
-                  {backgroundOptions.map((opt) => (
-                    <ComboboxItem key={opt.value} value={opt.value}>
-                      {opt.display}
-                    </ComboboxItem>
+        {avatar.source === "GENERATED" && (
+          <>
+            {/* Gender */}
+            <div className="min-w-0">
+              <PropLabel>Gender</PropLabel>
+              {editing ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {(["man", "woman", "neutral"] as Gender[]).map((g) => (
+                    <Button
+                      key={g}
+                      type="button"
+                      size="sm"
+                      className="h-7 px-2.5 text-xs capitalize"
+                      variant={gender === g ? "default" : "outline"}
+                      onClick={() => setGender(g)}
+                    >
+                      {g}
+                    </Button>
                   ))}
-                </ComboboxContent>
+                </div>
+              ) : (
+                <PropValue>
+                  {avatar.gender && <span className="capitalize">{avatar.gender}</span>}
+                </PropValue>
               )}
-            </Combobox>
-          ) : (
-            <PropValue>{backgroundInitialValue(avatar)}</PropValue>
-          )}
-        </div>
+            </div>
 
-        {/* Image Model */}
-        <div className="min-w-0">
-          <PropLabel>Image Model</PropLabel>
-          {editing ? (
-            models.length > 0 ? (
-              <Select value={imageModel} onValueChange={(v) => v && setImageModel(v)}>
-                <SelectTrigger className="h-8 w-full text-sm">
-                  <SelectValue>
-                    {models.find((m) => m.id === imageModel)?.name ?? imageModel}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((m) => (
-                    <SelectItem key={m.id} value={m.id} description={m.description}>
-                      <span className="font-medium">{m.name}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="flex h-8 items-center">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-              </div>
-            )
-          ) : (
-            <PropValue>{models.find((m) => m.id === avatar.imageModel)?.name ?? avatar.imageModel}</PropValue>
-          )}
-        </div>
+            {/* Age */}
+            <div className="min-w-0">
+              <PropLabel>Age</PropLabel>
+              {editing ? (
+                <Input
+                  type="number"
+                  min={18}
+                  max={90}
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  className="h-8 w-full text-sm sm:w-24"
+                  placeholder="35"
+                />
+              ) : (
+                <PropValue>{avatar.age ? `${avatar.age} yrs` : null}</PropValue>
+              )}
+            </div>
 
-        {/* Occupation */}
-        <div className="min-w-0">
-          <PropLabel>Occupation</PropLabel>
-          {editing ? (
-            <Input
-              value={occupation}
-              onChange={(e) => setOccupation(e.target.value)}
-              className="h-8 text-sm"
-              placeholder="Doctor"
-            />
-          ) : (
-            <PropValue>{avatar.occupation}</PropValue>
-          )}
-        </div>
+            {/* Origin */}
+            <div className="min-w-0">
+              <PropLabel>Origin</PropLabel>
+              {editing ? (
+                <Combobox
+                  inputValue={origin}
+                  onInputValueChange={(val, details) => {
+                    if (details.reason === "input-change" || details.reason === "item-press") {
+                      setOrigin(val);
+                    }
+                  }}
+                >
+                  <ComboboxInputGroup>
+                    <ComboboxInput
+                      className="text-sm"
+                      placeholder="Eastern European, German, South Asian…"
+                    />
+                  </ComboboxInputGroup>
+                  {backgroundOptions.length > 0 && (
+                    <ComboboxContent>
+                      {backgroundOptions.map((opt) => (
+                        <ComboboxItem key={opt.value} value={opt.value}>
+                          {opt.display}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxContent>
+                  )}
+                </Combobox>
+              ) : (
+                <PropValue>{backgroundInitialValue(avatar)}</PropValue>
+              )}
+            </div>
+
+            {/* Image Model */}
+            <div className="min-w-0">
+              <PropLabel>Image Model</PropLabel>
+              {editing ? (
+                models.length > 0 ? (
+                  <Select value={imageModel} onValueChange={(v) => v && setImageModel(v)}>
+                    <SelectTrigger className="h-8 w-full text-sm">
+                      <SelectValue>
+                        {models.find((m) => m.id === imageModel)?.name ?? imageModel}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {models.map((m) => (
+                        <SelectItem key={m.id} value={m.id} description={m.description}>
+                          <span className="font-medium">{m.name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex h-8 items-center">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  </div>
+                )
+              ) : (
+                <PropValue>
+                  {models.find((m) => m.id === avatar.imageModel)?.name ?? avatar.imageModel}
+                </PropValue>
+              )}
+            </div>
+
+            {/* Occupation */}
+            <div className="min-w-0">
+              <PropLabel>Occupation</PropLabel>
+              {editing ? (
+                <Input
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  className="h-8 text-sm"
+                  placeholder="Doctor"
+                />
+              ) : (
+                <PropValue>{avatar.occupation}</PropValue>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Voice */}
         <div>

@@ -2,11 +2,11 @@
 
 import { Loader2, Sparkles, Upload } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { type AvatarVoice, AvatarVoiceField } from "@/components/avatars/AvatarVoiceField";
 import { ALL_BACKGROUND_OPTIONS } from "@/components/avatars/avatar-background-options";
 import { UploadImageGuide } from "@/components/avatars/UploadImageGuide";
-import { type AvatarVoice, AvatarVoiceField } from "@/components/avatars/AvatarVoiceField";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -83,7 +83,9 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const backgroundOptions = origin.trim()
-    ? ALL_BACKGROUND_OPTIONS.filter((opt) => opt.display.toLowerCase().includes(origin.toLowerCase()))
+    ? ALL_BACKGROUND_OPTIONS.filter((opt) =>
+        opt.display.toLowerCase().includes(origin.toLowerCase()),
+      )
     : ALL_BACKGROUND_OPTIONS;
 
   useEffect(() => {
@@ -115,7 +117,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
     setVoiceId(recommendedVoice?.voice_id ?? "");
   }, [gender, mode, voiceManuallySelected, voices]);
 
-  function processFile(file: File): void {
+  const processFile = useCallback((file: File): void => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const result = ev.target?.result as string;
@@ -123,7 +125,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
       setPreviewUrl(result);
     };
     reader.readAsDataURL(file);
-  }
+  }, []);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>): void {
     const file = e.target.files?.[0];
@@ -167,7 +169,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
       window.removeEventListener("dragover", onDragOver);
       window.removeEventListener("drop", onDrop);
     };
-  }, [mode]);
+  }, [mode, processFile]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
@@ -206,7 +208,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
     try {
       const body =
         mode === "upload"
-          ? { name, voiceId, imageBase64 }
+          ? { name, voiceId, imageBase64, source: "UPLOADED" as const }
           : {
               name,
               voiceId,
@@ -215,6 +217,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
               origin: origin.trim(),
               occupation,
               imageModel,
+              source: "GENERATED" as const,
             };
 
       const res = await fetch("/api/avatars", {
@@ -395,36 +398,38 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
           <div className="space-y-2">
             <Label>Image</Label>
             <div className="flex justify-center">
-            <Card
-              className={`aspect-[3/4] w-1/2 cursor-pointer border-dashed transition-colors hover:border-primary/50 ${isDragging ? "border-primary bg-primary/5" : ""}`}
-              onClick={() => {
-                if (previewUrl) {
-                  setPreviewUrl(null);
-                  setImageBase64(null);
-                  if (fileRef.current) fileRef.current.value = "";
-                } else {
-                  fileRef.current?.click();
-                }
-              }}
-            >
-              <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-4">
-                {previewUrl ? (
-                  // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="h-full w-full rounded-md object-cover"
-                  />
-                ) : (
-                  <>
-                    <Upload className="h-8 w-8 text-muted-foreground" />
-                    <p className="text-muted-foreground text-sm">
-                      {isDragging ? "Drop image here" : "Click or drag & drop an image (PNG or JPEG)"}
-                    </p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+              <Card
+                className={`aspect-[3/4] w-1/2 cursor-pointer border-dashed transition-colors hover:border-primary/50 ${isDragging ? "border-primary bg-primary/5" : ""}`}
+                onClick={() => {
+                  if (previewUrl) {
+                    setPreviewUrl(null);
+                    setImageBase64(null);
+                    if (fileRef.current) fileRef.current.value = "";
+                  } else {
+                    fileRef.current?.click();
+                  }
+                }}
+              >
+                <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-4">
+                  {previewUrl ? (
+                    // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      className="h-full w-full rounded-md object-cover"
+                    />
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-muted-foreground text-sm">
+                        {isDragging
+                          ? "Drop image here"
+                          : "Click or drag & drop an image (PNG or JPEG)"}
+                      </p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
             </div>
             <input
               ref={fileRef}

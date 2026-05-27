@@ -55,6 +55,7 @@ model Avatar {
   origin         String?
   occupation     String?
   status         String            @default("COMPLETED")  // GENERATING | COMPLETED | FAILED
+  source         String                                    // UPLOADED | GENERATED
   errorMessage   String?
   voiceId        String            @default("")
   heygenAssetId  String?

@@ -53,7 +53,7 @@ type VariationScope = "clothes" | "background" | "pose" | "all";
 interface Props {
   avatarId: string;
   initialVariations: AvatarVariation[];
-  hasPrompt: boolean;
+  isGenerated: boolean;
   defaultImageModel: string | null;
   selectedVariationId?: string | null;
   onVariationClick?: (variation: AvatarVariation) => void;
@@ -63,7 +63,7 @@ interface Props {
 export function AvatarVariationsPanel({
   avatarId,
   initialVariations,
-  hasPrompt,
+  isGenerated,
   defaultImageModel,
   selectedVariationId,
   onVariationClick,
@@ -376,7 +376,7 @@ export function AvatarVariationsPanel({
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="font-medium text-sm">Variations ({variations.length})</CardTitle>
-            {hasPrompt && !showForm && variations.length > 0 && (
+            {isGenerated && !showForm && variations.length > 0 && (
               <div className="flex flex-wrap justify-end gap-2">
                 {canUseSelectedVariation ? (
                   <>
@@ -424,7 +424,7 @@ export function AvatarVariationsPanel({
         <CardContent>
           {variations.length === 0 && !showForm && (
             <div className="flex min-h-28 flex-col items-center justify-center gap-3 py-4 text-center">
-              {hasPrompt ? (
+              {isGenerated ? (
                 <>
                   <Button type="button" variant="secondary" onClick={() => openForm()}>
                     <Plus className="h-4 w-4" />
@@ -516,8 +516,7 @@ export function AvatarVariationsPanel({
                               )}
                           </div>
                         </div>
-                        {variation.status === "COMPLETED" &&
-                        editingLabelId === variation.id ? (
+                        {variation.status === "COMPLETED" && editingLabelId === variation.id ? (
                           <input
                             ref={editingInputRef}
                             value={editingLabelValue}
@@ -527,11 +526,13 @@ export function AvatarVariationsPanel({
                               if (e.key === "Enter") void handleLabelSave(variation.id);
                               if (e.key === "Escape") setEditingLabelId(null);
                             }}
-                            className="mt-1 w-full border-0 border-b border-border bg-transparent text-center text-[0.7rem] focus:outline-none"
+                            className="mt-1 w-full border-0 border-border border-b bg-transparent text-center text-[0.7rem] focus:outline-none"
                           />
                         ) : (
-                          <p
-                            className={`mt-1 truncate text-center text-[0.7rem] text-muted-foreground ${
+                          <button
+                            type="button"
+                            disabled={variation.status !== "COMPLETED"}
+                            className={`mt-1 w-full truncate bg-transparent text-center text-[0.7rem] text-muted-foreground ${
                               variation.status === "COMPLETED"
                                 ? "cursor-text hover:text-foreground"
                                 : ""
@@ -542,14 +543,13 @@ export function AvatarVariationsPanel({
                                 : variation.label
                             }
                             onClick={(e) => {
-                              if (variation.status !== "COMPLETED") return;
                               e.stopPropagation();
                               setEditingLabelId(variation.id);
                               setEditingLabelValue(variation.label);
                             }}
                           >
                             {variation.label}
-                          </p>
+                          </button>
                         )}
                       </div>
                     );

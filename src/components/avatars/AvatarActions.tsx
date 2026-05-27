@@ -10,7 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 interface Props {
   avatar: {
     id: string;
-    prompt: string | null;
+    source: string;
     imageModel: string | null;
   };
 }
@@ -64,7 +64,7 @@ export function AvatarActions({ avatar }: Props) {
   return (
     <>
       <div className="space-y-2">
-        {avatar.prompt && (
+        {avatar.source === "GENERATED" && (
           <Button
             variant="outline"
             size="sm"

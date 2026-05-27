@@ -17,7 +17,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx: unknown,
 
 export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown, { userId }) {
   const body = await req.json();
-  const { name, voiceId, gender, age, origin, occupation, imageModel, imageBase64 } =
+  const { name, voiceId, gender, age, origin, occupation, imageModel, imageBase64, source } =
     body as {
       name: string;
       voiceId: string;
@@ -27,10 +27,18 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
       occupation?: string;
       imageModel?: string;
       imageBase64?: string;
+      source: "UPLOADED" | "GENERATED";
     };
 
   if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 });
   if (!voiceId) return NextResponse.json({ error: "voiceId is required" }, { status: 400 });
+  if (source !== "UPLOADED" && source !== "GENERATED")
+    return NextResponse.json({ error: "source must be UPLOADED or GENERATED" }, { status: 400 });
+  if (source === "UPLOADED" && !imageBase64)
+    return NextResponse.json(
+      { error: "imageBase64 is required for UPLOADED source" },
+      { status: 400 },
+    );
 
   if (imageBase64) {
     // Upload: process synchronously
@@ -40,7 +48,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
       : "image/png";
 
     const avatar = await prisma.avatar.create({
-      data: { name, voiceId, imageModel: null, imagePath: "", status: "COMPLETED", userId },
+      data: { name, voiceId, imageModel: null, imagePath: "", status: "COMPLETED", source, userId },
     });
 
     const ext = mimeType === "image/jpeg" ? "jpg" : "png";
@@ -77,6 +85,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
           imageModel: usedModel,
           imagePath: "",
           status: "GENERATING",
+          source,
           userId,
         },
       });

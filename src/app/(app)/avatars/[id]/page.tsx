@@ -32,6 +32,7 @@ export default async function AvatarDetailPage({ params }: { params: Promise<{ i
           id: avatar.id,
           name: avatar.name,
           status: avatar.status,
+          source: avatar.source,
           updatedAt: avatar.updatedAt.toISOString(),
           prompt: avatar.prompt,
           imageModel: avatar.imageModel,
