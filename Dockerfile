@@ -6,13 +6,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update -y && apt-get install -y curl ffmpeg openssl && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci && sha256sum package-lock.json > node_modules/.postishai-package-lock.sha256
 
 FROM deps AS dev
 
 COPY . .
 EXPOSE 3000
-CMD ["sh", "-c", "npm ci && npm run app:dev:docker"]
+CMD ["sh", "scripts/docker-dev-start.sh", "app"]
 
 FROM deps AS prod-build
 
