@@ -90,18 +90,20 @@ export function LoginForm() {
                 <p className="text-destructive text-xs">{state.errors.name[0]}</p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="useCaseDetails">How will you use PostishAI? Optional</Label>
-              <Textarea
-                id="useCaseDetails"
-                name="useCaseDetails"
-                placeholder="Tell us what you want to create and how you plan to use the demo."
-                className="min-h-24 resize-none"
-              />
-              {state?.errors?.useCaseDetails && (
-                <p className="text-destructive text-xs">{state.errors.useCaseDetails[0]}</p>
-              )}
-            </div>
+            {!selfDeployment && (
+              <div className="space-y-1.5">
+                <Label htmlFor="useCaseDetails">How will you use PostishAI? Optional</Label>
+                <Textarea
+                  id="useCaseDetails"
+                  name="useCaseDetails"
+                  placeholder="Tell us what you want to create and how you plan to use the demo."
+                  className="min-h-24 resize-none"
+                />
+                {state?.errors?.useCaseDetails && (
+                  <p className="text-destructive text-xs">{state.errors.useCaseDetails[0]}</p>
+                )}
+              </div>
+            )}
           </>
         )}
 

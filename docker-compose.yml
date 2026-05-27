@@ -28,7 +28,7 @@ services:
       STORAGE_PATH: /app/storage
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_APPROVAL_CHAT_ID: ${TELEGRAM_APPROVAL_CHAT_ID:-}
-    command: sh -c "npm ci && npm run app:dev:docker"
+    command: sh -c "npm ci && npx prisma migrate deploy && npm run app:dev:docker"
     ports:
       - "3000:3000"
     volumes:
