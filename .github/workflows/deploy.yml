@@ -74,7 +74,7 @@ jobs:
             export IMAGE_TAG="$IMAGE_TAG"
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull migrate app worker
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
-            docker image prune -f
+            docker image prune -a -f
 
             for attempt in $(seq 1 30); do
               if curl -fsS http://127.0.0.1:3000 >/dev/null; then
