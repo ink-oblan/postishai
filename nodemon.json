@@ -1,6 +1,12 @@
 {
-  "watch": ["src/worker.ts", "src/workers", "src/lib"],
-  "ext": "ts",
+  "watch": [
+    "src/worker.ts",
+    "src/workers",
+    "src/lib",
+    "node_modules/.prisma",
+    "node_modules/@prisma"
+  ],
+  "ext": "ts,js",
   "exec": "tsx src/worker.ts",
   "exitcrash": true
 }
