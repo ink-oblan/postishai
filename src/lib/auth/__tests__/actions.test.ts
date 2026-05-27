@@ -10,6 +10,7 @@ const {
   mockNotifySignupForApproval,
   mockNotifyApprovalDetails,
   mockVerifySession,
+  mockConfig,
 } = vi.hoisted(() => {
   class RedirectError extends Error {
     url: string;
@@ -35,6 +36,7 @@ const {
     mockNotifySignupForApproval: vi.fn(),
     mockNotifyApprovalDetails: vi.fn(),
     mockVerifySession: vi.fn(),
+    mockConfig: { selfDeployment: false },
   };
 });
 
@@ -62,6 +64,10 @@ vi.mock("@/lib/auth/dal", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: (...args: unknown[]) => mockRedirect(...(args as [string])),
+}));
+
+vi.mock("@/lib/config", () => ({
+  config: mockConfig,
 }));
 
 import { login, register, submitApprovalDetails } from "../actions";
@@ -142,6 +148,36 @@ describe("register", () => {
     );
     expect(mockCreateSession).toHaveBeenCalledWith("user-new");
     expect(mockRedirect).toHaveBeenCalledWith("/pending-approval");
+  });
+
+  it("auto-approves user and redirects to dashboard in self-deployment mode", async () => {
+    mockConfig.selfDeployment = true;
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockHashPassword.mockResolvedValue("hashed");
+    mockPrisma.user.create.mockResolvedValue({
+      id: "user-new",
+      name: "John",
+      email: "john@example.com",
+      approvedAt: new Date(),
+      approvalToken: null,
+    });
+    mockCreateSession.mockResolvedValue(undefined);
+
+    await expect(
+      register(
+        undefined,
+        makeFormData({ name: "John", email: "john@example.com", password: "secure1pass" }),
+      ),
+    ).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+
+    expect(mockPrisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ approvalToken: null, approvedAt: expect.any(Date) }),
+      }),
+    );
+    expect(mockNotifySignupForApproval).not.toHaveBeenCalled();
+    expect(mockCreateSession).toHaveBeenCalledWith("user-new");
+    mockConfig.selfDeployment = false;
   });
 
   it("validates name minimum length", async () => {

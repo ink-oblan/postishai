@@ -84,7 +84,8 @@ export async function GET(request: NextRequest) {
             name: googleUser.name,
             email: googleUser.email,
             avatarUrl: googleUser.picture,
-            approvalToken: createApprovalToken(),
+            approvalToken: config.selfDeployment ? null : createApprovalToken(),
+            approvedAt: config.selfDeployment ? new Date() : null,
             accounts: {
               create: {
                 provider: "google",
@@ -93,12 +94,15 @@ export async function GET(request: NextRequest) {
             },
           },
         });
-        await notifySignupForApproval(newUser);
-        await prisma.user.update({
-          where: { id: newUser.id },
-          data: { approvalNotifiedAt: new Date() },
-        });
+        if (!config.selfDeployment) {
+          await notifySignupForApproval(newUser);
+          await prisma.user.update({
+            where: { id: newUser.id },
+            data: { approvalNotifiedAt: new Date() },
+          });
+        }
         userId = newUser.id;
+        isApproved = config.selfDeployment;
       }
     }
 

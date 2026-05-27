@@ -2,6 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
+import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
 import { verifySession } from "./dal";
 import {
@@ -47,7 +48,8 @@ export async function register(
       name,
       email,
       passwordHash,
-      approvalToken: createApprovalToken(),
+      approvalToken: config.selfDeployment ? null : createApprovalToken(),
+      approvedAt: config.selfDeployment ? new Date() : null,
       approvalDetails: useCaseDetails || null,
       accounts: {
         create: {
@@ -57,6 +59,11 @@ export async function register(
       },
     },
   });
+
+  if (config.selfDeployment) {
+    await createSession(user.id);
+    redirect("/dashboard");
+  }
 
   await notifySignupForApproval(user);
   await prisma.user.update({
