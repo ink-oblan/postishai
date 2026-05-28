@@ -2,7 +2,7 @@ Edit this image. Preserve the subject's visual style, design, colors, and overal
 
 Apply the following changes only:
 {{#if clothes}}- Outfit / accessories: {{clothes}}
-{{/if}}{{#if background}}- Background: {{background}}
+{{/if}}{{#if background}}- Background: {{background}}. Adjust lighting of the subject so it fits naturally with new background and scene.
 {{/if}}{{#if pose}}- Pose / position: {{pose}}
 {{/if}}
 Maintain the original composition, framing, and artistic style throughout. No text, logos, or symbols.

@@ -376,7 +376,7 @@ export function AvatarVariationsPanel({
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="font-medium text-sm">Variations ({variations.length})</CardTitle>
-            {isGenerated && !showForm && variations.length > 0 && (
+            {!showForm && variations.length > 0 && (
               <div className="flex flex-wrap justify-end gap-2">
                 {canUseSelectedVariation ? (
                   <>
@@ -424,21 +424,15 @@ export function AvatarVariationsPanel({
         <CardContent>
           {variations.length === 0 && !showForm && (
             <div className="flex min-h-28 flex-col items-center justify-center gap-3 py-4 text-center">
-              {isGenerated ? (
-                <>
-                  <Button type="button" variant="secondary" onClick={() => openForm()}>
-                    <Plus className="h-4 w-4" />
-                    Add variation
-                  </Button>
-                  <p className="text-muted-foreground text-sm">
-                    No variations yet. Add one to explore different looks.
-                  </p>
-                </>
-              ) : (
+              <>
+                <Button type="button" variant="secondary" onClick={() => openForm()}>
+                  <Plus className="h-4 w-4" />
+                  Add variation
+                </Button>
                 <p className="text-muted-foreground text-sm">
-                  Variations are only available for AI-generated avatars.
+                  No variations yet. Add one to explore different looks.
                 </p>
-              )}
+              </>
             </div>
           )}
 
@@ -622,21 +616,23 @@ export function AvatarVariationsPanel({
                               : `Update ${scopeConfig[scope].title.toLowerCase()}`}
                           </h3>
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-6 gap-1 px-2 text-xs"
-                          onClick={handleSuggest}
-                          disabled={suggesting}
-                        >
-                          {suggesting ? (
-                            <Spinner className="h-3 w-3" />
-                          ) : (
-                            <Sparkles className="h-3 w-3" />
-                          )}
-                          Suggest with AI
-                        </Button>
+                        {isGenerated && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-6 gap-1 px-2 text-xs"
+                            onClick={handleSuggest}
+                            disabled={suggesting}
+                          >
+                            {suggesting ? (
+                              <Spinner className="h-3 w-3" />
+                            ) : (
+                              <Sparkles className="h-3 w-3" />
+                            )}
+                            Suggest with AI
+                          </Button>
+                        )}
                       </div>
 
                       {scope === "all" ? (
