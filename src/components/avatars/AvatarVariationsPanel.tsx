@@ -76,7 +76,7 @@ export function AvatarVariationsPanel({
   const [pose, setPose] = useState("");
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editingLabelValue, setEditingLabelValue] = useState("");
-  const editingInputRef = useRef<HTMLInputElement>(null);
+  const editingInputRef = useRef<HTMLTextAreaElement>(null);
   const [sourceVariationId, setSourceVariationId] = useState<string | null>(null);
   const [replaceVariationId, setReplaceVariationId] = useState<string | null>(null);
   const [imageModel, setImageModel] = useState(defaultImageModel ?? "nano-banana-2");
@@ -349,9 +349,12 @@ export function AvatarVariationsPanel({
   }
 
   useEffect(() => {
-    if (editingLabelId && editingInputRef.current) {
-      editingInputRef.current.focus();
-      editingInputRef.current.select();
+    const el = editingInputRef.current;
+    if (editingLabelId && el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
     }
   }, [editingLabelId]);
 
@@ -426,15 +429,13 @@ export function AvatarVariationsPanel({
         <CardContent>
           {variations.length === 0 && !showForm && (
             <div className="flex min-h-28 flex-col items-center justify-center gap-3 py-4 text-center">
-              <>
-                <Button type="button" variant="secondary" onClick={() => openForm()}>
-                  <Plus className="h-4 w-4" />
-                  Add variation
-                </Button>
-                <p className="text-muted-foreground text-sm">
-                  No variations yet. Add one to explore different looks.
-                </p>
-              </>
+              <Button type="button" variant="secondary" onClick={() => openForm()}>
+                <Plus className="h-4 w-4" />
+                Add variation
+              </Button>
+              <p className="text-muted-foreground text-sm">
+                No variations yet. Add one to explore different looks.
+              </p>
             </div>
           )}
 
@@ -512,32 +513,32 @@ export function AvatarVariationsPanel({
                               )}
                           </div>
                         </div>
-                        {variation.status === "COMPLETED" && editingLabelId === variation.id ? (
-                          <input
+                        {editingLabelId === variation.id ? (
+                          <textarea
                             ref={editingInputRef}
                             value={editingLabelValue}
-                            onChange={(e) => setEditingLabelValue(e.target.value)}
+                            rows={1}
+                            maxLength={60}
+                            onChange={(e) => {
+                              setEditingLabelValue(e.target.value);
+                              e.target.style.height = "auto";
+                              e.target.style.height = `${e.target.scrollHeight}px`;
+                            }}
                             onBlur={() => void handleLabelSave(variation.id)}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") void handleLabelSave(variation.id);
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                void handleLabelSave(variation.id);
+                              }
                               if (e.key === "Escape") setEditingLabelId(null);
                             }}
-                            className="mt-1 w-full border-0 border-border border-b bg-transparent text-center text-[0.7rem] focus:outline-none"
+                            className="mt-1 w-full resize-none overflow-hidden border-0 border-border border-b bg-transparent text-center text-[0.7rem] leading-snug focus:outline-none"
                           />
                         ) : (
                           <button
                             type="button"
-                            disabled={variation.status !== "COMPLETED"}
-                            className={`mt-1 w-full truncate bg-transparent text-center text-[0.7rem] text-muted-foreground ${
-                              variation.status === "COMPLETED"
-                                ? "cursor-text hover:text-foreground"
-                                : ""
-                            }`}
-                            title={
-                              variation.status === "COMPLETED"
-                                ? `${variation.label} — click to rename`
-                                : variation.label
-                            }
+                            className="mt-1 w-full cursor-text whitespace-normal break-words bg-transparent text-center text-[0.7rem] text-muted-foreground hover:text-foreground"
+                            title={`${variation.label} — click to rename`}
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingLabelId(variation.id);

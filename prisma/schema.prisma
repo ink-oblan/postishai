@@ -89,7 +89,7 @@ model AvatarVariation {
   id             String   @id @default(cuid())
   avatarId       String
   avatar         Avatar   @relation(fields: [avatarId], references: [id])
-  label          String
+  label          String   @db.VarChar(60)
   clothes        String?
   background     String?
   pose           String?
