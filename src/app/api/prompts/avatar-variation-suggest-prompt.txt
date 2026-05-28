@@ -3,7 +3,7 @@ Suggest one visually interesting variation for the following avatar:
 
 Avatar: {{avatarDescription}}
 
-Suggest clothes, background, and pose that would look compelling for a short-form social video.
+Suggest an outfit / accessories, background, and pose / stance that would look compelling for a short-form social video. The avatar may be a real person, a fictional character, or a video game character — adapt your suggestion to fit.
 Keep each field under 15 words.
 
 Respond ONLY with a JSON object, no markdown: {"clothes": "...", "background": "...", "pose": "..."}

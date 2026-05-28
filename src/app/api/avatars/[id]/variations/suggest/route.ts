@@ -18,8 +18,8 @@ export const POST = withAuth(async function POST(
   const parts = [
     avatar.age ? `${avatar.age}-year-old` : null,
     avatar.origin ?? null,
-    avatar.occupation ?? avatar.gender,
-    avatar.occupation ? `(${avatar.gender})` : null,
+    avatar.occupation ?? avatar.gender ?? "character",
+    avatar.occupation && avatar.gender ? `(${avatar.gender})` : null,
   ].filter(Boolean);
   const avatarDescription = parts.join(" ");
   const prompt = await renderPromptTemplate("avatar-variation-suggest-prompt.txt", {
