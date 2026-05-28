@@ -13,6 +13,10 @@ export type AvatarVariationGeneratePayload = {
   sourceImagePath?: string;
 };
 
+export type AvatarAnalyzePayload = {
+  avatarId: string;
+};
+
 export type PostGeneratePayload = {
   postId: string;
 };
@@ -24,6 +28,7 @@ export type PostMetadataGeneratePayload = {
 export type JobPayloadMap = {
   "avatar.generate": AvatarGeneratePayload;
   "avatar.variation.generate": AvatarVariationGeneratePayload;
+  "avatar.analyze": AvatarAnalyzePayload;
   "post.metadata": PostMetadataGeneratePayload;
   "post.generate": PostGeneratePayload;
 };

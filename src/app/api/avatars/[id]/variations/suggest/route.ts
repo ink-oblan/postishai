@@ -15,13 +15,18 @@ export const POST = withAuth(async function POST(
   const avatar = await prisma.avatar.findFirst({ where: { id, userId } });
   if (!avatar) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const parts = [
-    avatar.age ? `${avatar.age}-year-old` : null,
-    avatar.origin ?? null,
-    avatar.occupation ?? avatar.gender ?? "character",
-    avatar.occupation && avatar.gender ? `(${avatar.gender})` : null,
-  ].filter(Boolean);
-  const avatarDescription = parts.join(" ");
+  let avatarDescription: string;
+  if (avatar.analysisDescription?.trim()) {
+    avatarDescription = avatar.analysisDescription.trim();
+  } else {
+    const parts = [
+      avatar.age ? `${avatar.age}-year-old` : null,
+      avatar.origin ?? null,
+      avatar.occupation ?? avatar.gender ?? "character",
+      avatar.occupation && avatar.gender ? `(${avatar.gender})` : null,
+    ].filter(Boolean);
+    avatarDescription = parts.join(" ");
+  }
   const prompt = await renderPromptTemplate("avatar-variation-suggest-prompt.txt", {
     avatarDescription,
   });

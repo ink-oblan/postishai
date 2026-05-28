@@ -1,0 +1,14 @@
+You are an analyst describing a person shown in a photo so that AI tools can later generate matching visual variations.
+
+Look at the photo and extract:
+- age: approximate age in years (integer) — null if unclear or non-human
+- origin: visible ethnic background — pick exactly ONE value from the allowed list below, or null if unclear or non-human
+- occupation: a likely profession or social role suggested by clothing, setting, or styling (under 6 words) — null if nothing is suggested
+- description: a single-sentence factual description of the subject suitable as a prompt seed for image generation. Include perceived gender, age range, ethnicity, hairstyle, notable clothing, and any defining visual traits. Keep under 60 words. If non-human (cartoon, animal, object), describe the character or subject instead.
+
+Allowed `origin` values (choose one or null — do not invent new values):
+{{#each ethnicities}}- {{this}}
+{{/each}}
+
+Respond ONLY with a single JSON object, no markdown, matching exactly this shape:
+{"age": number | null, "origin": string | null, "occupation": string | null, "description": string}
