@@ -53,7 +53,6 @@ type VariationScope = "clothes" | "background" | "pose" | "all";
 interface Props {
   avatarId: string;
   initialVariations: AvatarVariation[];
-  isGenerated: boolean;
   defaultImageModel: string | null;
   selectedVariationId?: string | null;
   onVariationClick?: (variation: AvatarVariation) => void;
@@ -63,7 +62,6 @@ interface Props {
 export function AvatarVariationsPanel({
   avatarId,
   initialVariations,
-  isGenerated,
   defaultImageModel,
   selectedVariationId,
   onVariationClick,
@@ -616,23 +614,21 @@ export function AvatarVariationsPanel({
                               : `Update ${scopeConfig[scope].title.toLowerCase()}`}
                           </h3>
                         </div>
-                        {isGenerated && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-6 gap-1 px-2 text-xs"
-                            onClick={handleSuggest}
-                            disabled={suggesting}
-                          >
-                            {suggesting ? (
-                              <Spinner className="h-3 w-3" />
-                            ) : (
-                              <Sparkles className="h-3 w-3" />
-                            )}
-                            Suggest with AI
-                          </Button>
-                        )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-6 gap-1 px-2 text-xs"
+                          onClick={handleSuggest}
+                          disabled={suggesting}
+                        >
+                          {suggesting ? (
+                            <Spinner className="h-3 w-3" />
+                          ) : (
+                            <Sparkles className="h-3 w-3" />
+                          )}
+                          Suggest with AI
+                        </Button>
                       </div>
 
                       {scope === "all" ? (

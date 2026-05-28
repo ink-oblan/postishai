@@ -189,7 +189,6 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
         <AvatarVariationsPanel
           avatarId={avatar.id}
           initialVariations={initialVariations}
-          isGenerated={avatar.source === "GENERATED"}
           defaultImageModel={avatar.imageModel}
           selectedVariationId={selectedVariation?.id ?? null}
           onVariationClick={handleVariationClick}
