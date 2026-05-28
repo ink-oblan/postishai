@@ -87,6 +87,10 @@ export function AvatarVariationsPanel({
   const [deleting, setDeleting] = useState(false);
   const pollingRef = useRef(false);
 
+  useEffect(() => {
+    setVariations(initialVariations);
+  }, [initialVariations]);
+
   // Poll while any variation is generating
   useEffect(() => {
     const isGenerating = variations.some(
