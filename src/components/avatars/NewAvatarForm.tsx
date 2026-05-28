@@ -478,7 +478,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
             <Label>Image</Label>
             <div className="flex justify-center">
               <Card
-                className={`relative aspect-[3/4] w-1/2 cursor-pointer overflow-hidden border-dashed transition-colors hover:border-primary/50 ${isDragging ? "border-primary bg-primary/5" : ""}`}
+                className={`relative aspect-[9/16] w-2/5 cursor-pointer overflow-hidden border-dashed transition-colors hover:border-primary/50 ${isDragging ? "border-primary bg-primary/5" : ""}`}
                 onClick={() => {
                   if (previewUrl && originalSrc) {
                     setCropperSrc(originalSrc);
@@ -584,7 +584,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
       <ImageCropper
         open={cropperSrc !== null}
         src={cropperSrc}
-        aspect={3 / 4}
+        aspect={9 / 16}
         onCancel={() => setCropperSrc(null)}
         onConfirm={handleCropConfirm}
       />

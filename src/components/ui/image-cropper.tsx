@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertDialog } from "@base-ui/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { Button } from "@/components/ui/button";
 
@@ -49,6 +49,13 @@ export function ImageCropper({
   const [pixels, setPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (!src) return;
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setPixels(null);
+  }, [src]);
+
   const onCropComplete = useCallback((_: Area, areaPixels: Area) => {
     setPixels(areaPixels);
   }, []);
@@ -86,10 +93,11 @@ export function ImageCropper({
                 crop={crop}
                 zoom={zoom}
                 aspect={aspect}
+                objectFit="cover"
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
                 onCropComplete={onCropComplete}
-                showGrid={false}
+                showGrid={true}
               />
             ) : null}
           </div>
