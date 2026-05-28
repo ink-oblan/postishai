@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Loader2, Sparkles, Upload, X, XCircle } from "lucide-react";
+import { AlertTriangle, Loader2, Sparkles, Upload, XCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import {
   ComboboxInputGroup,
   ComboboxItem,
 } from "@/components/ui/combobox";
+import { RemoveButton } from "@/components/ui/cross-remove-button";
 import { ImageCropper } from "@/components/ui/image-cropper";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -177,8 +178,11 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
         }
         const result = (await res.json()) as InspectionResult;
         setInspection(result);
-        if (result.decision === "accept" && result.gender && !gender) {
-          setGender(result.gender);
+        if (result.decision === "accept" && result.gender) {
+          if (result.gender !== gender) {
+            setGender(result.gender);
+            setVoiceManuallySelected(false);
+          }
         }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Inspection failed");
@@ -487,14 +491,12 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
                   }
                 }}
               >
-                <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-4">
+                <CardContent
+                  className={`flex h-full flex-col items-center justify-center gap-3 ${previewUrl ? "p-0" : "p-4"}`}
+                >
                   {previewUrl ? (
                     // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
-                    <img
-                      src={previewUrl}
-                      alt="Preview"
-                      className="h-full w-full rounded-md object-cover"
-                    />
+                    <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                   ) : (
                     <>
                       <Upload className="h-8 w-8 text-muted-foreground" />
@@ -507,19 +509,14 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
                   )}
                 </CardContent>
                 {previewUrl && !inspecting && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
+                  <RemoveButton
                     aria-label="Remove photo"
                     onClick={(e) => {
                       e.stopPropagation();
                       clearImage();
                     }}
-                    className="absolute top-2 right-2 rounded-full bg-background/80 shadow backdrop-blur-sm hover:bg-background"
-                  >
-                    <X />
-                  </Button>
+                    className="absolute top-2 right-2"
+                  />
                 )}
                 {inspecting && (
                   <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm">
