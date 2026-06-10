@@ -99,9 +99,13 @@ export default async function PostsPage() {
                         </Link>
                       </td>
                       <td className="px-5 py-4 text-muted-foreground">
-                        <TextLink href={`/avatars/${post.avatar.id}`} className="text-sm">
-                          {post.avatar.name}
-                        </TextLink>
+                        {post.avatar ? (
+                          <TextLink href={`/avatars/${post.avatar.id}`} className="text-sm">
+                            {post.avatar.name}
+                          </TextLink>
+                        ) : (
+                          <span className="text-sm">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-4">
                         <Badge variant="outline" className="font-semibold text-xs">
@@ -119,7 +123,7 @@ export default async function PostsPage() {
                         {formatDistanceToNow(post.createdAt)}
                       </td>
                       <td className="px-5 py-4">
-                        {post.status === "COMPLETED" && (
+                        {post.status === "COMPLETED" && post.type !== "CAPTION" && (
                           <a href={`/api/posts/${post.id}/download`} download>
                             <Button variant="ghost" size="sm">
                               <Download className="h-3.5 w-3.5" />
@@ -155,7 +159,7 @@ export default async function PostsPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground text-xs">
-                    <span>{post.avatar.name}</span>
+                    <span>{post.avatar?.name ?? "—"}</span>
                     <span>·</span>
                     <Badge variant="outline" className="font-semibold text-xs">
                       {PLATFORM_LABELS[post.platform]}

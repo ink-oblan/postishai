@@ -21,4 +21,18 @@ export class GeminiAdapter implements LLMModelAdapter {
     });
     return response.text ?? "";
   }
+
+  async describeImage(prompt: string, imageBase64: string, mimeType: string): Promise<string> {
+    const client = new GoogleGenAI({ apiKey: config.google.apiKey });
+    const response = await client.models.generateContent({
+      model: this.id,
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }, { inlineData: { data: imageBase64, mimeType } }],
+        },
+      ],
+    });
+    return response.text ?? "";
+  }
 }

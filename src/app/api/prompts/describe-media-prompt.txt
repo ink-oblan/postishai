@@ -1,0 +1,11 @@
+Describe in detail what is visible in this image. This description will be used as context for writing a social media caption.
+
+Cover:
+- The main subject(s): people, objects, products, scenes.
+- The setting, background, and overall composition.
+- Notable actions, expressions, or poses.
+- The mood, style, and color palette.
+- Any visible text, logos, or on-screen graphics.
+
+Be thorough and specific, but write in plain prose (no bullet points or headers).
+Return ONLY the description, nothing else.

@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CaptionPostPanel } from "@/components/posts/CaptionPostPanel";
 import { PostEditPanel } from "@/components/posts/PostEditPanel";
 import { VideoSection } from "@/components/posts/VideoSection";
 import { prisma } from "@/lib/db";
@@ -20,12 +21,53 @@ export default async function PostDetailPage({
   const { id } = await params;
   const { edit, avatarId } = await searchParams;
   const [post, voices] = await Promise.all([
-    prisma.post.findUnique({ where: { id }, include: { avatar: true, avatarVariation: true } }),
+    prisma.post.findUnique({
+      where: { id },
+      include: { avatar: true, avatarVariation: true, media: { orderBy: { order: "asc" } } },
+    }),
     listVoices().catch(() => []),
   ]);
   if (!post) notFound();
 
-  const voice = voices.find((v) => v.voice_id === post.avatar.voiceId);
+  if (post.type === "CAPTION") {
+    const statusCfg = STATUS_CONFIG[post.status] ?? STATUS_CONFIG.DRAFT;
+    return (
+      <div className="space-y-6 px-6 py-8 sm:px-10">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/posts"
+            className="inline-flex items-center text-muted-foreground text-sm hover:text-foreground"
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back
+          </Link>
+        </div>
+
+        <div className="max-w-3xl">
+          <CaptionPostPanel
+            post={{
+              id: post.id,
+              title: post.title,
+              platformLabel: PLATFORM_LABELS[post.platform],
+              statusLabel: statusCfg.label,
+              caption: post.caption ?? "",
+              createdAtLabel: formatDistanceToNow(post.createdAt),
+              media: post.media.map((m) => ({
+                id: m.id,
+                type: m.type,
+                url: `/api/posts/${post.id}/media/${m.id}`,
+              })),
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const avatar = post.avatar;
+  if (!avatar) notFound();
+
+  const voice = voices.find((v) => v.voice_id === avatar.voiceId);
   const llmModel = getLLMModelInfo(post.llmModelId);
 
   const metadata: PlatformMetadata | null = post.metadata ? JSON.parse(post.metadata) : null;
@@ -66,15 +108,15 @@ export default async function PostDetailPage({
               title: post.title,
               platformLabel: PLATFORM_LABELS[post.platform],
               statusLabel: statusCfg.label,
-              script: post.script,
+              script: post.script ?? "",
               llmModelId: post.llmModelId,
               llmModelName: llmModel?.name ?? post.llmModelId,
-              avatarId: post.avatar.id,
-              avatarName: post.avatar.name,
-              avatarImageUrl: `/api/avatars/${post.avatar.id}/image?t=${post.avatar.updatedAt.getTime()}`,
+              avatarId: avatar.id,
+              avatarName: avatar.name,
+              avatarImageUrl: `/api/avatars/${avatar.id}/image?t=${avatar.updatedAt.getTime()}`,
               avatarVariationId: post.avatarVariationId,
               avatarVariationImageUrl: post.avatarVariation
-                ? `/api/avatars/${post.avatar.id}/variations/${post.avatarVariation.id}/image?t=${post.avatarVariation.updatedAt.getTime()}`
+                ? `/api/avatars/${avatar.id}/variations/${post.avatarVariation.id}/image?t=${post.avatarVariation.updatedAt.getTime()}`
                 : null,
               voiceName: voice?.name ?? null,
               createdAtLabel: formatDistanceToNow(post.createdAt),

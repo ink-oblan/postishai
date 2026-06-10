@@ -132,13 +132,16 @@ model PlatformConfig {
 
 model Post {
   id                  String           @id @default(cuid())
+  type                PostType         @default(AVATAR_VIDEO)
   title               String
   platform            Platform
-  script              String
-  avatarId            String
-  avatar              Avatar           @relation(fields: [avatarId], references: [id])
+  script              String?
+  avatarId            String?
+  avatar              Avatar?          @relation(fields: [avatarId], references: [id])
   avatarVariationId   String?
   avatarVariation     AvatarVariation? @relation(fields: [avatarVariationId], references: [id])
+  caption        String?
+  media          PostMedia[]
   userId         String?
   user           User?      @relation(fields: [userId], references: [id])
   llmModelId     String     @default("gemini-2.0-flash")
@@ -155,6 +158,16 @@ model Post {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   archivedAt     DateTime?
+}
+
+model PostMedia {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  type      String   // "IMAGE" | "VIDEO"
+  path      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 enum Role {
@@ -174,4 +187,9 @@ enum PostStatus {
   GENERATING
   COMPLETED
   FAILED
+}
+
+enum PostType {
+  AVATAR_VIDEO
+  CAPTION
 }
