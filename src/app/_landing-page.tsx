@@ -47,9 +47,9 @@ export default function LandingPage() {
           <Image
             src="/static/full-logo.svg"
             alt="PostishAI"
-            width={129}
-            height={48}
-            className="h-9 w-auto sm:h-12"
+            width={188}
+            height={63}
+            className="h-9 w-auto sm:h-9"
           />
           <div className="flex shrink-0 items-center gap-3 sm:gap-8">
             <Link

@@ -1,7 +1,7 @@
 # PostishAI
 
 <p align="center">
-  <img src="./public/static/full-logo.svg" width="120" height="120" />
+  <img src="./public/static/full-logo.svg" width="220" height="120" />
 </p>
 
 <p align="center">
