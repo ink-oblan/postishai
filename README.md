@@ -1,11 +1,18 @@
 # PostishAI
 
 <p align="center">
-  <img src="./public/logo.png" width="120" height="120" />
+  <img src="./public/static/full-logo.svg" width="120" height="120" />
 </p>
 
 <p align="center">
   Self-hosted AI platform for creating social media content — scripts, avatar videos.
+</p>
+
+<p align="center">
+  [![Deploy](https://github.com/ink-oblan/postishai/actions/workflows/deploy.yml/badge.svg)](https://github.com/ink-oblan/postishai/actions/workflows/deploy.yml)
+  [![License](https://img.shields.io/badge/license-Sustainable%20Use-blue)](./LICENSE.md)
+  ![Self-hosted](https://img.shields.io/badge/self--hosted-%E2%9C%93-green)
+  [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/ink-oblan/postishai/pkgs/container/postishai)
 </p>
 
 ---
