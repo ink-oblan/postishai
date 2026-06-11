@@ -3,6 +3,7 @@
 import type { Variants } from "framer-motion";
 import { motion } from "framer-motion";
 import { ArrowRight, Briefcase, Megaphone, Rocket } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 
@@ -43,7 +44,13 @@ export default function LandingPage() {
         transition={{ duration: 0.5 }}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-6 sm:py-4">
-          <BrandLogo href="/" className="text-xl" />
+          <Image
+            src="/static/full-logo.svg"
+            alt="PostishAI"
+            width={188}
+            height={63}
+            className="h-9 w-auto sm:h-9"
+          />
           <div className="flex shrink-0 items-center gap-3 sm:gap-8">
             <Link
               href="/login"
