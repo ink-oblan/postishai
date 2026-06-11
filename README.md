@@ -48,7 +48,7 @@ Open http://localhost:3000 to see platform.
 ---
 
 <p align="center">
-  If this is useful, <a href="https://github.com/ink-oblan/postishai/stargazers">⭐ star the repo</a> — it helps others find it.
+  If you you found this project useful, <a href="https://github.com/ink-oblan/postishai/stargazers">⭐ star the repo</a> — it helps others find it.
 </p>
 
 ---
