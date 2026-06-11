@@ -9,10 +9,10 @@
 </p>
 
 <p align="center">
-  [![Deploy](https://github.com/ink-oblan/postishai/actions/workflows/deploy.yml/badge.svg)](https://github.com/ink-oblan/postishai/actions/workflows/deploy.yml)
-  [![License](https://img.shields.io/badge/license-Sustainable%20Use-blue)](./LICENSE.md)
-  ![Self-hosted](https://img.shields.io/badge/self--hosted-%E2%9C%93-green)
-  [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/ink-oblan/postishai/pkgs/container/postishai)
+  <a href="https://github.com/ink-oblan/postishai/actions/workflows/deploy.yml"><img src="https://github.com/ink-oblan/postishai/actions/workflows/deploy.yml/badge.svg" alt="Deploy" /></a>
+  <a href="./LICENSE.md"><img src="https://img.shields.io/badge/license-Sustainable%20Use-blue" alt="License" /></a>
+  <img src="https://img.shields.io/badge/self--hosted-%E2%9C%93-green" alt="Self-hosted" />
+  <a href="https://github.com/ink-oblan/postishai/pkgs/container/postishai"><img src="https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker" alt="Docker" /></a>
 </p>
 
 ---
