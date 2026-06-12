@@ -21,7 +21,7 @@
 
 **Prerequisites:** Docker with Compose plugin
 
-**1. Clone and configure**
+**1. Clone and set environment variables**
 
 ```bash
 git clone https://github.com/ink-oblan/postishai.git
