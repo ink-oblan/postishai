@@ -72,7 +72,7 @@ jobs:
 
             export IMAGE_BASE="$IMAGE_BASE"
             export IMAGE_TAG="$IMAGE_TAG"
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull migrate app worker
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull --quiet migrate app worker
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -a -f
 
