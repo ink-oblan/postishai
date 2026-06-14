@@ -29,6 +29,7 @@ export class GeminiAdapter implements LLMModelAdapter {
   async describeImages(
     prompt: string,
     images: { base64: string; mimeType: string }[],
+    audio?: { base64: string; mimeType: string },
   ): Promise<string> {
     const client = new GoogleGenAI({ apiKey: config.google.apiKey });
     const response = await client.models.generateContent({
@@ -41,6 +42,7 @@ export class GeminiAdapter implements LLMModelAdapter {
             ...images.map((image) => ({
               inlineData: { data: image.base64, mimeType: image.mimeType },
             })),
+            ...(audio ? [{ inlineData: { data: audio.base64, mimeType: audio.mimeType } }] : []),
           ],
         },
       ],

@@ -29,17 +29,9 @@ function runFfmpeg(args: string[]): Promise<void> {
   });
 }
 
-async function getVideoDurationSeconds(path: string): Promise<number> {
-  return new Promise<number>((resolve, reject) => {
-    const proc = spawn("ffprobe", [
-      "-v",
-      "error",
-      "-show_entries",
-      "format=duration",
-      "-of",
-      "default=noprint_wrappers=1:nokey=1",
-      path,
-    ]);
+function runFfprobe(args: string[]): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const proc = spawn("ffprobe", args);
 
     let stdout = "";
     let stderr = "";
@@ -52,7 +44,7 @@ async function getVideoDurationSeconds(path: string): Promise<number> {
     proc.on("error", reject);
     proc.on("close", (code) => {
       if (code === 0) {
-        resolve(Number.parseFloat(stdout.trim()));
+        resolve(stdout.trim());
         return;
       }
       reject(new Error(stderr || `ffprobe exited with code ${code}`));
@@ -60,13 +52,47 @@ async function getVideoDurationSeconds(path: string): Promise<number> {
   });
 }
 
-async function extractVideoFrames(buffer: Buffer): Promise<{ mimeType: string; base64: string }[]> {
+async function getVideoDurationSeconds(path: string): Promise<number> {
+  const stdout = await runFfprobe([
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration",
+    "-of",
+    "default=noprint_wrappers=1:nokey=1",
+    path,
+  ]);
+  return Number.parseFloat(stdout);
+}
+
+async function hasAudioStream(path: string): Promise<boolean> {
+  const stdout = await runFfprobe([
+    "-v",
+    "error",
+    "-select_streams",
+    "a",
+    "-show_entries",
+    "stream=index",
+    "-of",
+    "default=noprint_wrappers=1:nokey=1",
+    path,
+  ]);
+  return stdout.length > 0;
+}
+
+interface VideoMedia {
+  frames: { mimeType: string; base64: string }[];
+  audio: { mimeType: string; base64: string } | null;
+}
+
+async function extractVideoMedia(buffer: Buffer): Promise<VideoMedia> {
   const id = randomBytes(6).toString("hex");
   const tmpIn = `/tmp/caption_in_${id}.mp4`;
   const tmpOuts = Array.from(
     { length: VIDEO_FRAME_COUNT },
     (_, i) => `/tmp/caption_out_${id}_${i}.jpg`,
   );
+  const tmpAudio = `/tmp/caption_audio_${id}.mp3`;
 
   try {
     await writeFile(tmpIn, buffer);
@@ -76,16 +102,29 @@ async function extractVideoFrames(buffer: Buffer): Promise<{ mimeType: string; b
     const frames: { mimeType: string; base64: string }[] = [];
     for (let i = 0; i < tmpOuts.length; i++) {
       const tmpOut = tmpOuts[i];
-      const timestamp = (duration * i) / (VIDEO_FRAME_COUNT - 1);
+      const target = (duration * i) / (VIDEO_FRAME_COUNT - 1);
+      // Seeking to the exact end of the stream can land past the last decodable
+      // frame, leaving ffmpeg to exit 0 without writing an output file.
+      const timestamp = Math.min(target, Math.max(duration - 0.05, 0));
       await runFfmpeg(["-ss", timestamp.toFixed(3), "-i", tmpIn, "-vframes", "1", "-y", tmpOut]);
       const frame = await readFile(tmpOut);
       frames.push({ mimeType: "image/jpeg", base64: frame.toString("base64") });
       await unlink(tmpOut).catch(() => {});
     }
-    return frames;
+
+    let audio: { mimeType: string; base64: string } | null = null;
+    if (await hasAudioStream(tmpIn)) {
+      await runFfmpeg(["-i", tmpIn, "-vn", "-acodec", "libmp3lame", "-y", tmpAudio]);
+      const audioBuffer = await readFile(tmpAudio);
+      audio = { mimeType: "audio/mp3", base64: audioBuffer.toString("base64") };
+      await unlink(tmpAudio).catch(() => {});
+    }
+
+    return { frames, audio };
   } finally {
     await Promise.all([
       unlink(tmpIn).catch(() => {}),
+      unlink(tmpAudio).catch(() => {}),
       ...tmpOuts.map((tmpOut) => unlink(tmpOut).catch(() => {})),
     ]);
   }
@@ -101,12 +140,12 @@ async function describeMedia(adapter: LLMModelAdapter, media: File[]): Promise<s
       const buffer = Buffer.from(await file.arrayBuffer());
 
       if (file.type.startsWith("video/")) {
-        const frames = await extractVideoFrames(buffer);
+        const { frames, audio } = await extractVideoMedia(buffer);
         const videoDescriptionPrompt = await renderPromptTemplate(
           "describe-video-frames-prompt.txt",
-          { frameCount: frames.length },
+          { frameCount: frames.length, hasAudio: audio !== null },
         );
-        return adapter.describeImages(videoDescriptionPrompt, frames);
+        return adapter.describeImages(videoDescriptionPrompt, frames, audio ?? undefined);
       }
 
       const jpeg = await convertToJpeg(buffer);

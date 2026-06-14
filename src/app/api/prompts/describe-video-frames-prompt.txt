@@ -1,4 +1,4 @@
-You are shown a sequence of {{frameCount}} frames extracted evenly across a video, in chronological order (first frame to last frame). Describe in detail what is happening across this video. This description will be used as context for writing a social media caption.
+You are shown a sequence of {{frameCount}} frames extracted evenly across a video, in chronological order (first frame to last frame){{#if hasAudio}}, along with the video's audio track{{/if}}. Describe in detail what is happening across this video. This description will be used as context for writing a social media caption.
 
 Cover:
 - The main subject(s): people, objects, products, scenes.
@@ -6,6 +6,10 @@ Cover:
 - Notable actions, movements, or changes across the frames (what happens over time).
 - The mood, style, and color palette.
 - Any visible text, logos, or on-screen graphics.
+{{#if hasAudio}}
+- If the audio contains speech, narration, dialogue, or other informative content, summarize what is said or communicated.
+- If the audio is just background music, ambient sound, or sound effects with no spoken or informative content, do not mention the audio at all.
+{{/if}}
 
 Be thorough and specific, but write in plain prose (no bullet points or headers).
 Return ONLY the description, nothing else.
