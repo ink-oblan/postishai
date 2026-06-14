@@ -2,36 +2,21 @@ import type { Platform } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
+import { convertToJpeg } from "@/lib/image-convert";
 import { writeFile } from "@/lib/storage";
 
-interface MediaInput {
-  type: "image" | "video";
-  dataUrl: string;
-}
-
-const EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
+const VIDEO_EXTENSIONS: Record<string, string> = {
   "video/mp4": "mp4",
   "video/quicktime": "mov",
   "video/webm": "webm",
 };
 
-function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } {
-  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-  if (!match) throw new Error("Invalid media data URL");
-  return { mimeType: match[1], base64: match[2] };
-}
-
 export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown, { userId }) {
-  const { title, platform, caption, media } = (await req.json()) as {
-    title: string;
-    platform: Platform;
-    caption: string;
-    media?: MediaInput[];
-  };
+  const formData = await req.formData();
+  const title = formData.get("title")?.toString();
+  const platform = formData.get("platform")?.toString() as Platform | undefined;
+  const caption = formData.get("caption")?.toString();
+  const media = formData.getAll("media").filter((v): v is File => v instanceof File);
 
   const trimmedTitle = title?.trim();
   const trimmedCaption = caption?.trim();
@@ -51,17 +36,22 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
     },
   });
 
-  const mediaItems = media ?? [];
-  for (let i = 0; i < mediaItems.length; i++) {
-    const item = mediaItems[i];
-    const { mimeType, base64 } = parseDataUrl(item.dataUrl);
-    const ext = EXTENSIONS[mimeType] ?? (item.type === "video" ? "mp4" : "jpg");
+  for (let i = 0; i < media.length; i++) {
+    const file = media[i];
+    const isVideo = file.type.startsWith("video/");
+    let buffer: Buffer = Buffer.from(await file.arrayBuffer());
+    const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
+
+    if (!isVideo) {
+      buffer = await convertToJpeg(buffer);
+    }
+
     const path = `posts/${post.id}/${i}.${ext}`;
-    await writeFile(path, Buffer.from(base64, "base64"));
+    await writeFile(path, buffer);
     await prisma.postMedia.create({
       data: {
         postId: post.id,
-        type: item.type === "video" ? "VIDEO" : "IMAGE",
+        type: isVideo ? "VIDEO" : "IMAGE",
         path,
         order: i,
       },

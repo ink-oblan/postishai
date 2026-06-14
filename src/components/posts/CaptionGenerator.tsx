@@ -2,7 +2,7 @@
 
 import { Check, Copy, Loader2, Save, Sparkles, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,21 +26,22 @@ interface LLMModel {
 
 interface MediaFile {
   id: string;
-  type: "image" | "video";
   name: string;
-  dataUrl: string;
+  file: File;
+  previewUrl: string;
+}
+
+async function toJpegFile(file: File): Promise<File> {
+  const formData = new FormData();
+  formData.append("file", file, file.name);
+  const res = await fetch("/api/media/convert-image", { method: "POST", body: formData });
+  if (!res.ok) return file;
+  const jpegBlob = await res.blob();
+  const name = `${file.name.replace(/\.[^.]+$/, "")}.jpg`;
+  return new File([jpegBlob], name, { type: "image/jpeg" });
 }
 
 const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"] as const;
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
 
 export function CaptionGenerator() {
   const router = useRouter();
@@ -53,6 +54,8 @@ export function CaptionGenerator() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+  const mediaFilesRef = useRef<MediaFile[]>(mediaFiles);
+  mediaFilesRef.current = mediaFiles;
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -68,33 +71,46 @@ export function CaptionGenerator() {
     if (files.length === 0) return;
 
     const newFiles = await Promise.all(
-      files.map(async (file) => ({
-        id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
-        type: file.type.startsWith("video/") ? ("video" as const) : ("image" as const),
-        name: file.name,
-        dataUrl: await readFileAsDataUrl(file),
-      })),
+      files.map(async (file) => {
+        const resolved = file.type.startsWith("video/") ? file : await toJpegFile(file);
+        return {
+          id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
+          name: resolved.name,
+          file: resolved,
+          previewUrl: URL.createObjectURL(resolved),
+        };
+      }),
     );
     setMediaFiles((prev) => [...prev, ...newFiles]);
   }
 
   function handleRemoveFile(id: string) {
-    setMediaFiles((prev) => prev.filter((f) => f.id !== id));
+    setMediaFiles((prev) => {
+      const removed = prev.find((f) => f.id === id);
+      if (removed) URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter((f) => f.id !== id);
+    });
   }
+
+  useEffect(() => {
+    return () => {
+      for (const f of mediaFilesRef.current) URL.revokeObjectURL(f.previewUrl);
+    };
+  }, []);
 
   async function handleGenerate() {
     setLoading(true);
     try {
+      const formData = new FormData();
+      if (topic.trim()) formData.set("topic", topic.trim());
+      formData.set("platform", platform);
+      if (details.trim()) formData.set("details", details.trim());
+      formData.set("llmModelId", llmModelId);
+      for (const f of mediaFiles) formData.append("media", f.file, f.name);
+
       const res = await fetch("/api/posts/generate-caption", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: topic.trim() || undefined,
-          platform,
-          details: details.trim() || undefined,
-          llmModelId,
-          media: mediaFiles.map((f) => ({ type: f.type, dataUrl: f.dataUrl })),
-        }),
+        body: formData,
       });
       if (!res.ok) {
         const err = await res.json();
@@ -121,15 +137,15 @@ export function CaptionGenerator() {
   async function handleSavePost() {
     setSaving(true);
     try {
+      const formData = new FormData();
+      formData.set("title", title.trim());
+      formData.set("platform", platform);
+      formData.set("caption", caption);
+      for (const f of mediaFiles) formData.append("media", f.file, f.name);
+
       const res = await fetch("/api/posts/caption", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          platform,
-          caption,
-          media: mediaFiles.map((f) => ({ type: f.type, dataUrl: f.dataUrl })),
-        }),
+        body: formData,
       });
       if (!res.ok) {
         const err = await res.json();
@@ -157,17 +173,31 @@ export function CaptionGenerator() {
           {mediaFiles.map((f) => (
             <div
               key={f.id}
-              className="flex items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1.5 text-xs"
+              className="group relative h-20 w-20 overflow-hidden rounded-md border bg-muted/40"
             >
-              <span className="max-w-40 truncate">{f.name}</span>
+              {f.file.type.startsWith("video/") ? (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <video
+                  src={f.previewUrl}
+                  className="h-full w-full object-cover"
+                  muted
+                  playsInline
+                />
+              ) : (
+                // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
+                <img src={f.previewUrl} alt={f.name} className="h-full w-full object-cover" />
+              )}
               <button
                 type="button"
                 onClick={() => handleRemoveFile(f.id)}
-                className="text-muted-foreground hover:text-foreground"
+                className="absolute top-1 right-1 rounded-full bg-background/80 p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
                 aria-label={`Remove ${f.name}`}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
+              <span className="absolute inset-x-0 bottom-0 truncate bg-background/70 px-1 text-[10px]">
+                {f.name}
+              </span>
             </div>
           ))}
           <Label
@@ -180,7 +210,7 @@ export function CaptionGenerator() {
           <input
             id="media-upload"
             type="file"
-            accept="image/*,video/*"
+            accept="image/*,video/*,.heic,.heif"
             multiple
             className="sr-only"
             onChange={handleFilesSelected}

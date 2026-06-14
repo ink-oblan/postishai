@@ -23,13 +23,25 @@ export class GeminiAdapter implements LLMModelAdapter {
   }
 
   async describeImage(prompt: string, imageBase64: string, mimeType: string): Promise<string> {
+    return this.describeImages(prompt, [{ base64: imageBase64, mimeType }]);
+  }
+
+  async describeImages(
+    prompt: string,
+    images: { base64: string; mimeType: string }[],
+  ): Promise<string> {
     const client = new GoogleGenAI({ apiKey: config.google.apiKey });
     const response = await client.models.generateContent({
       model: this.id,
       contents: [
         {
           role: "user",
-          parts: [{ text: prompt }, { inlineData: { data: imageBase64, mimeType } }],
+          parts: [
+            { text: prompt },
+            ...images.map((image) => ({
+              inlineData: { data: image.base64, mimeType: image.mimeType },
+            })),
+          ],
         },
       ],
     });
