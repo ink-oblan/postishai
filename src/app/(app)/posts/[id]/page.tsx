@@ -30,7 +30,6 @@ export default async function PostDetailPage({
   if (!post) notFound();
 
   if (post.type === "CAPTION") {
-    const statusCfg = STATUS_CONFIG[post.status] ?? STATUS_CONFIG.DRAFT;
     return (
       <div className="space-y-6 px-6 py-8 sm:px-10">
         <div className="flex items-center gap-3">
@@ -49,7 +48,6 @@ export default async function PostDetailPage({
               id: post.id,
               title: post.title,
               platformLabel: PLATFORM_LABELS[post.platform],
-              statusLabel: statusCfg.label,
               caption: post.caption ?? "",
               createdAtLabel: formatDistanceToNow(post.createdAt),
               media: post.media.map((m) => ({

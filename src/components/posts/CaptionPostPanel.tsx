@@ -19,7 +19,6 @@ interface PostData {
   id: string;
   title: string;
   platformLabel: string;
-  statusLabel: string;
   caption: string;
   createdAtLabel: string;
   media: MediaItem[];
@@ -128,11 +127,6 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
         <div>
           <PropLabel>Platform</PropLabel>
           <PropValue>{post.platformLabel}</PropValue>
-        </div>
-
-        <div>
-          <PropLabel>Status</PropLabel>
-          <PropValue>{post.statusLabel}</PropValue>
         </div>
 
         <div>
