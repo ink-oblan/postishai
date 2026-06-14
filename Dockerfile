@@ -26,9 +26,7 @@ RUN npm run app:build
 
 FROM base AS migrate
 
-COPY --from=deps /app/node_modules/prisma  ./node_modules/prisma
-COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
-RUN mkdir -p ./node_modules/.bin && ln -s ../prisma/build/index.js ./node_modules/.bin/prisma
+COPY --from=deps /app/node_modules ./node_modules
 COPY prisma ./prisma
 
 CMD ["npx", "prisma", "migrate", "deploy"]
