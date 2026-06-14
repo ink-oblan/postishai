@@ -84,5 +84,6 @@ jobs:
             done
 
             docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100 migrate
             docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100 app
             exit 1
