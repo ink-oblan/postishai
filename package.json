@@ -1,7 +1,7 @@
 {
   "name": "postishai",
   "version": "0.0.17",
-  "private": true,
+  "private": false,
   "scripts": {
     "dev": "docker compose up --build",
     "start": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d",
