@@ -64,6 +64,11 @@ If deploying to a non-GPU server, replace the encoder flags:
 - Output ~9.9M (similar to input size)
 - No hardware dependency
 
+# Adding a public API route
+
+Any API route that must be accessible without authentication **must be added to `PUBLIC_PATHS`** in the `src/proxy.ts` file — otherwise unauthenticated requests get a 401.
+When adding a new public-facing API route, update `PUBLIC_PATHS`.
+
 # After every Prisma schema change
 
 Run both commands before writing any code that uses the new fields:
