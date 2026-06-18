@@ -10,6 +10,8 @@ import { renderPromptTemplate } from "@/lib/prompts";
 
 const VIDEO_FRAME_COUNT = 10;
 
+class UserInputError extends Error {}
+
 function runFfmpeg(args: string[]): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const proc = spawn("ffmpeg", args);
@@ -62,7 +64,11 @@ async function getVideoDurationSeconds(path: string): Promise<number> {
     "default=noprint_wrappers=1:nokey=1",
     path,
   ]);
-  return Number.parseFloat(stdout);
+  const duration = Number.parseFloat(stdout);
+  if (Number.isNaN(duration) || duration <= 0) {
+    throw new UserInputError("The video file is unreadable or has no valid duration.");
+  }
+  return duration;
 }
 
 async function hasAudioStream(path: string): Promise<boolean> {
@@ -135,23 +141,27 @@ async function describeMedia(adapter: LLMModelAdapter, media: File[]): Promise<s
 
   const imageDescriptionPrompt = await renderPromptTemplate("describe-media-prompt.txt");
 
-  return Promise.all(
-    media.map(async (file) => {
-      const buffer = Buffer.from(await file.arrayBuffer());
+  const descriptions: string[] = [];
+  for (const file of media) {
+    const buffer = Buffer.from(await file.arrayBuffer());
 
-      if (file.type.startsWith("video/")) {
-        const { frames, audio } = await extractVideoMedia(buffer);
-        const videoDescriptionPrompt = await renderPromptTemplate(
-          "describe-video-frames-prompt.txt",
-          { frameCount: frames.length, hasAudio: audio !== null },
-        );
-        return adapter.describeImages(videoDescriptionPrompt, frames, audio ?? undefined);
-      }
-
+    if (file.type.startsWith("video/")) {
+      const { frames, audio } = await extractVideoMedia(buffer);
+      const videoDescriptionPrompt = await renderPromptTemplate(
+        "describe-video-frames-prompt.txt",
+        { frameCount: frames.length, hasAudio: audio !== null },
+      );
+      descriptions.push(
+        await adapter.describeImages(videoDescriptionPrompt, frames, audio ?? undefined),
+      );
+    } else {
       const jpeg = await convertToJpeg(buffer);
-      return adapter.describeImage(imageDescriptionPrompt, jpeg.toString("base64"), "image/jpeg");
-    }),
-  );
+      descriptions.push(
+        await adapter.describeImage(imageDescriptionPrompt, jpeg.toString("base64"), "image/jpeg"),
+      );
+    }
+  }
+  return descriptions;
 }
 
 export const POST = withAuth(async function POST(req: NextRequest) {
@@ -190,9 +200,10 @@ export const POST = withAuth(async function POST(req: NextRequest) {
     return NextResponse.json({ caption: caption.trim() });
   } catch (err) {
     console.error("Caption generation failed:", err);
+    const status = err instanceof UserInputError ? 400 : 500;
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Caption generation failed" },
-      { status: 500 },
+      { status },
     );
   }
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, Loader2, Pencil } from "lucide-react";
+import { Check, Copy, Loader2, Pencil, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
@@ -40,6 +40,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
   const [title, setTitle] = useState(post.title);
   const [caption, setCaption] = useState(post.caption);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const hasChanges = title.trim() !== savedTitle || caption.trim() !== savedCaption;
@@ -54,6 +55,27 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
     await navigator.clipboard.writeText(savedCaption);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  async function handleDelete() {
+    if (!confirm("Delete this post? This cannot be undone.")) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/posts/${post.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archive: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Failed to delete");
+      }
+      toast.success("Post deleted");
+      router.push("/posts");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete");
+      setDeleting(false);
+    }
   }
 
   async function handleSave() {
@@ -114,10 +136,25 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
                 </Button>
               </div>
             ) : (
-              <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
-                <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                Edit
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -183,7 +220,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
             {post.media.map((m) => (
               <div
                 key={m.id}
-                className="relative aspect-[9/16] overflow-hidden rounded-lg bg-muted"
+                className={`relative overflow-hidden rounded-lg bg-muted ${m.type === "VIDEO" ? "aspect-[9/16]" : "aspect-[4/5]"}`}
               >
                 {m.type === "VIDEO" ? (
                   <video src={m.url} controls playsInline className="h-full w-full object-cover">

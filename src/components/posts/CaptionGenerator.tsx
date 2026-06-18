@@ -29,13 +29,48 @@ interface MediaFile {
   name: string;
   file: File;
   previewUrl: string;
+  willCrop: boolean;
+}
+
+function getMediaDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    if (file.type.startsWith("video/")) {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(url);
+        resolve({ width: video.videoWidth, height: video.videoHeight });
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error(`Could not read dimensions of ${file.name}`));
+      };
+      video.src = url;
+    } else {
+      const img = new window.Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error(`Could not read dimensions of ${file.name}`));
+      };
+      img.src = url;
+    }
+  });
+}
+
+function needsCrop(width: number, height: number, targetW: number, targetH: number): boolean {
+  return Math.abs(width / height - targetW / targetH) > 0.02;
 }
 
 async function toJpegFile(file: File): Promise<File> {
   const formData = new FormData();
   formData.append("file", file, file.name);
   const res = await fetch("/api/media/convert-image", { method: "POST", body: formData });
-  if (!res.ok) return file;
+  if (!res.ok) throw new Error(`Failed to convert ${file.name} to JPEG`);
   const jpegBlob = await res.blob();
   const name = `${file.name.replace(/\.[^.]+$/, "")}.jpg`;
   return new File([jpegBlob], name, { type: "image/jpeg" });
@@ -70,18 +105,33 @@ export function CaptionGenerator() {
     e.target.value = "";
     if (files.length === 0) return;
 
-    const newFiles = await Promise.all(
+    const results = await Promise.allSettled(
       files.map(async (file) => {
-        const resolved = file.type.startsWith("video/") ? file : await toJpegFile(file);
+        const isVideo = file.type.startsWith("video/");
+        const [resolved, { width, height }] = await Promise.all([
+          isVideo ? file : toJpegFile(file),
+          getMediaDimensions(file),
+        ]);
+        const [targetW, targetH] = isVideo ? [9, 16] : [4, 5];
         return {
           id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
           name: resolved.name,
           file: resolved,
           previewUrl: URL.createObjectURL(resolved),
+          willCrop: needsCrop(width, height, targetW, targetH),
         };
       }),
     );
-    setMediaFiles((prev) => [...prev, ...newFiles]);
+
+    const newFiles: MediaFile[] = [];
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        newFiles.push(result.value);
+      } else {
+        toast.error(result.reason instanceof Error ? result.reason.message : "Failed to add file");
+      }
+    }
+    if (newFiles.length > 0) setMediaFiles((prev) => [...prev, ...newFiles]);
   }
 
   function handleRemoveFile(id: string) {
@@ -166,8 +216,8 @@ export function CaptionGenerator() {
       <div className="space-y-2">
         <Label>Media (optional)</Label>
         <p className="text-muted-foreground text-xs">
-          Upload your finished photo, video, or carousel images so the AI can describe what&apos;s
-          shown and write a caption that fits.
+          Upload your finished media so the AI can describe what&apos;s shown and write a caption
+          that fits. Photos and carousels must be 4:5; single videos must be 9:16.
         </p>
         <div className="flex flex-wrap gap-2">
           {mediaFiles.map((f) => (
@@ -195,6 +245,11 @@ export function CaptionGenerator() {
               >
                 <X className="h-3.5 w-3.5" />
               </button>
+              {f.willCrop && (
+                <span className="absolute top-1 left-1 rounded bg-black/60 px-1 text-[9px] text-white">
+                  Will crop
+                </span>
+              )}
               <span className="absolute inset-x-0 bottom-0 truncate bg-background/70 px-1 text-[10px]">
                 {f.name}
               </span>
