@@ -90,7 +90,7 @@ export function AvatarActions({ avatar }: Props) {
         open={regenerateDialogOpen}
         onOpenChange={setRegenerateDialogOpen}
         title="Regenerate avatar?"
-        description="A new image will be generated. The current image will be replaced."
+        description="A new image will be generated. The current image will be replaced and all variations will be archived."
         icon={<RefreshCw className="h-4 w-4" />}
         confirmLabel="Regenerate"
         onConfirm={() => {
@@ -105,7 +105,7 @@ export function AvatarActions({ avatar }: Props) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         title="Archive avatar?"
-        description="This avatar will be hidden from your library. You can restore it later."
+        description="This avatar and all its variations will be archived and hidden from your library."
         icon={<Archive className="h-4 w-4" />}
         confirmLabel="Archive"
         onConfirm={handleArchiveConfirm}

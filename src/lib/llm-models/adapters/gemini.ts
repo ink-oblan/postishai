@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { config } from "../../config";
-import type { LLMModelAdapter } from "../types";
+import type { LLMImageInput, LLMModelAdapter } from "../types";
 
 export class GeminiAdapter implements LLMModelAdapter {
   readonly id: string;
@@ -13,11 +13,22 @@ export class GeminiAdapter implements LLMModelAdapter {
     this.description = description;
   }
 
-  async generate(prompt: string): Promise<string> {
+  async generate(prompt: string, image?: LLMImageInput): Promise<string> {
     const client = new GoogleGenAI({ apiKey: config.google.apiKey });
+    const contents = image
+      ? [
+          {
+            parts: [
+              { inlineData: { mimeType: image.mimeType, data: image.base64 } },
+              { text: prompt },
+            ],
+          },
+        ]
+      : prompt;
+
     const response = await client.models.generateContent({
       model: this.id,
-      contents: prompt,
+      contents,
     });
     return response.text ?? "";
   }

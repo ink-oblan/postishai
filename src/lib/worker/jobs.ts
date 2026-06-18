@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { jobRegistry } from "@/workers/registry";
 import type {
+  AvatarAnalyzePayload,
   AvatarGeneratePayload,
   AvatarVariationGeneratePayload,
   JobDefinition,
@@ -14,6 +15,7 @@ import type {
 type ActiveJobStatus = "PENDING" | "PROCESSING";
 
 export type {
+  AvatarAnalyzePayload,
   AvatarGeneratePayload,
   AvatarVariationGeneratePayload,
   JobPayloadMap,
@@ -79,6 +81,10 @@ export function enqueueAvatarGenerateJob(payload: AvatarGeneratePayload) {
 
 export function enqueueAvatarVariationGenerateJob(payload: AvatarVariationGeneratePayload) {
   return enqueueJob("avatar.variation.generate", payload);
+}
+
+export function enqueueAvatarAnalyzeJob(payload: AvatarAnalyzePayload) {
+  return enqueueJob("avatar.analyze", payload);
 }
 
 export function enqueuePostMetadataJob(payload: PostMetadataGeneratePayload) {

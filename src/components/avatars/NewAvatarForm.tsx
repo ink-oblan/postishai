@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Sparkles, Upload } from "lucide-react";
+import { AlertTriangle, Loader2, Sparkles, Upload, XCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -16,6 +16,8 @@ import {
   ComboboxInputGroup,
   ComboboxItem,
 } from "@/components/ui/combobox";
+import { RemoveButton } from "@/components/ui/cross-remove-button";
+import { ImageCropper } from "@/components/ui/image-cropper";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -41,6 +43,24 @@ function voiceGenderForAvatarGender(gender: GenderSelection): string | null {
   if (gender === "man") return "male";
   if (gender === "woman") return "female";
   return null;
+}
+
+const WARNING_LABELS: Record<string, string> = {
+  blurry: "blurry photo",
+  low_resolution: "low resolution — the image may look pixelated",
+  harsh_lighting: "harsh lighting — strong highlights or shadows",
+  multiple_people: "more than one person in the frame",
+  heavy_filter: "a strong filter or beautification effect altering the subject",
+};
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+
+interface InspectionResult {
+  decision: "accept" | "reject";
+  rejectionReason: string | null;
+  rejectionMessage: string | null;
+  warnings: string[];
+  gender: "man" | "woman" | "neutral" | null;
 }
 
 function findRecommendedVoice(
@@ -80,6 +100,10 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [originalSrc, setOriginalSrc] = useState<string | null>(null);
+  const [cropperSrc, setCropperSrc] = useState<string | null>(null);
+  const [inspecting, setInspecting] = useState(false);
+  const [inspection, setInspection] = useState<InspectionResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const backgroundOptions = origin.trim()
@@ -113,34 +137,94 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
   useEffect(() => {
     if (voiceManuallySelected || voices.length === 0) return;
 
-    const recommendedVoice = mode === "upload" ? voices[0] : findRecommendedVoice(voices, gender);
-    setVoiceId(recommendedVoice?.voice_id ?? "");
+    const matched = gender ? findRecommendedVoice(voices, gender) : undefined;
+    const fallback = mode === "upload" ? voices[0] : undefined;
+    setVoiceId(matched?.voice_id ?? fallback?.voice_id ?? "");
   }, [gender, mode, voiceManuallySelected, voices]);
 
   const processFile = useCallback((file: File): void => {
-    const formData = new FormData();
-    formData.append("file", file, file.name);
-    fetch("/api/media/convert-image", { method: "POST", body: formData })
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to process image");
-        const blob = await res.blob();
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const result = ev.target?.result as string;
-          setImageBase64(result);
-          setPreviewUrl(result);
-        };
-        reader.readAsDataURL(blob);
-      })
-      .catch((error) => {
-        toast.error(error instanceof Error ? error.message : "Failed to process image");
-      });
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast.error("Photo is too large. Maximum size is 10 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setOriginalSrc(result);
+      setCropperSrc(result);
+    };
+    reader.readAsDataURL(file);
   }, []);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>): void {
     const file = e.target.files?.[0];
     if (!file) return;
     processFile(file);
+  }
+
+  const inspectImage = useCallback(
+    async (dataUrl: string): Promise<void> => {
+      setInspecting(true);
+      setInspection(null);
+      try {
+        const res = await fetch("/api/avatars/inspect-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: dataUrl }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error ?? "Inspection failed");
+        }
+        const result = (await res.json()) as InspectionResult;
+        setInspection(result);
+        if (result.decision === "accept" && result.gender) {
+          if (result.gender !== gender) {
+            setGender(result.gender);
+            setVoiceManuallySelected(false);
+          }
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Inspection failed");
+      } finally {
+        setInspecting(false);
+      }
+    },
+    [gender],
+  );
+
+  function handleCropConfirm(croppedDataUrl: string): void {
+    setCropperSrc(null);
+    const formData = new FormData();
+    const [, base64] = croppedDataUrl.split(",");
+    const blob = new Blob([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))], {
+      type: "image/jpeg",
+    });
+    formData.append("file", blob, "image.jpg");
+    fetch("/api/media/convert-image", { method: "POST", body: formData })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to process image");
+        const jpegBlob = await res.blob();
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const result = ev.target?.result as string;
+          setImageBase64(result);
+          setPreviewUrl(result);
+          void inspectImage(result);
+        };
+        reader.readAsDataURL(jpegBlob);
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Failed to process image");
+      });
+  }
+
+  function clearImage(): void {
+    setImageBase64(null);
+    setPreviewUrl(null);
+    setOriginalSrc(null);
+    setInspection(null);
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   useEffect(() => {
@@ -212,6 +296,14 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
     }
     if (mode === "upload" && !imageBase64) {
       toast.error("Please select an image");
+      return;
+    }
+    if (mode === "upload" && inspecting) {
+      toast.error("Please wait for photo analysis to finish");
+      return;
+    }
+    if (mode === "upload" && inspection?.decision === "reject") {
+      toast.error("This photo can't be used — try another");
       return;
     }
 
@@ -410,25 +502,21 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
             <Label>Image</Label>
             <div className="flex justify-center">
               <Card
-                className={`aspect-[3/4] w-1/2 cursor-pointer border-dashed transition-colors hover:border-primary/50 ${isDragging ? "border-primary bg-primary/5" : ""}`}
+                className={`relative aspect-[9/16] w-2/5 cursor-pointer overflow-hidden border-dashed transition-colors hover:border-primary/50 ${isDragging ? "border-primary bg-primary/5" : ""}`}
                 onClick={() => {
-                  if (previewUrl) {
-                    setPreviewUrl(null);
-                    setImageBase64(null);
-                    if (fileRef.current) fileRef.current.value = "";
-                  } else {
+                  if (previewUrl && originalSrc) {
+                    setCropperSrc(originalSrc);
+                  } else if (!previewUrl) {
                     fileRef.current?.click();
                   }
                 }}
               >
-                <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-4">
+                <CardContent
+                  className={`flex h-full flex-col items-center justify-center gap-3 ${previewUrl ? "p-0" : "p-4"}`}
+                >
                   {previewUrl ? (
                     // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
-                    <img
-                      src={previewUrl}
-                      alt="Preview"
-                      className="h-full w-full rounded-md object-cover"
-                    />
+                    <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                   ) : (
                     <>
                       <Upload className="h-8 w-8 text-muted-foreground" />
@@ -440,6 +528,24 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
                     </>
                   )}
                 </CardContent>
+                {previewUrl && !inspecting && (
+                  <RemoveButton
+                    aria-label="Remove photo"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearImage();
+                    }}
+                    className="absolute top-2 right-2"
+                  />
+                )}
+                {inspecting && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+                    <div className="flex items-center gap-2 rounded-full bg-card px-3 py-1.5 text-sm shadow">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Analyzing photo…
+                    </div>
+                  </div>
+                )}
               </Card>
             </div>
             <input
@@ -449,6 +555,32 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
               className="hidden"
               onChange={handleFile}
             />
+
+            {inspection?.decision === "reject" && inspection.rejectionMessage && (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm">
+                <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{inspection.rejectionMessage}</span>
+              </div>
+            )}
+
+            {inspection?.decision === "accept" && inspection.warnings.length > 0 && (
+              <div className="space-y-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 text-sm dark:text-amber-300">
+                <div className="flex items-center gap-2 font-medium">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  Heads up
+                </div>
+                <p>We detected:</p>
+                <ul className="ml-6 list-disc space-y-0.5">
+                  {inspection.warnings.map((w) => (
+                    <li key={w}>{WARNING_LABELS[w] ?? w}</li>
+                  ))}
+                </ul>
+                <p className="pt-1">
+                  You may get poor results working with this avatar later. If it looks crispy and
+                  clear for you, then ignore warning.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -456,6 +588,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
             <AvatarVoiceField
               voices={voices}
               value={voiceId}
+              genderFilter={voiceGenderForAvatarGender(gender)}
               onValueChange={(nextVoiceId) => {
                 setVoiceManuallySelected(true);
                 setVoiceId(nextVoiceId);
@@ -465,7 +598,21 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
         </>
       )}
 
-      <Button type="submit" disabled={loading} className="w-full">
+      <ImageCropper
+        open={cropperSrc !== null}
+        src={cropperSrc}
+        aspect={9 / 16}
+        onCancel={() => setCropperSrc(null)}
+        onConfirm={handleCropConfirm}
+      />
+
+      <Button
+        type="submit"
+        disabled={
+          loading || (mode === "upload" && (inspecting || inspection?.decision === "reject"))
+        }
+        className="w-full"
+      >
         {loading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

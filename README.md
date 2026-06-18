@@ -1,89 +1,139 @@
 # PostishAI
 
-Next.js app with a PostgreSQL-backed Prisma database and a separate worker process.
+<p align="center">
+  <img src="./public/static/full-logo.svg" width="220" height="120" />
+</p>
 
-## Source Layout
+<p align="center">
+  Self-hosted AI platform for creating social media content — scripts, avatar videos.
+</p>
 
-Application source code lives in `src/`:
+<p align="center">
+  <a href="https://github.com/ink-oblan/postishai/actions/workflows/deploy.yml"><img src="https://github.com/ink-oblan/postishai/actions/workflows/deploy.yml/badge.svg" alt="Deploy" /></a>
+  <a href="./LICENSE.md"><img src="https://img.shields.io/badge/license-Sustainable%20Use-blue" alt="License" /></a>
+  <img src="https://img.shields.io/badge/self--hosted-%E2%9C%93-green" alt="Self-hosted" />
+  <a href="https://github.com/ink-oblan/postishai/pkgs/container/postishai"><img src="https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker" alt="Docker" /></a>
+</p>
 
-- `src/app`: Next.js App Router routes, layouts, API routes, and prompt templates
-- `src/components`: React components
-- `src/lib`: shared application libraries
-- `src/workers` and `src/worker.ts`: background worker entrypoint and jobs
-- `scripts`: project scripts and provisioning helpers run from the repository root
+---
 
-Root-level config, Prisma schema/migrations, Docker files, environment files, and `public/` stay at the repository root for their respective tools.
+## Quick start
 
-## Local Docker Development
+**Prerequisites:** Docker with Compose plugin
 
-Copy `.env.example` to `.env` and fill in the API credentials:
+**1. Clone and configure**
 
 ```bash
+git clone https://github.com/ink-oblan/postishai.git
+cd postishai
 cp .env.example .env
-npm install
-npm run dev
 ```
 
-The compose stack starts:
+**2. Set required environment variables in `.env`**
 
-- `db`: PostgreSQL 18.3
-- `app`: Next.js dev server on http://localhost:3000
-- `worker`: background job worker
+| Variable | Description |
+|---|---|
+| `HEYGEN_API_KEY` | [HeyGen API settings](https://app.heygen.com/settings?nav=API) - for avatar generation |
+| `GOOGLE_API_KEY` | [Google AI Studio](https://aistudio.google.com/app/apikey) - LLM |
 
-The app and worker stream logs into `dev.log` and `worker.log` in the repository root.
-
-Docker Compose constructs `DATABASE_URL` automatically from `POSTGRES_PASSWORD` (defaults to `postishai` for local dev).
-
-## Local Database Migrations
-
-After changing `prisma/schema.prisma`, create and apply a local migration:
+**3. Start**
 
 ```bash
-npm run db:migrate -- --name add_short_description
+IMAGE_BASE=ghcr.io/ink-oblan/postishai IMAGE_TAG=latest docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+You're all set!🎉
+Open http://localhost:3000 to see platform.
+
+---
+
+<p align="center">
+  If you you found this project useful, <a href="https://github.com/ink-oblan/postishai/stargazers">⭐ star the repo</a> — it helps others find it.
+</p>
+
+---
+
+## Before going to production
+
+Update at least these environment variables. You can check `.env` file for many optional configurations like S3 storage and backups later.
+
+| Variable | Purpose |
+|---|---|
+| `SESSION_SECRET` | Generate: `openssl rand -hex 32` for user sessions auth secret |
+| `NEXT_PUBLIC_APP_URL` | Your public URL, e.g. `https://postishai.example.com` |
+| `POSTGRES_PASSWORD` | Any strong password for the database|
+
+## Develop
+
+**Prerequisites:** Docker with Compose plugin.
+```bash
+git clone https://github.com/ink-oblan/postishai.git
+cd postishai
+cp .env.example .env # Fill in HEYGEN_API_KEY and GOOGLE_API_KEY in .env
+```
+
+Start dev docker compose
+
+```bash
+docker compose up -d
+```
+
+The dev server starts at **http://localhost:3000** with hot reload. Logs:
+- `docker compose logs -f app` or `tail -f dev.log`
+- `docker compose logs -f worker` or `tail -f worker.log`
+
+**Database migrations** — after changing `prisma/schema.prisma`:
+
+```bash
+npm run db:migrate -- --name <snake_case_description>
 npm run db:generate
 ```
 
-Use a short snake_case migration name that describes the schema change. `db:migrate` runs `prisma migrate dev` against the local database, and `db:generate` refreshes the Prisma client.
+---
 
-## Production Compose
+### Stack
 
-```bash
-npm run start
+| Layer | Technology |
+|---|---|
+| Frontend / API | Next.js 16 (App Router), React 19, TypeScript |
+| Styling | Tailwind CSS v4 |
+| Database | PostgreSQL 18 via Prisma |
+| Background jobs | Custom worker process (Node.js 22) |
+| Video processing | ffmpeg (GPU-accelerated by default, CPU fallback available) |
+| AI | Google Gemini, HeyGen (avatar videos) |
+| Container | Docker + Compose |
+
+---
+
+### Source layout
+
+```
+src/
+  app/          # Next.js App Router — routes, API handlers, prompt templates
+  components/   # React components
+  lib/          # Shared application libraries
+  workers/      # Background job definitions
+  worker.ts     # Worker entrypoint
+scripts/        # Provisioning and utility scripts
+prisma/         # Schema and migrations
 ```
 
-`docker-compose.prod.yml` is an override file — it only contains prod-specific values (build target, commands, volumes). The base `docker-compose.yml` is always required. Set `POSTGRES_PASSWORD` before starting production compose; `DATABASE_URL` is constructed automatically. Production intentionally has no default database password.
+---
 
-## Optional PostgreSQL Backups
+### Contributing
 
-Create a compressed custom-format `pg_dump` backup and upload it to S3:
+[Fork repo](https://github.com/ink-oblan/postishai/fork) and:
 
-```bash
-npm run backup:db
+1. Branch off `main`: `feat/my-feature`, `fix/bug-name`
+2. Keep PRs focused — one logical change per PR
+3. Open a pull request against `main` in [postishai](https://github.com/ink-oblan/postishai) repo
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
+
 ```
+feat(posts): add AI script generation
 
-Required environment for backup to work:
-
-- `DATABASE_URL`: PostgreSQL connection URL to back up (constructed by Docker Compose; set manually only for non-Docker runs). You can override it with `POSTGRES_BACKUP_DATABASE_URL`.
-- `S3_BUCKET`: shared destination S3 bucket.
-- `AWS_REGION`: destination bucket region.
-- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: credentials with `s3:PutObject` access.
-
-Optional environment:
-
-- `POSTGRES_BACKUP_S3_PREFIX`: S3 key prefix for database backups. Defaults to `postgres`.
-- `POSTGRES_BACKUP_DOCKER_SERVICE`: run `pg_dump` through `docker compose exec -T <service>`.
-- `POSTGRES_BACKUP_COMPOSE_FILE`: comma-separated compose files used with Docker mode.
-
-For the compose database service, run from the host with the Postgres container's `pg_dump`:
-
-```bash
-POSTGRES_BACKUP_DOCKER_SERVICE=db npm run backup:db
-```
-
-For production compose:
-
-```bash
-POSTGRES_BACKUP_DOCKER_SERVICE=db \
-POSTGRES_BACKUP_COMPOSE_FILE=docker-compose.yml,docker-compose.prod.yml \
-npm run backup:db
+- add POST /api/posts/generate-script endpoint
+- add Handlebars prompt template for script generation
+- add "Write with AI" button to PostWizard
 ```

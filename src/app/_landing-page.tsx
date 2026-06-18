@@ -2,9 +2,10 @@
 
 import type { Variants } from "framer-motion";
 import { motion } from "framer-motion";
-import { ArrowRight, Briefcase, Megaphone, Rocket } from "lucide-react";
-import Link from "next/link";
+import { Briefcase, Megaphone, Rocket } from "lucide-react";
+import Image from "next/image";
 import { BrandLogo } from "@/components/brand-logo";
+import { EmailSignupForm } from "@/components/email-signup-form";
 
 const scrollReveal = {
   initial: { opacity: 0, y: 40 },
@@ -43,21 +44,23 @@ export default function LandingPage() {
         transition={{ duration: 0.5 }}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-6 sm:py-4">
-          <BrandLogo href="/" className="text-xl" />
+          <Image
+            src="/static/full-logo.svg"
+            alt="PostishAI"
+            width={188}
+            height={63}
+            className="h-9 w-auto sm:h-9"
+          />
           <div className="flex shrink-0 items-center gap-3 sm:gap-8">
-            <Link
-              href="/login"
-              className="rounded-lg bg-primary px-4 py-2 text-center font-semibold text-sm text-white leading-tight transition hover:bg-primary hover:shadow-lg sm:px-6 sm:text-base"
-            >
-              Start for free
-            </Link>
+            <span className="rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 font-medium text-primary text-sm">
+              Coming soon
+            </span>
           </div>
         </div>
       </motion.nav>
 
       {/* Hero Section */}
       <section className="relative flex min-h-screen items-center overflow-hidden bg-background px-6">
-        {/* Refined background with subtle depth */}
         <div className="absolute inset-0 overflow-hidden">
           <div
             className="absolute top-0 right-0 h-96 w-96 rounded-full bg-orange-100/40 opacity-40 blur-3xl"
@@ -101,17 +104,12 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.25 }}
-            className="flex flex-col items-center justify-center gap-4 sm:flex-row"
+            className="flex flex-col items-center justify-center gap-2"
           >
-            <Link
-              href="/login"
-              className="group flex items-center gap-2 rounded-lg bg-primary px-8 py-4 font-semibold text-lg text-white transition-all duration-300 hover:bg-primary/90 hover:shadow-primary/30 hover:shadow-xl"
-            >
-              Start for free
-              <motion.div className="transition-transform group-hover:translate-x-1">
-                <ArrowRight size={20} />
-              </motion.div>
-            </Link>
+            <p className="text-gray-500 text-sm">
+              We&apos;re rolling out to early users. Get notified when it&apos;s your turn.
+            </p>
+            <EmailSignupForm variant="light" label="Notify me" />
           </motion.div>
         </div>
       </section>
@@ -266,32 +264,34 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.9 }}
-            className="mb-6 font-black text-5xl leading-tight sm:text-6xl"
+            className="mb-4 font-black text-5xl leading-tight sm:text-6xl"
             style={{
               fontFamily: "system-ui, -apple-system, sans-serif",
               fontWeight: 900,
               letterSpacing: "-0.02em",
             }}
           >
-            Ready to Transform Your Content?
+            Be the first to know.
           </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.9, delay: 0.1 }}
+            className="mb-10 text-lg text-white/80"
+          >
+            We&apos;re opening up access gradually. Drop your email and we&apos;ll notify you when
+            it&apos;s your turn.
+          </motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.9, delay: 0.2, ease: "easeOut" }}
-            className="flex flex-col justify-center gap-4 sm:flex-row"
+            className="flex justify-center"
           >
-            <Link
-              href="/login"
-              className="group flex items-center justify-center gap-2 rounded-lg bg-white px-8 py-4 font-semibold text-lg text-primary transition-all duration-300 hover:shadow-black/20 hover:shadow-xl"
-            >
-              Start for free
-              <motion.div className="transition-transform group-hover:translate-x-1">
-                <ArrowRight size={20} />
-              </motion.div>
-            </Link>
+            <EmailSignupForm variant="dark" label="Get early access" />
           </motion.div>
         </div>
       </section>

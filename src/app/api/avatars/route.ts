@@ -7,6 +7,8 @@ import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
 import { writeFile } from "@/lib/storage";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+
 export const GET = withAuth(async function GET(_req: NextRequest, _ctx: unknown, { userId }) {
   const avatars = await prisma.avatar.findMany({
     where: { archivedAt: null, userId },
@@ -42,21 +44,31 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
     );
 
   if (imageBase64) {
-    // Upload: process synchronously
+    // Upload: write image synchronously, enqueue async analysis.
     const base64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
     const buffer = await convertToJpeg(Buffer.from(base64, "base64"));
 
-    const avatar = await prisma.avatar.create({
+    const byteLength = Math.floor((base64.length * 3) / 4);
+    if (byteLength > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: "Photo is too large (max 10 MB)" }, { status: 413 });
+    }
+
+    const created = await prisma.avatar.create({
       data: { name, voiceId, imageModel: null, imagePath: "", status: "COMPLETED", source, userId },
     });
 
-    const relativePath = `avatars/${avatar.id}.jpg`;
+    const relativePath = `avatars/${created.id}.jpg`;
     await writeFile(relativePath, buffer);
 
-    const updated = await prisma.avatar.update({
-      where: { id: avatar.id },
-      data: { imagePath: relativePath },
+    const updated = await prisma.$transaction(async (tx) => {
+      const next = await tx.avatar.update({
+        where: { id: created.id },
+        data: { imagePath: relativePath },
+      });
+      await enqueueJobInDb(tx, "avatar.analyze", { avatarId: created.id });
+      return next;
     });
+
     return NextResponse.json(updated, { status: 201 });
   } else {
     // AI generation: render prompt, enqueue job, return immediately

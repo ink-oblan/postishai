@@ -1,11 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { CheckCircle2 } from "lucide-react";
+import Image from "next/image";
 
 const RULES = [
   "One person in the photo",
-  "Good quality, sharp image",
   "Contrast background works best",
   "Half-body or more visible",
   "Works with animated or fictional characters too",
@@ -29,7 +28,7 @@ export function UploadImageGuide() {
 
       <div className="mx-auto w-2/3 max-w-[220px] overflow-hidden rounded-xl border bg-muted/30">
         <div className="px-3 pt-3 pb-1.5">
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+          <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
             Example
           </p>
         </div>

@@ -129,8 +129,21 @@ export const PATCH = withAuth(async function PATCH(
       updateData.heygenAssetId = null;
       updateData.heygenAssetUrl = null;
 
+      const variations = await prisma.avatarVariation.findMany({
+        where: { avatarId: id, archivedAt: null },
+      });
+      await Promise.all(
+        variations.map((v) => (v.imagePath ? archiveFile(v.imagePath).catch(() => null) : null)),
+      );
+
       const refreshed = await prisma.$transaction(async (tx) => {
         await tx.avatar.update({ where: { id }, data: updateData });
+        if (variations.length > 0) {
+          await tx.avatarVariation.updateMany({
+            where: { avatarId: id, archivedAt: null },
+            data: { archivedAt: new Date() },
+          });
+        }
         await enqueueJobInDb(tx, "avatar.generate", {
           avatarId: id,
           prompt: usedPrompt,

@@ -45,17 +45,19 @@ model Session {
 }
 
 model Avatar {
-  id             String            @id @default(cuid())
-  name           String
-  prompt         String?
-  imageModel     String?
-  imagePath      String
-  gender         String?           // "man" | "woman" | "neutral"
-  age            Int?
-  origin         String?
-  occupation     String?
-  status         String            @default("COMPLETED")  // GENERATING | COMPLETED | FAILED
-  source         String                                    // UPLOADED | GENERATED
+  id                  String  @id @default(cuid())
+  name                String
+  prompt              String?
+  imageModel          String?
+  imagePath           String
+  gender              String? // "man" | "woman" | "neutral"
+  age                 Int?
+  origin              String?
+  occupation          String?
+  analysisDescription String?
+
+  status         String            @default("COMPLETED") // GENERATING | COMPLETED | FAILED
+  source         String // UPLOADED | GENERATED
   errorMessage   String?
   voiceId        String            @default("")
   heygenAssetId  String?
@@ -86,41 +88,41 @@ model HeyGenVoice {
 }
 
 model AvatarVariation {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   avatarId       String
-  avatar         Avatar   @relation(fields: [avatarId], references: [id])
-  label          String
+  avatar         Avatar    @relation(fields: [avatarId], references: [id])
+  label          String    @db.VarChar(60)
   clothes        String?
   background     String?
   pose           String?
   prompt         String?
   imageModel     String?
-  imagePath      String   @default("")
-  status         String   @default("PENDING")  // PENDING | GENERATING | COMPLETED | FAILED
+  imagePath      String    @default("")
+  status         String    @default("PENDING") // PENDING | GENERATING | COMPLETED | FAILED
   errorMessage   String?
   heygenAssetId  String?
   heygenAssetUrl String?
   posts          Post[]
   archivedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Job {
-  id        String   @id @default(cuid())
-  type      String   // "avatar.generate"
-  payload   String   // JSON
-  status    String   @default("PENDING")  // PENDING | PROCESSING | COMPLETED | FAILED
-  attempts  Int      @default(0)
-  maxAttempts Int    @default(3)
-  dedupeKey String?
-  runAfter  DateTime @default(now())
-  lockedAt  DateTime?
-  lockedBy  String?
-  error     String?
-  finishedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  type        String // "avatar.generate"
+  payload     String // JSON
+  status      String    @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  dedupeKey   String?
+  runAfter    DateTime  @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  error       String?
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model PlatformConfig {
@@ -153,11 +155,11 @@ model Post {
   metadata       String?
   metadataStatus String     @default("IDLE")
   metadataErrorMessage String?
-  metadataUpdatedAt DateTime?
-  errorMessage   String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  archivedAt     DateTime?
+  metadataUpdatedAt    DateTime?
+  errorMessage         String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  archivedAt           DateTime?
 }
 
 model PostMedia {
@@ -192,4 +194,10 @@ enum PostStatus {
 enum PostType {
   AVATAR_VIDEO
   CAPTION
+}
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
 }

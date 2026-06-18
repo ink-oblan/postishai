@@ -1,7 +1,7 @@
 {
   "name": "postishai",
-  "version": "0.0.16",
-  "private": true,
+  "version": "0.0.21",
+  "private": false,
   "scripts": {
     "dev": "docker compose up --build",
     "start": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d",
@@ -49,6 +49,8 @@
     "prisma": "^7.5.0",
     "react": "19.2.5",
     "react-dom": "19.2.5",
+    "react-easy-crop": "^5.5.7",
+    "react-image-crop": "^11.0.10",
     "shadcn": "^4.1.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",

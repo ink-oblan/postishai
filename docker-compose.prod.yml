@@ -45,7 +45,7 @@ services:
   worker:
     image: ${IMAGE_BASE:-ghcr.io/placeholder}/worker:${IMAGE_TAG:-latest}
     build:
-      target: prod-build
+      target: worker
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://postishai:${POSTGRES_PASSWORD}@db:5432/postishai?schema=public

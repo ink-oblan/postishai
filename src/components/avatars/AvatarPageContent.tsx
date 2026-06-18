@@ -155,7 +155,6 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
                   <Plus className="h-4 w-4" />
                   {selectedVariation ? "New post with variation" : "New post"}
                 </Link>
-                <p className="text-muted-foreground text-sm">No posts yet.</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
