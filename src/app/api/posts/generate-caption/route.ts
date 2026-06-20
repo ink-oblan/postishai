@@ -94,9 +94,10 @@ interface VideoMedia {
 async function extractVideoMedia(buffer: Buffer): Promise<VideoMedia> {
   const id = randomBytes(6).toString("hex");
   const tmpIn = `/tmp/caption_in_${id}.mp4`;
+  const tmpPat = `/tmp/caption_out_${id}_%03d.jpg`;
   const tmpOuts = Array.from(
     { length: VIDEO_FRAME_COUNT },
-    (_, i) => `/tmp/caption_out_${id}_${i}.jpg`,
+    (_, i) => `/tmp/caption_out_${id}_${String(i + 1).padStart(3, "0")}.jpg`,
   );
   const tmpAudio = `/tmp/caption_audio_${id}.mp3`;
 
@@ -105,18 +106,30 @@ async function extractVideoMedia(buffer: Buffer): Promise<VideoMedia> {
 
     const duration = await getVideoDurationSeconds(tmpIn);
 
-    const frames: { mimeType: string; base64: string }[] = [];
-    for (let i = 0; i < tmpOuts.length; i++) {
-      const tmpOut = tmpOuts[i];
-      const target = (duration * i) / (VIDEO_FRAME_COUNT - 1);
-      // Seeking to the exact end of the stream can land past the last decodable
-      // frame, leaving ffmpeg to exit 0 without writing an output file.
-      const timestamp = Math.min(target, Math.max(duration - 0.05, 0));
-      await runFfmpeg(["-ss", timestamp.toFixed(3), "-i", tmpIn, "-vframes", "1", "-y", tmpOut]);
-      const frame = await readFile(tmpOut);
-      frames.push({ mimeType: "image/jpeg", base64: frame.toString("base64") });
-      await unlink(tmpOut).catch(() => {});
-    }
+    // Single linear pass: select one frame every (duration/N) seconds.
+    // Frames land at 0%, 10%, ..., 90% of duration — no end-of-stream seeking.
+    const step = duration / VIDEO_FRAME_COUNT;
+    const selectExpr = `isnan(prev_selected_t)+gte(t-prev_selected_t\\,${step.toFixed(6)})`;
+    await runFfmpeg([
+      "-i",
+      tmpIn,
+      "-vf",
+      `select='${selectExpr}'`,
+      "-vsync",
+      "vfr",
+      "-frames:v",
+      String(VIDEO_FRAME_COUNT),
+      "-y",
+      tmpPat,
+    ]);
+
+    const frames = await Promise.all(
+      tmpOuts.map(async (p) => {
+        const frame = await readFile(p);
+        await unlink(p).catch(() => {});
+        return { mimeType: "image/jpeg", base64: frame.toString("base64") };
+      }),
+    );
 
     let audio: { mimeType: string; base64: string } | null = null;
     if (await hasAudioStream(tmpIn)) {
@@ -131,7 +144,7 @@ async function extractVideoMedia(buffer: Buffer): Promise<VideoMedia> {
     await Promise.all([
       unlink(tmpIn).catch(() => {}),
       unlink(tmpAudio).catch(() => {}),
-      ...tmpOuts.map((tmpOut) => unlink(tmpOut).catch(() => {})),
+      ...tmpOuts.map((p) => unlink(p).catch(() => {})),
     ]);
   }
 }
