@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
 import { prisma } from "@/lib/db";
+import { convertToJpeg } from "@/lib/image-convert";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
 import { writeFile } from "@/lib/storage";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
@@ -45,9 +46,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
   if (imageBase64) {
     // Upload: write image synchronously, enqueue async analysis.
     const base64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-    const mimeType: "image/png" | "image/jpeg" = imageBase64.startsWith("data:image/jpeg")
-      ? "image/jpeg"
-      : "image/png";
+    const buffer = await convertToJpeg(Buffer.from(base64, "base64"));
 
     const byteLength = Math.floor((base64.length * 3) / 4);
     if (byteLength > MAX_UPLOAD_BYTES) {
@@ -58,9 +57,8 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
       data: { name, voiceId, imageModel: null, imagePath: "", status: "COMPLETED", source, userId },
     });
 
-    const ext = mimeType === "image/jpeg" ? "jpg" : "png";
-    const relativePath = `avatars/${created.id}.${ext}`;
-    await writeFile(relativePath, Buffer.from(base64, "base64"));
+    const relativePath = `avatars/${created.id}.jpg`;
+    await writeFile(relativePath, buffer);
 
     const updated = await prisma.$transaction(async (tx) => {
       const next = await tx.avatar.update({

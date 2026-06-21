@@ -133,30 +133,43 @@ model PlatformConfig {
 }
 
 model Post {
-  id                   String           @id @default(cuid())
-  title                String
-  platform             Platform
-  script               String
-  avatarId             String
-  avatar               Avatar           @relation(fields: [avatarId], references: [id])
-  avatarVariationId    String?
-  avatarVariation      AvatarVariation? @relation(fields: [avatarVariationId], references: [id])
-  userId               String?
-  user                 User?            @relation(fields: [userId], references: [id])
-  llmModelId           String           @default("gemini-2.0-flash")
-  status               PostStatus       @default(DRAFT)
-  generationStartedAt  DateTime?
-  heygenVideoId        String?
-  videoPath            String?
-  heygenVideoUrl       String?
-  metadata             String?
-  metadataStatus       String           @default("IDLE")
+  id                  String           @id @default(cuid())
+  type                PostType         @default(AVATAR_VIDEO)
+  title               String
+  platform            Platform
+  script              String?
+  avatarId            String?
+  avatar              Avatar?          @relation(fields: [avatarId], references: [id])
+  avatarVariationId   String?
+  avatarVariation     AvatarVariation? @relation(fields: [avatarVariationId], references: [id])
+  caption        String?
+  media          PostMedia[]
+  userId         String?
+  user           User?      @relation(fields: [userId], references: [id])
+  llmModelId     String     @default("gemini-2.0-flash")
+  status         PostStatus @default(DRAFT)
+  generationStartedAt DateTime?
+  heygenVideoId  String?
+  videoPath      String?
+  heygenVideoUrl String?
+  metadata       String?
+  metadataStatus String     @default("IDLE")
   metadataErrorMessage String?
   metadataUpdatedAt    DateTime?
   errorMessage         String?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
   archivedAt           DateTime?
+}
+
+model PostMedia {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  type      String   // "IMAGE" | "VIDEO"
+  path      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 enum Role {
@@ -176,6 +189,11 @@ enum PostStatus {
   GENERATING
   COMPLETED
   FAILED
+}
+
+enum PostType {
+  AVATAR_VIDEO
+  CAPTION
 }
 
 model WaitlistEntry {

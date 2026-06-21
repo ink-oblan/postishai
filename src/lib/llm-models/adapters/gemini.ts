@@ -32,4 +32,32 @@ export class GeminiAdapter implements LLMModelAdapter {
     });
     return response.text ?? "";
   }
+
+  async describeImage(prompt: string, imageBase64: string, mimeType: string): Promise<string> {
+    return this.describeImages(prompt, [{ base64: imageBase64, mimeType }]);
+  }
+
+  async describeImages(
+    prompt: string,
+    images: { base64: string; mimeType: string }[],
+    audio?: { base64: string; mimeType: string },
+  ): Promise<string> {
+    const client = new GoogleGenAI({ apiKey: config.google.apiKey });
+    const response = await client.models.generateContent({
+      model: this.id,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            ...images.map((image) => ({
+              inlineData: { data: image.base64, mimeType: image.mimeType },
+            })),
+            ...(audio ? [{ inlineData: { data: audio.base64, mimeType: audio.mimeType } }] : []),
+          ],
+        },
+      ],
+    });
+    return response.text ?? "";
+  }
 }

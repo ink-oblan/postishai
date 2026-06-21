@@ -42,6 +42,9 @@ export const postMetadataJob: JobDefinition<"post.metadata", PostMetadataResult>
     if (!post) {
       throw new Error(`Post ${payload.postId} not found`);
     }
+    if (post.script === null) {
+      throw new Error(`Post ${payload.postId} is missing a script`);
+    }
 
     const metadata = await generateMetadata(
       post.platform,

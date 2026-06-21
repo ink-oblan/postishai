@@ -1,5 +1,6 @@
 import { Download, Plus } from "lucide-react";
 import Link from "next/link";
+import { DeletePostButton } from "@/components/posts/DeletePostButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TextLink } from "@/components/ui/text-link";
@@ -99,9 +100,13 @@ export default async function PostsPage() {
                         </Link>
                       </td>
                       <td className="px-5 py-4 text-muted-foreground">
-                        <TextLink href={`/avatars/${post.avatar.id}`} className="text-sm">
-                          {post.avatar.name}
-                        </TextLink>
+                        {post.avatar ? (
+                          <TextLink href={`/avatars/${post.avatar.id}`} className="text-sm">
+                            {post.avatar.name}
+                          </TextLink>
+                        ) : (
+                          <span className="text-sm">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-4">
                         <Badge variant="outline" className="font-semibold text-xs">
@@ -119,13 +124,16 @@ export default async function PostsPage() {
                         {formatDistanceToNow(post.createdAt)}
                       </td>
                       <td className="px-5 py-4">
-                        {post.status === "COMPLETED" && (
-                          <a href={`/api/posts/${post.id}/download`} download>
-                            <Button variant="ghost" size="sm">
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                          </a>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {post.status === "COMPLETED" && post.type !== "CAPTION" && (
+                            <a href={`/api/posts/${post.id}/download`} download>
+                              <Button variant="ghost" size="sm">
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            </a>
+                          )}
+                          <DeletePostButton postId={post.id} />
+                        </div>
                       </td>
                     </tr>
                   );
@@ -155,12 +163,13 @@ export default async function PostsPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground text-xs">
-                    <span>{post.avatar.name}</span>
+                    <span>{post.avatar?.name ?? "—"}</span>
                     <span>·</span>
                     <Badge variant="outline" className="font-semibold text-xs">
                       {PLATFORM_LABELS[post.platform]}
                     </Badge>
                     <span className="ml-auto">{formatDistanceToNow(post.createdAt)}</span>
+                    <DeletePostButton postId={post.id} />
                   </div>
                 </Link>
               );

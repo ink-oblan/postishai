@@ -55,6 +55,9 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     if (!post) {
       throw new Error(`Post ${payload.postId} not found`);
     }
+    if (!post.avatar || post.script === null) {
+      throw new Error(`Post ${payload.postId} is missing avatar or script`);
+    }
 
     let heygenVideoId = post.heygenVideoId;
 

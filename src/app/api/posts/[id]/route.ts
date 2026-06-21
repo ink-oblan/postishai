@@ -60,7 +60,7 @@ export const GET = withAuth(async function GET(
   const { id } = await params;
   const post = await prisma.post.findFirst({
     where: { id, userId },
-    include: { avatar: true },
+    include: { avatar: true, media: { orderBy: { order: "asc" } } },
   });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(post);
@@ -84,6 +84,7 @@ export const PATCH = withAuth(async function PATCH(
     metadata,
     archive,
     regenerateMetadata,
+    caption,
   } = body as {
     title?: string;
     script?: string;
@@ -93,15 +94,31 @@ export const PATCH = withAuth(async function PATCH(
     metadata?: PlatformMetadata | null;
     archive?: boolean;
     regenerateMetadata?: boolean;
+    caption?: string;
   };
 
   if (archive) {
+    if (post.type === "CAPTION") {
+      await prisma.post.update({ where: { id }, data: { archivedAt: new Date() } });
+      return new NextResponse(null, { status: 204 });
+    }
     if (post.status !== "DRAFT") {
       return NextResponse.json({ error: "Only DRAFT posts can be archived" }, { status: 409 });
     }
     if (post.videoPath) await archiveFile(post.videoPath).catch(() => null);
     await prisma.post.update({ where: { id }, data: { archivedAt: new Date() } });
     return new NextResponse(null, { status: 204 });
+  }
+
+  if (post.type === "CAPTION") {
+    if (!title?.trim() || !caption?.trim()) {
+      return NextResponse.json({ error: "Title and caption are required" }, { status: 400 });
+    }
+    const updated = await prisma.post.update({
+      where: { id },
+      data: { title: title.trim(), caption: caption.trim() },
+    });
+    return NextResponse.json(updated);
   }
 
   if (!isPostEditable(post)) {

@@ -136,7 +136,7 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
               <CardTitle className="font-medium text-sm">Posts ({posts.length})</CardTitle>
               {posts.length > 0 && (
                 <Link
-                  href={`/posts/new?avatarId=${avatar.id}${selectedVariation ? `&variationId=${selectedVariation.id}` : ""}`}
+                  href={`/posts/new/avatar?avatarId=${avatar.id}${selectedVariation ? `&variationId=${selectedVariation.id}` : ""}`}
                   className={buttonVariants({ size: "sm", className: "h-7 px-2.5" })}
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -149,7 +149,7 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
             {posts.length === 0 ? (
               <div className="flex min-h-28 flex-col items-center justify-center gap-3 py-4 text-center">
                 <Link
-                  href={`/posts/new?avatarId=${avatar.id}${selectedVariation ? `&variationId=${selectedVariation.id}` : ""}`}
+                  href={`/posts/new/avatar?avatarId=${avatar.id}${selectedVariation ? `&variationId=${selectedVariation.id}` : ""}`}
                   className={cn(buttonVariants(), "gap-1.5")}
                 >
                   <Plus className="h-4 w-4" />

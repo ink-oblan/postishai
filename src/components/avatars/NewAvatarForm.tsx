@@ -195,9 +195,28 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
 
   function handleCropConfirm(croppedDataUrl: string): void {
     setCropperSrc(null);
-    setImageBase64(croppedDataUrl);
-    setPreviewUrl(croppedDataUrl);
-    void inspectImage(croppedDataUrl);
+    const formData = new FormData();
+    const [, base64] = croppedDataUrl.split(",");
+    const blob = new Blob([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))], {
+      type: "image/jpeg",
+    });
+    formData.append("file", blob, "image.jpg");
+    fetch("/api/media/convert-image", { method: "POST", body: formData })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to process image");
+        const jpegBlob = await res.blob();
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const result = ev.target?.result as string;
+          setImageBase64(result);
+          setPreviewUrl(result);
+          void inspectImage(result);
+        };
+        reader.readAsDataURL(jpegBlob);
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Failed to process image");
+      });
   }
 
   function clearImage(): void {
@@ -229,7 +248,8 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
       counter = 0;
       setIsDragging(false);
       const file = e.dataTransfer?.files?.[0];
-      if (!file || !["image/png", "image/jpeg"].includes(file.type)) return;
+      if (!file || !["image/png", "image/jpeg", "image/heic", "image/heif"].includes(file.type))
+        return;
       processFile(file);
     }
 
@@ -503,7 +523,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
                       <p className="text-muted-foreground text-sm">
                         {isDragging
                           ? "Drop image here"
-                          : "Click or drag & drop an image (PNG or JPEG)"}
+                          : "Click or drag & drop an image (PNG, JPEG, or HEIC)"}
                       </p>
                     </>
                   )}
@@ -531,7 +551,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
             <input
               ref={fileRef}
               type="file"
-              accept="image/png,image/jpeg"
+              accept="image/png,image/jpeg,image/heic,image/heif,.heic,.heif"
               className="hidden"
               onChange={handleFile}
             />

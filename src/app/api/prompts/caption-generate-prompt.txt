@@ -1,0 +1,19 @@
+Write a caption for a {{platformLabel}} post.
+The caption accompanies already-finished media (video, photo, or carousel) — do not describe the media itself or refer to it as an attachment.
+Keep it concise and engaging, written in natural language. No stage directions.
+{{#if topic}}
+The post topic is: "{{topic}}".
+{{/if}}
+{{#if details}}
+Additional context from the user: "{{details}}".
+{{/if}}
+{{#if visualDescriptions.length}}
+Here is what the attached media visually shows (use this to ground the caption, but do not describe the media directly):
+{{#each visualDescriptions}}
+- {{this}}
+{{/each}}
+{{/if}}
+{{#unless topic}}{{#unless details}}{{#unless visualDescriptions.length}}
+No specific topic was provided — write a general engaging caption suitable for a short-form video or photo post.
+{{/unless}}{{/unless}}{{/unless}}
+Return ONLY the caption text, nothing else.

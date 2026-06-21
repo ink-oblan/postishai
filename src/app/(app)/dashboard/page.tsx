@@ -157,7 +157,9 @@ export default async function DashboardPage() {
                       <p className="truncate font-semibold text-sm transition-colors group-hover:text-primary">
                         {post.title}
                       </p>
-                      <p className="mt-0.5 text-muted-foreground text-xs">{post.avatar.name}</p>
+                      <p className="mt-0.5 text-muted-foreground text-xs">
+                        {post.avatar?.name ?? "—"}
+                      </p>
                     </div>
                   </div>
 
