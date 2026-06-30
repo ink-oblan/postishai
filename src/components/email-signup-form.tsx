@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
-import { isValidWaitlistEmail, normalizeWaitlistEmail, waitlistEmailPattern } from "@/lib/waitlist";
+import { normalizeWaitlistEmail, waitlistEmailPattern } from "@/lib/waitlist";
 import type { RobotState, ViewportPoint } from "./waitlist-robot";
 import { SuccessParticles, WaitlistRobot } from "./waitlist-robot";
 
@@ -108,10 +108,7 @@ export function EmailSignupForm({ variant = "light", label = "Notify me" }: Emai
   function handleEmailChange(nextEmail: string) {
     setEmail(nextEmail);
 
-    if (
-      (status === "invalid" && isValidWaitlistEmail(nextEmail)) ||
-      (status === "error" && normalizeWaitlistEmail(nextEmail).length > 0)
-    ) {
+    if (status === "invalid" || status === "error") {
       setStatus("idle");
     }
   }
