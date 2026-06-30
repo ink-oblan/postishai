@@ -215,31 +215,33 @@ export function EmailSignupForm({ variant = "light", label = "Notify me" }: Emai
                 )}
               </button>
             </form>
-            <AnimatePresence mode="wait">
-              {showInvalidEmail ? (
-                <motion.p
-                  id={inputErrorId}
-                  key="invalid-email"
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  className={`mt-2 text-center font-medium text-sm ${variant === "dark" ? "text-red-200" : "text-red-600"}`}
-                >
-                  Please enter a valid email address.
-                </motion.p>
-              ) : status === "error" ? (
-                <motion.p
-                  id={inputStatusId}
-                  key="submit-error"
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  className={`mt-2 text-center text-sm ${variant === "dark" ? "text-red-300" : "text-red-500"}`}
-                >
-                  Something went wrong. Please try again.
-                </motion.p>
-              ) : null}
-            </AnimatePresence>
+            <div className="mt-2 h-5">
+              <AnimatePresence mode="wait">
+                {showInvalidEmail ? (
+                  <motion.p
+                    id={inputErrorId}
+                    key="invalid-email"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className={`text-center font-medium text-sm ${variant === "dark" ? "text-red-200" : "text-red-600"}`}
+                  >
+                    Please enter a valid email address.
+                  </motion.p>
+                ) : status === "error" ? (
+                  <motion.p
+                    id={inputStatusId}
+                    key="submit-error"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className={`text-center text-sm ${variant === "dark" ? "text-red-300" : "text-red-500"}`}
+                  >
+                    Something went wrong. Please try again.
+                  </motion.p>
+                ) : null}
+              </AnimatePresence>
+            </div>
           </div>
         )}
       </div>
