@@ -9,16 +9,9 @@ export type ViewportPoint = { x: number; y: number; maxX?: number; minX?: number
 const ORANGE = "#E88A24";
 const VIEW_BOX = { x: 60, y: 0, width: 420, height: 560 };
 const GLASSES_CENTER = { x: 335, y: 138 };
-const TYPING_GLASSES_OFFSET_Y = 100;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
-}
-
-function clampOptionalRange(value: number, min: number | undefined, max: number | undefined) {
-  if (min == null || max == null) return value;
-  if (min > max) return (min + max) / 2;
-  return clamp(value, min, max);
 }
 
 // ─── Confetti ────────────────────────────────────────────────────────────────
@@ -155,21 +148,21 @@ export function WaitlistRobot({
     [glassesLookTargetX, glassesLookTargetY, glassesLookTargetRotate],
   );
 
-  const placeGlassesAboveCaret = useCallback(
+  const nudgeGlassesRadially = useCallback(
     (point: ViewportPoint) => {
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
 
       const restX = rect.left + ((GLASSES_CENTER.x - VIEW_BOX.x) / VIEW_BOX.width) * rect.width;
       const restY = rect.top + ((GLASSES_CENTER.y - VIEW_BOX.y) / VIEW_BOX.height) * rect.height;
-      const targetX = clampOptionalRange(point.x, point.minX, point.maxX);
-      const targetY = point.y - TYPING_GLASSES_OFFSET_Y;
-      const svgDx = (targetX - restX) * (VIEW_BOX.width / rect.width);
-      const svgDy = (targetY - restY) * (VIEW_BOX.height / rect.height);
+      const dx = point.x - restX;
+      const dy = point.y - restY;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-      glassesLookTargetX.set(clamp(svgDx, -820, 200));
-      glassesLookTargetY.set(clamp(svgDy, -80, 360));
-      glassesLookTargetRotate.set(clamp((targetX - restX) / 36, -10, 10));
+      const nudge = Math.min(dist * 0.18, 40);
+      glassesLookTargetX.set((dx / dist) * nudge);
+      glassesLookTargetY.set((dy / dist) * nudge);
+      glassesLookTargetRotate.set(clamp(dx / 30, -6, 6));
     },
     [glassesLookTargetX, glassesLookTargetY, glassesLookTargetRotate],
   );
@@ -208,8 +201,8 @@ export function WaitlistRobot({
     ) {
       return;
     }
-    placeGlassesAboveCaret(typingCursorPoint);
-  }, [typingCursorPoint, state, placeGlassesAboveCaret]);
+    nudgeGlassesRadially(typingCursorPoint);
+  }, [typingCursorPoint, state, nudgeGlassesRadially]);
 
   useEffect(() => {
     if ((state === "typing" || state === "error") && typingCursorPoint != null) return;
