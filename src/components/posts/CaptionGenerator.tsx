@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, Loader2, Save, Sparkles, Upload, X } from "lucide-react";
+import { Loader2, Sparkles, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -38,19 +38,15 @@ const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"] as const;
 export function CaptionGenerator() {
   const router = useRouter();
   const convertImageForPreview = useImageConverter();
-  const [topic, setTopic] = useState("");
+  const [title, setTitle] = useState("");
   const [platform, setPlatform] = useState<string>("INSTAGRAM");
   const [details, setDetails] = useState("");
   const [llmModelId, setLlmModelId] = useState(DEFAULT_LLM_MODEL_ID);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
-  const [caption, setCaption] = useState("");
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const mediaFilesRef = useRef<MediaFile[]>(mediaFiles);
   mediaFilesRef.current = mediaFiles;
-  const [title, setTitle] = useState("");
-  const [saving, setSaving] = useState(false);
   const [processingMediaCount, setProcessingMediaCount] = useState(0);
 
   useEffect(() => {
@@ -185,6 +181,10 @@ export function CaptionGenerator() {
   }, []);
 
   async function handleGenerate() {
+    if (!title.trim()) {
+      toast.error("Please enter a title for the post");
+      return;
+    }
     if (mediaFiles.length === 0) {
       toast.error("Please upload at least one media file");
       return;
@@ -192,7 +192,7 @@ export function CaptionGenerator() {
     setLoading(true);
     try {
       const formData = new FormData();
-      if (topic.trim()) formData.set("topic", topic.trim());
+      formData.set("title", title.trim());
       formData.set("platform", platform);
       if (details.trim()) formData.set("details", details.trim());
       formData.set("llmModelId", llmModelId);
@@ -206,52 +206,13 @@ export function CaptionGenerator() {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to generate caption");
       }
-      const { caption: generated } = await res.json();
-      setCaption(generated);
-      setCopied(false);
-      if (!title.trim()) setTitle(topic.trim() || "Caption post");
-      toast.success("Caption generated!");
+      const { postId } = await res.json();
+
+      // Navigate to post page where caption will load
+      router.push(`/posts/${postId}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate caption");
-    } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleCopy() {
-    await navigator.clipboard.writeText(caption);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
-  async function handleSavePost() {
-    if (mediaFiles.length === 0) {
-      toast.error("Please upload at least one media file");
-      return;
-    }
-    setSaving(true);
-    try {
-      const formData = new FormData();
-      formData.set("title", title.trim());
-      formData.set("platform", platform);
-      formData.set("caption", caption);
-      for (const f of mediaFiles) formData.append("media", f.file, f.name);
-
-      const res = await fetch("/api/posts/caption", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to save post");
-      }
-      const post = await res.json();
-      toast.success("Post saved!");
-      router.push(`/posts/${post.id}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save post");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -333,11 +294,13 @@ export function CaptionGenerator() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="topic">Topic (optional)</Label>
+        <Label htmlFor="title">
+          Post Title<span className="text-destructive">*</span>
+        </Label>
         <Input
-          id="topic"
-          value={topic}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTopic(e.target.value)}
+          id="title"
+          value={title}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
           placeholder="e.g. Summer Sale Announcement"
         />
       </div>
@@ -388,7 +351,7 @@ export function CaptionGenerator() {
         </Select>
       </div>
 
-      <Button onClick={handleGenerate} disabled={loading}>
+      <Button onClick={handleGenerate} disabled={loading || !title.trim()}>
         {loading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -401,62 +364,6 @@ export function CaptionGenerator() {
           </>
         )}
       </Button>
-
-      {caption && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="caption">Caption</Label>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 font-medium text-primary text-xs transition-colors hover:text-primary/80"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3.5 w-3.5" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" />
-                  Copy
-                </>
-              )}
-            </button>
-          </div>
-          <Textarea
-            id="caption"
-            value={caption}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCaption(e.target.value)}
-            rows={4}
-          />
-          <p className="text-muted-foreground text-xs">{caption.length} characters</p>
-
-          <div className="space-y-2 pt-2">
-            <Label htmlFor="post-title">Post title</Label>
-            <Input
-              id="post-title"
-              value={title}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-              placeholder="e.g. Summer Sale Announcement"
-            />
-          </div>
-
-          <Button onClick={handleSavePost} disabled={saving || !title.trim() || !caption.trim()}>
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Post
-              </>
-            )}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

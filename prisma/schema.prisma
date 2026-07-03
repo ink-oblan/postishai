@@ -187,6 +187,7 @@ enum Platform {
 enum PostStatus {
   DRAFT
   GENERATING
+  IN_PROGRESS
   COMPLETED
   FAILED
 }

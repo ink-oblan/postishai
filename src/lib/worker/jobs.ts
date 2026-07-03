@@ -7,6 +7,7 @@ import type {
   JobDefinition,
   JobPayloadMap,
   JobType,
+  PostCaptionGeneratePayload,
   PostGeneratePayload,
   PostMetadataGeneratePayload,
   WorkerDb,
@@ -20,6 +21,7 @@ export type {
   AvatarVariationGeneratePayload,
   JobPayloadMap,
   JobType,
+  PostCaptionGeneratePayload,
   PostGeneratePayload,
   PostMetadataGeneratePayload,
 };
@@ -89,6 +91,10 @@ export function enqueueAvatarAnalyzeJob(payload: AvatarAnalyzePayload) {
 
 export function enqueuePostMetadataJob(payload: PostMetadataGeneratePayload) {
   return enqueueJob("post.metadata", payload);
+}
+
+export function enqueuePostCaptionGenerateJob(payload: PostCaptionGeneratePayload) {
+  return enqueueJob("post.caption.generate", payload);
 }
 
 export function enqueuePostGenerateJob(payload: PostGeneratePayload) {

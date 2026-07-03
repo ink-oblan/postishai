@@ -1,9 +1,8 @@
-import { DashboardClient } from "@/components/dashboard/DashboardClient";
-import { requireSession } from "@/lib/auth/dal";
+import { type NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 
-export default async function DashboardPage() {
-  const { userId } = await requireSession();
+export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId }) {
   const activeWhere = { archivedAt: null, userId };
 
   const [avatarCount, postCount, recentPosts, statusCounts] = await Promise.all([
@@ -34,7 +33,7 @@ export default async function DashboardPage() {
   const generatingCount = byStatus.GENERATING ?? 0;
   const completionRate = postCount > 0 ? Math.round((completedCount / postCount) * 100) : 0;
 
-  const initialData = {
+  return NextResponse.json({
     avatarCount,
     postCount,
     completedCount,
@@ -44,7 +43,5 @@ export default async function DashboardPage() {
       ...p,
       createdAt: p.createdAt.toISOString(),
     })),
-  };
-
-  return <DashboardClient initialData={initialData} />;
-}
+  });
+});

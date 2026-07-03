@@ -49,6 +49,7 @@ export default async function PostDetailPage({
               title: post.title,
               platformLabel: PLATFORM_LABELS[post.platform],
               caption: post.caption ?? "",
+              status: post.status,
               createdAtLabel: formatDistanceToNow(post.createdAt),
               media: post.media.map((m) => ({
                 id: m.id,
