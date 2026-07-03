@@ -75,7 +75,7 @@ cp .env.example .env # Fill in HEYGEN_API_KEY and GOOGLE_API_KEY in .env
 Start dev docker compose
 
 ```bash
-docker compose up -d
+npm run dev
 ```
 
 The dev server starts at **http://localhost:3000** with hot reload. Logs:
