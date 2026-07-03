@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
+import { MAX_FILE_SIZE_BYTES, MAX_MEDIA_FILES } from "@/lib/media-constants";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
 interface LLMModel {
@@ -83,7 +84,6 @@ async function convertImageForPreview(file: File): Promise<File> {
   return new File([jpegBlob], name, { type: "image/jpeg" });
 }
 
-const MAX_FILES = 20;
 const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"] as const;
 
 export function CaptionGenerator() {
@@ -114,18 +114,28 @@ export function CaptionGenerator() {
     e.target.value = "";
     if (files.length === 0) return;
 
+    // Check file sizes
+    const oversizedFiles = files.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+    if (oversizedFiles.length > 0) {
+      toast.error(
+        `${oversizedFiles.length} file(s) exceed ${Math.round(MAX_FILE_SIZE_BYTES / 1024 / 1024)}MB limit: ${oversizedFiles.map((f) => f.name).join(", ")}`,
+      );
+      files = files.filter((f) => f.size <= MAX_FILE_SIZE_BYTES);
+      if (files.length === 0) return;
+    }
+
     // Check if we can accept any more files
-    if (mediaFiles.length >= MAX_FILES) {
-      toast.error(`Maximum ${MAX_FILES} files reached. Remove files to add more.`);
+    if (mediaFiles.length >= MAX_MEDIA_FILES) {
+      toast.error(`Maximum ${MAX_MEDIA_FILES} files reached. Remove files to add more.`);
       return;
     }
 
     // Limit files to available spots
-    const spotsAvailable = MAX_FILES - mediaFiles.length;
+    const spotsAvailable = MAX_MEDIA_FILES - mediaFiles.length;
     const selectedCount = files.length;
     if (files.length > spotsAvailable) {
       toast.warning(
-        `Selecting only ${spotsAvailable} of ${selectedCount} files to reach the ${MAX_FILES}-file limit.`,
+        `Selecting only ${spotsAvailable} of ${selectedCount} files to reach the ${MAX_MEDIA_FILES}-file limit.`,
       );
       files = files.slice(0, spotsAvailable);
     }
@@ -166,14 +176,14 @@ export function CaptionGenerator() {
 
     // Enforce strict 20-file limit - reject excess files
     let acceptedFiles = newFiles;
-    const finalSpotsAvailable = MAX_FILES - mediaFiles.length;
+    const finalSpotsAvailable = MAX_MEDIA_FILES - mediaFiles.length;
     if (acceptedFiles.length > finalSpotsAvailable) {
       // Revoke URLs for files that won't be accepted
       acceptedFiles.slice(finalSpotsAvailable).forEach((f) => {
         URL.revokeObjectURL(f.previewUrl);
       });
       toast.error(
-        `Only ${finalSpotsAvailable} more file(s) can be added. You have ${mediaFiles.length}/${MAX_FILES} files.`,
+        `Only ${finalSpotsAvailable} more file(s) can be added. You have ${mediaFiles.length}/${MAX_MEDIA_FILES} files.`,
       );
       acceptedFiles = acceptedFiles.slice(0, finalSpotsAvailable);
     }
@@ -183,7 +193,7 @@ export function CaptionGenerator() {
       // Recalculate crop flags for all videos after adding new files
       updateVideoCropFlags();
       const totalNow = mediaFiles.length + acceptedFiles.length;
-      toast.success(`${acceptedFiles.length} file(s) added (${totalNow}/${MAX_FILES})`);
+      toast.success(`${acceptedFiles.length} file(s) added (${totalNow}/${MAX_MEDIA_FILES})`);
     }
     setProcessingMediaCount(0);
   }
@@ -338,7 +348,7 @@ export function CaptionGenerator() {
               </span>
             </div>
           ))}
-          {mediaFiles.length < MAX_FILES && (
+          {mediaFiles.length < MAX_MEDIA_FILES && (
             <>
               <Label
                 htmlFor="media-upload"

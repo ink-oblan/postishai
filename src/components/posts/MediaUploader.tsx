@@ -4,6 +4,7 @@ import { Loader2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import { MAX_FILE_SIZE_BYTES, MAX_MEDIA_FILES } from "@/lib/media-constants";
 
 export interface MediaFile {
   id: string;
@@ -20,8 +21,6 @@ interface MediaUploaderProps {
   onMediaChange: (files: MediaFile[]) => void;
   processingCount: number;
 }
-
-const MAX_FILES = 20;
 
 function getMediaDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
@@ -113,18 +112,28 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
     e.target.value = "";
     if (files.length === 0) return;
 
+    // Check file sizes
+    const oversizedFiles = files.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+    if (oversizedFiles.length > 0) {
+      toast.error(
+        `${oversizedFiles.length} file(s) exceed ${Math.round(MAX_FILE_SIZE_BYTES / 1024 / 1024)}MB limit: ${oversizedFiles.map((f) => f.name).join(", ")}`,
+      );
+      files = files.filter((f) => f.size <= MAX_FILE_SIZE_BYTES);
+      if (files.length === 0) return;
+    }
+
     // Check if we can accept any more files
-    if (mediaFiles.length >= MAX_FILES) {
-      toast.error(`Maximum ${MAX_FILES} files reached. Remove files to add more.`);
+    if (mediaFiles.length >= MAX_MEDIA_FILES) {
+      toast.error(`Maximum ${MAX_MEDIA_FILES} files reached. Remove files to add more.`);
       return;
     }
 
     // Limit files to available spots
-    const spotsAvailable = MAX_FILES - mediaFiles.length;
+    const spotsAvailable = MAX_MEDIA_FILES - mediaFiles.length;
     const selectedCount = files.length;
     if (files.length > spotsAvailable) {
       toast.warning(
-        `Selecting only ${spotsAvailable} of ${selectedCount} files to reach the ${MAX_FILES}-file limit.`,
+        `Selecting only ${spotsAvailable} of ${selectedCount} files to reach the ${MAX_MEDIA_FILES}-file limit.`,
       );
       files = files.slice(0, spotsAvailable);
     }
@@ -171,7 +180,7 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
 
     // Enforce strict 20-file limit - reject excess files
     let acceptedFiles = newFiles;
-    const finalSpotsAvailable = MAX_FILES - mediaFiles.length;
+    const finalSpotsAvailable = MAX_MEDIA_FILES - mediaFiles.length;
     if (acceptedFiles.length > finalSpotsAvailable) {
       // Revoke URLs for files that won't be accepted
       acceptedFiles.slice(finalSpotsAvailable).forEach((f) => {
@@ -187,7 +196,7 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
       onMediaChange([...mediaFiles, ...acceptedFiles]);
       updateVideoCropFlags();
       const totalNow = mediaFiles.length + acceptedFiles.length;
-      toast.success(`${acceptedFiles.length} file(s) added (${totalNow}/${MAX_FILES})`);
+      toast.success(`${acceptedFiles.length} file(s) added (${totalNow}/${MAX_MEDIA_FILES})`);
     }
   }
 
@@ -203,8 +212,8 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
     updateVideoCropFlags();
   }
 
-  const canUploadMore = mediaFiles.length < MAX_FILES;
-  const spotsRemaining = MAX_FILES - mediaFiles.length;
+  const canUploadMore = mediaFiles.length < MAX_MEDIA_FILES;
+  const spotsRemaining = MAX_MEDIA_FILES - mediaFiles.length;
 
   return (
     <div className="space-y-2">
@@ -212,12 +221,12 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
         Media <span className="text-destructive">*</span>
       </Label>
       <p className="text-muted-foreground text-xs">
-        Add images and videos for AI to analyze and generate captions. Maximum {MAX_FILES} files. (
-        {mediaFiles.length}/{MAX_FILES})
+        Add images and videos for AI to analyze and generate captions. Maximum {MAX_MEDIA_FILES}{" "}
+        files. ({mediaFiles.length}/{MAX_MEDIA_FILES})
       </p>
       {!canUploadMore && (
         <p className="font-medium text-destructive text-xs">
-          Maximum {MAX_FILES} files reached. Remove files to upload more.
+          Maximum {MAX_MEDIA_FILES} files reached. Remove files to upload more.
         </p>
       )}
       <div className="flex flex-wrap gap-2">
