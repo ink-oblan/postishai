@@ -1,10 +1,10 @@
-import { spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import type { Platform } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
+import { runFfmpeg } from "@/lib/ffmpeg";
 import { writeFile } from "@/lib/storage";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
@@ -15,21 +15,6 @@ const VIDEO_EXTENSIONS: Record<string, string> = {
   "video/quicktime": "mov",
   "video/webm": "webm",
 };
-
-function runFfmpeg(args: string[]): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    const proc = spawn("ffmpeg", args);
-    let stderr = "";
-    proc.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    proc.on("error", reject);
-    proc.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(stderr || `ffmpeg exited with code ${code}`));
-    });
-  });
-}
 
 async function cropVideo(
   buffer: Buffer,
