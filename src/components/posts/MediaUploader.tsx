@@ -21,6 +21,8 @@ interface MediaUploaderProps {
   processingCount: number;
 }
 
+const MAX_FILES = 20;
+
 function getMediaDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -61,11 +63,22 @@ async function convertImageForPreview(file: File): Promise<File> {
   }
   const formData = new FormData();
   formData.append("file", file, file.name);
-  const res = await fetch("/api/media/convert-to-jpeg", { method: "POST", body: formData });
-  if (!res.ok) throw new Error(`Failed to convert ${file.name} to JPEG`);
-  const jpegBlob = await res.blob();
-  const name = `${file.name.replace(/\.[^.]+$/, "")}.jpg`;
-  return new File([jpegBlob], name, { type: "image/jpeg" });
+  try {
+    const res = await fetch("/api/media/convert-to-jpeg", { method: "POST", body: formData });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to convert ${file.name} to JPEG`);
+    }
+    const jpegBlob = await res.blob();
+    const name = `${file.name.replace(/\.[^.]+$/, "")}.jpg`;
+    return new File([jpegBlob], name, { type: "image/jpeg" });
+  } catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? `Unable to process ${file.name}: ${error.message}`
+        : `Unable to process ${file.name}`,
+    );
+  }
 }
 
 export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: MediaUploaderProps) {
@@ -96,26 +109,54 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
   }, []);
 
   async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
+    let files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (files.length === 0) return;
+
+    // Check if we can accept any more files
+    if (mediaFiles.length >= MAX_FILES) {
+      toast.error(`Maximum ${MAX_FILES} files reached. Remove files to add more.`);
+      return;
+    }
+
+    // Limit files to available spots
+    const spotsAvailable = MAX_FILES - mediaFiles.length;
+    const selectedCount = files.length;
+    if (files.length > spotsAvailable) {
+      toast.warning(
+        `Selecting only ${spotsAvailable} of ${selectedCount} files to reach the ${MAX_FILES}-file limit.`,
+      );
+      files = files.slice(0, spotsAvailable);
+    }
 
     const results = await Promise.allSettled(
       files.map(async (file) => {
         const isVideo = file.type.startsWith("video/");
-        const resolved = await convertImageForPreview(file);
-        const { width, height } = await getMediaDimensions(resolved);
-        const totalMedia = mediaFilesRef.current.length + files.length;
-        const [targetW, targetH] = isVideo && totalMedia === 1 ? [9, 16] : [4, 5];
-        return {
-          id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
-          name: resolved.name,
-          file: resolved,
-          previewUrl: URL.createObjectURL(resolved),
-          width,
-          height,
-          willCrop: needsCrop(width, height, targetW, targetH),
-        };
+        let resolved: File | null = null;
+        try {
+          resolved = await convertImageForPreview(file);
+          const { width, height } = await getMediaDimensions(resolved);
+          // Calculate total media including already uploaded and files being processed
+          const totalMedia = mediaFiles.length + files.length;
+          const [targetW, targetH] = isVideo && totalMedia === 1 ? [9, 16] : [4, 5];
+          return {
+            id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
+            name: resolved.name,
+            file: resolved,
+            previewUrl: URL.createObjectURL(resolved),
+            width,
+            height,
+            willCrop: needsCrop(width, height, targetW, targetH),
+          };
+        } catch (error) {
+          // If conversion failed after getting resolved file, revoke its object URL to prevent memory leak
+          if (resolved) {
+            // Try to revoke the preview URL by creating a temporary one
+            const tempUrl = URL.createObjectURL(resolved);
+            URL.revokeObjectURL(tempUrl);
+          }
+          throw error;
+        }
       }),
     );
 
@@ -127,9 +168,26 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
         toast.error(result.reason instanceof Error ? result.reason.message : "Failed to add file");
       }
     }
-    if (newFiles.length > 0) {
-      onMediaChange([...mediaFiles, ...newFiles]);
+
+    // Enforce strict 20-file limit - reject excess files
+    let acceptedFiles = newFiles;
+    const finalSpotsAvailable = MAX_FILES - mediaFiles.length;
+    if (acceptedFiles.length > finalSpotsAvailable) {
+      // Revoke URLs for files that won't be accepted
+      acceptedFiles.slice(finalSpotsAvailable).forEach((f) => {
+        URL.revokeObjectURL(f.previewUrl);
+      });
+      toast.error(
+        `Only ${finalSpotsAvailable} more file(s) can be added. You have ${mediaFiles.length}/20 files.`,
+      );
+      acceptedFiles = acceptedFiles.slice(0, finalSpotsAvailable);
+    }
+
+    if (acceptedFiles.length > 0) {
+      onMediaChange([...mediaFiles, ...acceptedFiles]);
       updateVideoCropFlags();
+      const totalNow = mediaFiles.length + acceptedFiles.length;
+      toast.success(`${acceptedFiles.length} file(s) added (${totalNow}/${MAX_FILES})`);
     }
   }
 
@@ -145,15 +203,23 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
     updateVideoCropFlags();
   }
 
+  const canUploadMore = mediaFiles.length < MAX_FILES;
+  const spotsRemaining = MAX_FILES - mediaFiles.length;
+
   return (
     <div className="space-y-2">
       <Label>
         Media <span className="text-destructive">*</span>
       </Label>
       <p className="text-muted-foreground text-xs">
-        Upload your finished media so the AI can describe what&apos;s shown and write a caption that
-        fits.
+        Add images and videos for AI to analyze and generate captions. Maximum {MAX_FILES} files. (
+        {mediaFiles.length}/{MAX_FILES})
       </p>
+      {!canUploadMore && (
+        <p className="font-medium text-destructive text-xs">
+          Maximum {MAX_FILES} files reached. Remove files to upload more.
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         {mediaFiles.map((f) => (
           <div
@@ -184,22 +250,33 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
             </span>
           </div>
         ))}
-        <Label
-          htmlFor="media-upload"
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-muted-foreground text-xs transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-50"
+        <button
+          type="button"
+          onClick={() => canUploadMore && fileRef.current?.click()}
+          disabled={!canUploadMore || processingCount > 0}
+          className={`inline-flex items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-xs transition-colors ${
+            canUploadMore && processingCount === 0
+              ? "cursor-pointer text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              : "cursor-not-allowed text-muted-foreground/50 opacity-50"
+          }`}
         >
           {processingCount > 0 ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Processing…
             </>
+          ) : canUploadMore ? (
+            <>
+              <Upload className="h-3.5 w-3.5" />
+              Upload media ({spotsRemaining} remaining)
+            </>
           ) : (
             <>
               <Upload className="h-3.5 w-3.5" />
-              Upload media
+              Limit reached
             </>
           )}
-        </Label>
+        </button>
         <input
           id="media-upload"
           ref={fileRef}
@@ -208,7 +285,6 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
           multiple
           className="sr-only"
           onChange={handleFilesSelected}
-          disabled={processingCount > 0}
         />
       </div>
     </div>

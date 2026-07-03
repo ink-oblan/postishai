@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   experimental: {
     proxyClientMaxBodySize: "512mb",
+    serverActions: {
+      bodySizeLimit: "100mb",
+    },
   },
   webpack(config) {
     // Webpack ignores all of node_modules by default, so the dev server doesn't

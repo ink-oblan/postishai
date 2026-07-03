@@ -83,6 +83,7 @@ async function convertImageForPreview(file: File): Promise<File> {
   return new File([jpegBlob], name, { type: "image/jpeg" });
 }
 
+const MAX_FILES = 20;
 const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"] as const;
 
 export function CaptionGenerator() {
@@ -109,9 +110,25 @@ export function CaptionGenerator() {
   }, []);
 
   async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
+    let files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (files.length === 0) return;
+
+    // Check if we can accept any more files
+    if (mediaFiles.length >= MAX_FILES) {
+      toast.error(`Maximum ${MAX_FILES} files reached. Remove files to add more.`);
+      return;
+    }
+
+    // Limit files to available spots
+    const spotsAvailable = MAX_FILES - mediaFiles.length;
+    const selectedCount = files.length;
+    if (files.length > spotsAvailable) {
+      toast.warning(
+        `Selecting only ${spotsAvailable} of ${selectedCount} files to reach the ${MAX_FILES}-file limit.`,
+      );
+      files = files.slice(0, spotsAvailable);
+    }
 
     setProcessingMediaCount(files.length);
     const results = await Promise.allSettled(
@@ -146,10 +163,27 @@ export function CaptionGenerator() {
         toast.error(result.reason instanceof Error ? result.reason.message : "Failed to add file");
       }
     }
-    if (newFiles.length > 0) {
-      setMediaFiles((prev) => [...prev, ...newFiles]);
+
+    // Enforce strict 20-file limit - reject excess files
+    let acceptedFiles = newFiles;
+    const finalSpotsAvailable = MAX_FILES - mediaFiles.length;
+    if (acceptedFiles.length > finalSpotsAvailable) {
+      // Revoke URLs for files that won't be accepted
+      acceptedFiles.slice(finalSpotsAvailable).forEach((f) => {
+        URL.revokeObjectURL(f.previewUrl);
+      });
+      toast.error(
+        `Only ${finalSpotsAvailable} more file(s) can be added. You have ${mediaFiles.length}/${MAX_FILES} files.`,
+      );
+      acceptedFiles = acceptedFiles.slice(0, finalSpotsAvailable);
+    }
+
+    if (acceptedFiles.length > 0) {
+      setMediaFiles((prev) => [...prev, ...acceptedFiles]);
       // Recalculate crop flags for all videos after adding new files
       updateVideoCropFlags();
+      const totalNow = mediaFiles.length + acceptedFiles.length;
+      toast.success(`${acceptedFiles.length} file(s) added (${totalNow}/${MAX_FILES})`);
     }
     setProcessingMediaCount(0);
   }
@@ -265,8 +299,8 @@ export function CaptionGenerator() {
           Media<span className="text-destructive">*</span>
         </Label>
         <p className="text-muted-foreground text-xs">
-          Upload your finished media so the AI can describe what&apos;s shown and write a caption
-          that fits.
+          Upload images and videos for AI to analyze and generate captions. Maximum 20 files. (
+          {mediaFiles.length}/20)
         </p>
         <div className="flex flex-wrap gap-2">
           {mediaFiles.map((f) => (
@@ -304,30 +338,34 @@ export function CaptionGenerator() {
               </span>
             </div>
           ))}
-          <Label
-            htmlFor="media-upload"
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-muted-foreground text-xs transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-50"
-          >
-            {processingMediaCount > 0 ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Processing…
-              </>
-            ) : (
-              <>
-                <Upload className="h-3.5 w-3.5" />
-                Upload media
-              </>
-            )}
-          </Label>
-          <input
-            id="media-upload"
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            className="sr-only"
-            onChange={handleFilesSelected}
-          />
+          {mediaFiles.length < MAX_FILES && (
+            <>
+              <Label
+                htmlFor="media-upload"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-muted-foreground text-xs transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                {processingMediaCount > 0 ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Processing…
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload media
+                  </>
+                )}
+              </Label>
+              <input
+                id="media-upload"
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                className="sr-only"
+                onChange={handleFilesSelected}
+              />
+            </>
+          )}
         </div>
       </div>
 
