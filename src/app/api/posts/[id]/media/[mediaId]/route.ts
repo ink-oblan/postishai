@@ -5,8 +5,6 @@ import { prisma } from "@/lib/db";
 import { getPresignedUrl, readFile } from "@/lib/storage";
 
 function contentTypeFor(path: string): string {
-  if (path.endsWith(".png")) return "image/png";
-  if (path.endsWith(".webp")) return "image/webp";
   if (path.endsWith(".mp4")) return "video/mp4";
   return "image/jpeg";
 }

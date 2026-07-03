@@ -73,9 +73,8 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
 
       if (!heygenAssetId) {
         const imagePath = variation ? variation.imagePath : post.avatar.imagePath;
-        const mimeType = imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
         const imageBuffer = await readFile(imagePath);
-        const uploaded = await uploadAvatarImage(imageBuffer, mimeType);
+        const uploaded = await uploadAvatarImage(imageBuffer, "image/jpeg");
         heygenAssetId = uploaded.assetId;
         if (variation) {
           await ctx.db.avatarVariation.update({

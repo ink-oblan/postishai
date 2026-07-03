@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { archiveFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
@@ -44,8 +45,13 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
 
     const adapter = getImageAdapter(imageModel);
     const result = await adapter.generate({ prompt, aspectRatio: "9:16" });
-    const ext = result.mimeType === "image/jpeg" ? "jpg" : "png";
-    const imagePath = `avatars/${avatarId}.${ext}`;
+
+    // Always save avatars as JPG.
+    let buffer = Buffer.from(result.base64, "base64");
+    if (result.mimeType !== "image/jpeg") {
+      buffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
+    }
+    const imagePath = `avatars/${avatarId}.jpg`;
 
     const avatar = await ctx.db.avatar.findUnique({ where: { id: avatarId } });
     if (!avatar) {
@@ -56,7 +62,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
       await archiveFile(avatar.imagePath).catch(() => null);
     }
 
-    await writeFile(imagePath, Buffer.from(result.base64, "base64"));
+    await writeFile(imagePath, buffer);
 
     return { imagePath };
   },

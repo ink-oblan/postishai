@@ -55,9 +55,7 @@ export const avatarAnalyzeJob: JobDefinition<"avatar.analyze", AvatarAnalyzeResu
     if (!avatar.imagePath) throw new Error(`Avatar ${avatarId} has no imagePath`);
 
     const buffer = await readFile(avatar.imagePath);
-    const mimeType: "image/png" | "image/jpeg" = avatar.imagePath.endsWith(".jpg")
-      ? "image/jpeg"
-      : "image/png";
+    const mimeType = "image/jpeg" as const;
 
     const prompt = await renderPromptTemplate("avatar-analyze-image-prompt.txt", {
       ethnicities: ETHNICITIES,

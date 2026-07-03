@@ -25,7 +25,6 @@ export const GET = withAuth(async function GET(_req: NextRequest, { params }: Pa
   }
 
   const buffer = await readFile(variation.imagePath);
-  const contentType = variation.imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
   const etag = `"${variation.updatedAt.getTime()}"`;
 
   if (_req.headers.get("if-none-match") === etag) {
@@ -34,7 +33,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, { params }: Pa
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
-      "Content-Type": contentType,
+      "Content-Type": "image/jpeg",
       "Cache-Control": "public, max-age=0, must-revalidate",
       ETag: etag,
     },

@@ -5,13 +5,13 @@ export interface ImageGenerationOptions {
   aspectRatio?: AspectRatio;
   sourceImage?: {
     base64: string;
-    mimeType: "image/png" | "image/jpeg";
+    mimeType: "image/jpeg";
   };
 }
 
 export interface ImageGenerationResult {
   base64: string;
-  mimeType: "image/png" | "image/jpeg";
+  mimeType: "image/jpeg";
 }
 
 export interface ImageModelAdapter {

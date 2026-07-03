@@ -54,7 +54,7 @@ async function generateWithGeminiImage(
       .join(", ");
     throw new Error(`No image returned from Gemini (${detail})`);
   }
-  const mimeType = (part.inlineData.mimeType ?? "image/png") as "image/png" | "image/jpeg";
+  const mimeType = "image/jpeg" as const;
   return { base64: part.inlineData.data, mimeType };
 }
 
