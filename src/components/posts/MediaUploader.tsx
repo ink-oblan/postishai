@@ -7,16 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useImageConverter } from "@/lib/hooks/use-image-converter";
 import { MAX_FILE_SIZE_BYTES, MAX_MEDIA_FILES } from "@/lib/media-constants";
 import { getMediaDimensions, needsCrop } from "@/lib/media-utils";
-
-export interface MediaFile {
-  id: string;
-  name: string;
-  file: File;
-  previewUrl: string;
-  width: number;
-  height: number;
-  willCrop: boolean;
-}
+import type { MediaFile } from "@/lib/types/media";
 
 interface MediaUploaderProps {
   mediaFiles: MediaFile[];

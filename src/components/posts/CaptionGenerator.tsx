@@ -19,22 +19,13 @@ import { useImageConverter } from "@/lib/hooks/use-image-converter";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
 import { MAX_FILE_SIZE_BYTES, MAX_MEDIA_FILES } from "@/lib/media-constants";
 import { getMediaDimensions, needsCrop } from "@/lib/media-utils";
+import type { MediaFile } from "@/lib/types/media";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
 interface LLMModel {
   id: string;
   name: string;
   description: string;
-}
-
-interface MediaFile {
-  id: string;
-  name: string;
-  file: File;
-  previewUrl: string;
-  width: number;
-  height: number;
-  willCrop: boolean;
 }
 
 const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"] as const;
