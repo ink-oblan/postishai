@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
@@ -53,23 +54,28 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
       return NextResponse.json({ error: "Photo is too large (max 10 MB)" }, { status: 413 });
     }
 
-    const created = await prisma.avatar.create({
-      data: { name, voiceId, imageModel: null, imagePath: "", status: "COMPLETED", source, userId },
-    });
-
-    const relativePath = `avatars/${created.id}.jpg`;
+    const avatarId = randomUUID();
+    const relativePath = `avatars/${avatarId}.jpg`;
     await writeFile(relativePath, buffer);
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const next = await tx.avatar.update({
-        where: { id: created.id },
-        data: { imagePath: relativePath },
+    const created = await prisma.$transaction(async (tx) => {
+      const next = await tx.avatar.create({
+        data: {
+          id: avatarId,
+          name,
+          voiceId,
+          imageModel: null,
+          imagePath: relativePath,
+          status: "COMPLETED",
+          source,
+          userId,
+        },
       });
-      await enqueueJobInDb(tx, "avatar.analyze", { avatarId: created.id });
+      await enqueueJobInDb(tx, "avatar.analyze", { avatarId });
       return next;
     });
 
-    return NextResponse.json(updated, { status: 201 });
+    return NextResponse.json(created, { status: 201 });
   } else {
     // AI generation: render prompt, enqueue job, return immediately
     if (!gender || !age || !origin || !occupation) {
