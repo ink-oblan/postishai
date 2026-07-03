@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
+import { MAX_AVATAR_SIZE_BYTES } from "@/lib/media-constants";
 
 interface ImageModel {
   id: string;
@@ -52,8 +53,6 @@ const WARNING_LABELS: Record<string, string> = {
   multiple_people: "more than one person in the frame",
   heavy_filter: "a strong filter or beautification effect altering the subject",
 };
-
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 
 interface InspectionResult {
   decision: "accept" | "reject";
@@ -143,8 +142,10 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
   }, [gender, mode, voiceManuallySelected, voices]);
 
   const processFile = useCallback((file: File): void => {
-    if (file.size > MAX_UPLOAD_BYTES) {
-      toast.error("Photo is too large. Maximum size is 10 MB.");
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      toast.error(
+        `Photo is too large. Maximum size is ${Math.round(MAX_AVATAR_SIZE_BYTES / 1024 / 1024)} MB.`,
+      );
       return;
     }
     setLoading(true);
