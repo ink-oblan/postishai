@@ -2,7 +2,7 @@
 
 import { Check, Copy, Loader2, Save, Sparkles, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,8 @@ interface MediaFile {
   name: string;
   file: File;
   previewUrl: string;
+  width: number;
+  height: number;
   willCrop: boolean;
 }
 
@@ -66,10 +68,15 @@ function needsCrop(width: number, height: number, targetW: number, targetH: numb
   return Math.abs(width / height - targetW / targetH) > 0.02;
 }
 
-async function toJpegFile(file: File): Promise<File> {
+async function convertImageForPreview(file: File): Promise<File> {
+  // Convert non-JPEG images to JPEG for preview/dimension reading.
+  // Videos pass through unchanged.
+  if (file.type === "image/jpeg" || file.type.startsWith("video/")) {
+    return file;
+  }
   const formData = new FormData();
   formData.append("file", file, file.name);
-  const res = await fetch("/api/media/convert-image", { method: "POST", body: formData });
+  const res = await fetch("/api/media/convert-to-jpeg", { method: "POST", body: formData });
   if (!res.ok) throw new Error(`Failed to convert ${file.name} to JPEG`);
   const jpegBlob = await res.blob();
   const name = `${file.name.replace(/\.[^.]+$/, "")}.jpg`;
@@ -93,6 +100,7 @@ export function CaptionGenerator() {
   mediaFilesRef.current = mediaFiles;
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
+  const [processingMediaCount, setProcessingMediaCount] = useState(0);
 
   useEffect(() => {
     fetch("/api/llm-models")
@@ -105,19 +113,26 @@ export function CaptionGenerator() {
     e.target.value = "";
     if (files.length === 0) return;
 
+    setProcessingMediaCount(files.length);
     const results = await Promise.allSettled(
       files.map(async (file) => {
         const isVideo = file.type.startsWith("video/");
-        const [resolved, { width, height }] = await Promise.all([
-          isVideo ? file : toJpegFile(file),
-          getMediaDimensions(file),
-        ]);
-        const [targetW, targetH] = isVideo ? [9, 16] : [4, 5];
+        // For non-JPEG images, convert to JPEG for preview and dimension reading.
+        // Videos and JPEG files pass through unchanged.
+        const resolved = await convertImageForPreview(file);
+        const { width, height } = await getMediaDimensions(resolved);
+        // Video aspect ratio depends on total media count:
+        // - if this is the only media (current count + incoming = 1), use 9:16
+        // - if multiple media, use 4:5 for video too
+        const totalMedia = mediaFilesRef.current.length + files.length;
+        const [targetW, targetH] = isVideo && totalMedia === 1 ? [9, 16] : [4, 5];
         return {
           id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
           name: resolved.name,
           file: resolved,
           previewUrl: URL.createObjectURL(resolved),
+          width,
+          height,
           willCrop: needsCrop(width, height, targetW, targetH),
         };
       }),
@@ -131,7 +146,12 @@ export function CaptionGenerator() {
         toast.error(result.reason instanceof Error ? result.reason.message : "Failed to add file");
       }
     }
-    if (newFiles.length > 0) setMediaFiles((prev) => [...prev, ...newFiles]);
+    if (newFiles.length > 0) {
+      setMediaFiles((prev) => [...prev, ...newFiles]);
+      // Recalculate crop flags for all videos after adding new files
+      updateVideoCropFlags();
+    }
+    setProcessingMediaCount(0);
   }
 
   function handleRemoveFile(id: string) {
@@ -140,7 +160,26 @@ export function CaptionGenerator() {
       if (removed) URL.revokeObjectURL(removed.previewUrl);
       return prev.filter((f) => f.id !== id);
     });
+    // Recalculate crop flags for remaining videos
+    updateVideoCropFlags();
   }
+
+  const updateVideoCropFlags = useCallback(() => {
+    setMediaFiles((prev) => {
+      let needsUpdate = false;
+      const updated = prev.map((f) => {
+        if (!f.file.type.startsWith("video/")) return f;
+        const [targetW, targetH] = prev.length === 1 ? [9, 16] : [4, 5];
+        const willCrop = needsCrop(f.width, f.height, targetW, targetH);
+        if (f.willCrop !== willCrop) {
+          needsUpdate = true;
+          return { ...f, willCrop };
+        }
+        return f;
+      });
+      return needsUpdate ? updated : prev;
+    });
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -149,6 +188,10 @@ export function CaptionGenerator() {
   }, []);
 
   async function handleGenerate() {
+    if (mediaFiles.length === 0) {
+      toast.error("Please upload at least one media file");
+      return;
+    }
     setLoading(true);
     try {
       const formData = new FormData();
@@ -185,6 +228,10 @@ export function CaptionGenerator() {
   }
 
   async function handleSavePost() {
+    if (mediaFiles.length === 0) {
+      toast.error("Please upload at least one media file");
+      return;
+    }
     setSaving(true);
     try {
       const formData = new FormData();
@@ -214,10 +261,12 @@ export function CaptionGenerator() {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Media (optional)</Label>
+        <Label>
+          Media<span className="text-destructive">*</span>
+        </Label>
         <p className="text-muted-foreground text-xs">
           Upload your finished media so the AI can describe what&apos;s shown and write a caption
-          that fits. Photos and carousels must be 4:5; single videos must be 9:16.
+          that fits.
         </p>
         <div className="flex flex-wrap gap-2">
           {mediaFiles.map((f) => (
@@ -257,15 +306,24 @@ export function CaptionGenerator() {
           ))}
           <Label
             htmlFor="media-upload"
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-muted-foreground text-xs transition-colors hover:border-primary/40 hover:text-foreground"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-muted-foreground text-xs transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-50"
           >
-            <Upload className="h-3.5 w-3.5" />
-            Upload media
+            {processingMediaCount > 0 ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Processing…
+              </>
+            ) : (
+              <>
+                <Upload className="h-3.5 w-3.5" />
+                Upload media
+              </>
+            )}
           </Label>
           <input
             id="media-upload"
             type="file"
-            accept="image/*,video/*,.heic,.heif"
+            accept="image/*,video/*"
             multiple
             className="sr-only"
             onChange={handleFilesSelected}
