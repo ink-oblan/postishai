@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useImageConverter } from "@/lib/hooks/use-image-converter";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
 import { MAX_FILE_SIZE_BYTES, MAX_MEDIA_FILES } from "@/lib/media-constants";
+import { getMediaDimensions, needsCrop } from "@/lib/media-utils";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
 interface LLMModel {
@@ -34,40 +35,6 @@ interface MediaFile {
   width: number;
   height: number;
   willCrop: boolean;
-}
-
-function getMediaDimensions(file: File): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    if (file.type.startsWith("video/")) {
-      const video = document.createElement("video");
-      video.preload = "metadata";
-      video.onloadedmetadata = () => {
-        URL.revokeObjectURL(url);
-        resolve({ width: video.videoWidth, height: video.videoHeight });
-      };
-      video.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error(`Could not read dimensions of ${file.name}`));
-      };
-      video.src = url;
-    } else {
-      const img = new window.Image();
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        resolve({ width: img.naturalWidth, height: img.naturalHeight });
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error(`Could not read dimensions of ${file.name}`));
-      };
-      img.src = url;
-    }
-  });
-}
-
-function needsCrop(width: number, height: number, targetW: number, targetH: number): boolean {
-  return Math.abs(width / height - targetW / targetH) > 0.02;
 }
 
 const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"] as const;
