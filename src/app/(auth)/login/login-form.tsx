@@ -124,7 +124,7 @@ export function LoginForm() {
 
         <div className="space-y-1.5">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" placeholder="••••••••" />
+          <Input id="password" name="password" type="password" placeholder="Enter your password" />
           {state?.errors?.password && (
             <p className="text-destructive text-xs">{state.errors.password[0]}</p>
           )}
