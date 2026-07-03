@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import type { Platform } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
@@ -81,40 +81,52 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
     return NextResponse.json({ error: `Invalid platform: ${platform}` }, { status: 400 });
   }
 
-  const post = await prisma.post.create({
-    data: {
-      type: "CAPTION",
-      title: trimmedTitle,
-      platform: platform as Platform,
-      caption: trimmedCaption,
-      status: "COMPLETED",
-      userId,
-    },
-  });
+  const postId = randomUUID();
 
-  for (let i = 0; i < media.length; i++) {
-    const file = media[i];
-    const isVideo = file.type.startsWith("video/");
-    let buffer: Buffer = Buffer.from(await file.arrayBuffer());
-    const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
+  const prepared = await Promise.all(
+    media.map(async (file, i) => {
+      const isVideo = file.type.startsWith("video/");
+      let buffer: Buffer = Buffer.from(await file.arrayBuffer());
+      const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
+      if (isVideo) {
+        buffer = await cropVideoTo916(buffer);
+      } else {
+        buffer = await convertAndCropToJpeg(buffer, 4, 5);
+      }
+      const path = `posts/${postId}/${i}.${ext}`;
+      await writeFile(path, buffer);
+      return { path, isVideo, order: i };
+    }),
+  );
 
-    if (isVideo) {
-      buffer = await cropVideoTo916(buffer);
-    } else {
-      buffer = await convertAndCropToJpeg(buffer, 4, 5);
-    }
-
-    const path = `posts/${post.id}/${i}.${ext}`;
-    await writeFile(path, buffer);
-    await prisma.postMedia.create({
+  const post = await prisma.$transaction(async (tx) => {
+    const created = await tx.post.create({
       data: {
-        postId: post.id,
-        type: isVideo ? "VIDEO" : "IMAGE",
-        path,
-        order: i,
+        id: postId,
+        type: "CAPTION",
+        title: trimmedTitle,
+        platform: platform as Platform,
+        caption: trimmedCaption,
+        status: "COMPLETED",
+        userId,
       },
     });
-  }
+
+    await Promise.all(
+      prepared.map(({ path, isVideo, order }) =>
+        tx.postMedia.create({
+          data: {
+            postId: created.id,
+            type: isVideo ? "VIDEO" : "IMAGE",
+            path,
+            order,
+          },
+        }),
+      ),
+    );
+
+    return created;
+  });
 
   return NextResponse.json(post, { status: 201 });
 });

@@ -50,7 +50,7 @@ next-env.d.ts
 *.log
 
 # Personal notes
-notes.md
+notes*.md
 
 # Local storage and generated workspace files
 /storage/
