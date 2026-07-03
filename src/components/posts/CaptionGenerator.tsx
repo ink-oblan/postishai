@@ -17,7 +17,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useImageConverter } from "@/lib/hooks/use-image-converter";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
-import { MAX_FILE_SIZE_BYTES, MAX_MEDIA_FILES } from "@/lib/media-constants";
+import {
+  ASPECT_RATIO_MULTI_MEDIA,
+  ASPECT_RATIO_SINGLE_VIDEO,
+  MAX_FILE_SIZE_BYTES,
+  MAX_MEDIA_FILES,
+} from "@/lib/media-constants";
 import { getMediaDimensions, needsCrop } from "@/lib/media-utils";
 import type { MediaFile } from "@/lib/types/media";
 import { PLATFORM_LABELS } from "@/lib/utils";
@@ -97,7 +102,9 @@ export function CaptionGenerator() {
         // - if this is the only media (current count + incoming = 1), use 9:16
         // - if multiple media, use 4:5 for video too
         const totalMedia = mediaFilesRef.current.length + files.length;
-        const [targetW, targetH] = isVideo && totalMedia === 1 ? [9, 16] : [4, 5];
+        const ratio =
+          isVideo && totalMedia === 1 ? ASPECT_RATIO_SINGLE_VIDEO : ASPECT_RATIO_MULTI_MEDIA;
+        const [targetW, targetH] = [ratio.width, ratio.height];
         return {
           id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
           name: resolved.name,
@@ -158,7 +165,8 @@ export function CaptionGenerator() {
       let needsUpdate = false;
       const updated = prev.map((f) => {
         if (!f.file.type.startsWith("video/")) return f;
-        const [targetW, targetH] = prev.length === 1 ? [9, 16] : [4, 5];
+        const ratio = prev.length === 1 ? ASPECT_RATIO_SINGLE_VIDEO : ASPECT_RATIO_MULTI_MEDIA;
+        const [targetW, targetH] = [ratio.width, ratio.height];
         const willCrop = needsCrop(f.width, f.height, targetW, targetH);
         if (f.willCrop !== willCrop) {
           needsUpdate = true;

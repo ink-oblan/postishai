@@ -5,6 +5,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { runFfmpeg } from "@/lib/ffmpeg";
+import { ASPECT_RATIO_MULTI_MEDIA, ASPECT_RATIO_SINGLE_VIDEO } from "@/lib/media-constants";
 import { writeFile } from "@/lib/storage";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
@@ -75,8 +76,8 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
       let buffer: Buffer = Buffer.from(await file.arrayBuffer());
       const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
       if (isVideo) {
-        const [targetW, targetH] = media.length === 1 ? [9, 16] : [4, 5];
-        buffer = await cropVideo(buffer, targetW, targetH);
+        const ratio = media.length === 1 ? ASPECT_RATIO_SINGLE_VIDEO : ASPECT_RATIO_MULTI_MEDIA;
+        buffer = await cropVideo(buffer, ratio.width, ratio.height);
       }
       const path = `posts/${postId}/${i}.${ext}`;
       await writeFile(path, buffer);

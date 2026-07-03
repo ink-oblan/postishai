@@ -5,7 +5,12 @@ import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { useImageConverter } from "@/lib/hooks/use-image-converter";
-import { MAX_FILE_SIZE_BYTES, MAX_MEDIA_FILES } from "@/lib/media-constants";
+import {
+  ASPECT_RATIO_MULTI_MEDIA,
+  ASPECT_RATIO_SINGLE_VIDEO,
+  MAX_FILE_SIZE_BYTES,
+  MAX_MEDIA_FILES,
+} from "@/lib/media-constants";
 import { getMediaDimensions, needsCrop } from "@/lib/media-utils";
 import type { MediaFile } from "@/lib/types/media";
 
@@ -83,7 +88,9 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
           const { width, height } = await getMediaDimensions(resolved);
           // Calculate total media including already uploaded and files being processed
           const totalMedia = mediaFiles.length + files.length;
-          const [targetW, targetH] = isVideo && totalMedia === 1 ? [9, 16] : [4, 5];
+          const ratio =
+            isVideo && totalMedia === 1 ? ASPECT_RATIO_SINGLE_VIDEO : ASPECT_RATIO_MULTI_MEDIA;
+          const [targetW, targetH] = [ratio.width, ratio.height];
           return {
             id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
             name: resolved.name,
@@ -123,7 +130,7 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
         URL.revokeObjectURL(f.previewUrl);
       });
       toast.error(
-        `Only ${finalSpotsAvailable} more file(s) can be added. You have ${mediaFiles.length}/20 files.`,
+        `Only ${finalSpotsAvailable} more file(s) can be added. You have ${mediaFiles.length}/${MAX_MEDIA_FILES} files.`,
       );
       acceptedFiles = acceptedFiles.slice(0, finalSpotsAvailable);
     }
