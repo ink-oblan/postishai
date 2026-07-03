@@ -70,6 +70,7 @@ Update at least these environment variables. You can check `.env` file for many 
 git clone https://github.com/ink-oblan/postishai.git
 cd postishai
 cp .env.example .env # Fill in HEYGEN_API_KEY and GOOGLE_API_KEY in .env
+npm install
 ```
 
 Start dev docker compose
