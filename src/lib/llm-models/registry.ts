@@ -8,40 +8,14 @@ function register(adapter: LLMModelAdapter) {
 }
 
 register(
-  new GeminiAdapter(
-    "models/gemini-flash-lite-latest",
-    "Gemini Flash Lite Latest",
-    "Fastest",
-  ),
+  new GeminiAdapter("models/gemini-flash-lite-latest", "Gemini Flash Lite Latest", "Fastest"),
 );
+register(new GeminiAdapter("models/gemini-flash-latest", "Gemini Flash Latest", "Fast"));
 register(
-  new GeminiAdapter(
-    "models/gemini-flash-latest",
-    "Gemini Flash Latest",
-    "Fast",
-  ),
+  new GeminiAdapter("models/gemini-pro-latest", "Gemini Pro Latest", "Balanced speed and quality"),
 );
-register(
-  new GeminiAdapter(
-    "models/gemini-pro-latest",
-    "Gemini Pro Latest",
-    "Balanced speed and quality",
-  ),
-);
-register(
-  new GeminiAdapter(
-    "gemini-3-flash-preview",
-    "Gemini 3 Flash",
-    "Great quality",
-  ),
-);
-register(
-  new GeminiAdapter(
-    "gemini-3.1-pro-preview",
-    "Gemini 3.1 Pro",
-    "State of the art quality",
-  ),
-);
+register(new GeminiAdapter("gemini-3-flash-preview", "Gemini 3 Flash", "Great quality"));
+register(new GeminiAdapter("gemini-3.1-pro-preview", "Gemini 3.1 Pro", "State of the art quality"));
 
 export const DEFAULT_LLM_MODEL_ID = "models/gemini-pro-latest";
 

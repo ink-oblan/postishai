@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { Role } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { NextResponse } from "next/server";
 import { withAdminAuth, withSuperAdminAuth } from "@/lib/auth/dal";
+import { prisma } from "@/lib/db";
 
 // GET /api/admin/users — list all users (admin + super admin)
 export const GET = withAdminAuth(async function GET() {

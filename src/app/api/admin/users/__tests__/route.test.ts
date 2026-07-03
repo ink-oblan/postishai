@@ -39,8 +39,22 @@ describe("GET /api/admin/users", () => {
 
   it("returns list of users", async () => {
     const users = [
-      { id: "u1", name: "Alice", email: "alice@example.com", role: "USER", approvedAt: null, createdAt: new Date() },
-      { id: "u2", name: "Bob", email: "bob@example.com", role: "ADMIN", approvedAt: new Date(), createdAt: new Date() },
+      {
+        id: "u1",
+        name: "Alice",
+        email: "alice@example.com",
+        role: "USER",
+        approvedAt: null,
+        createdAt: new Date(),
+      },
+      {
+        id: "u2",
+        name: "Bob",
+        email: "bob@example.com",
+        role: "ADMIN",
+        approvedAt: new Date(),
+        createdAt: new Date(),
+      },
     ];
     mockPrisma.user.findMany.mockResolvedValue(users);
 

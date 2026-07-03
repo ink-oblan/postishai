@@ -1,7 +1,7 @@
+import { Role } from "@prisma/client";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { cache } from "react";
-import { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSessionCookie, verifySessionToken } from "./session";
 
@@ -93,7 +93,12 @@ function makeAuthWrapper<TContext>(roleCheck?: (role: Role) => boolean) {
         if (err instanceof SyntaxError) {
           return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
         }
-        if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "P2025") {
+        if (
+          typeof err === "object" &&
+          err !== null &&
+          "code" in err &&
+          (err as { code: string }).code === "P2025"
+        ) {
           return NextResponse.json({ error: "Not found" }, { status: 404 });
         }
         throw err;
@@ -108,9 +113,9 @@ export function withAuth<TContext = unknown>(handler: RouteHandler<TContext>) {
 
 /** ADMIN or SUPER_ADMIN only. */
 export function withAdminAuth<TContext = unknown>(handler: RouteHandler<TContext>) {
-  return makeAuthWrapper<TContext>(
-    (role) => role === Role.ADMIN || role === Role.SUPER_ADMIN,
-  )(handler);
+  return makeAuthWrapper<TContext>((role) => role === Role.ADMIN || role === Role.SUPER_ADMIN)(
+    handler,
+  );
 }
 
 /** SUPER_ADMIN only. */

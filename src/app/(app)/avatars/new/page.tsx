@@ -10,7 +10,7 @@ export default function NewAvatarPage() {
           Generate with AI or upload your own image
         </p>
       </div>
-      <Suspense fallback={<div className="text-muted-foreground text-sm mt-8">Loading form…</div>}>
+      <Suspense fallback={<div className="mt-8 text-muted-foreground text-sm">Loading form…</div>}>
         <NewAvatarPageContent />
       </Suspense>
     </div>

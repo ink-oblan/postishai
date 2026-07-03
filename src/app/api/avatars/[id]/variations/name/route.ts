@@ -30,7 +30,10 @@ export const POST = withAuth(async function POST(
 
   const adapter = getLLMAdapter(NAME_MODEL_ID);
   const raw = await adapter.generate(prompt);
-  const name = raw.trim().replace(/^["']|["']$/g, "").trim();
+  const name = raw
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .trim();
 
   return NextResponse.json({ name });
 });
