@@ -5,7 +5,6 @@ import type { Platform } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
-import { convertAndCropToJpeg } from "@/lib/image-convert";
 import { writeFile } from "@/lib/storage";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
@@ -32,20 +31,22 @@ function runFfmpeg(args: string[]): Promise<void> {
   });
 }
 
-async function cropVideoTo916(buffer: Buffer): Promise<Buffer> {
+async function cropVideo(
+  buffer: Buffer,
+  targetWidth: number,
+  targetHeight: number,
+): Promise<Buffer> {
   const id = randomBytes(6).toString("hex");
   const tmpIn = `/tmp/caption_crop_in_${id}.mp4`;
   const tmpOut = `/tmp/caption_crop_out_${id}.mp4`;
   try {
     await writeFileFs(tmpIn, buffer);
-    // Center-crop to 9:16: derive crop dimensions from whichever axis fits.
-    // ffmpeg crop filter: crop=w:h:x:y where x/y are top-left offsets.
-    // Using named variables so ffmpeg computes at runtime from actual stream size.
+    const ratio = `${targetWidth}/${targetHeight}`;
     await runFfmpeg([
       "-i",
       tmpIn,
       "-vf",
-      "crop='if(gt(iw/ih,9/16),ih*9/16,iw)':'if(gt(iw/ih,9/16),ih,iw*16/9)':(iw-out_w)/2:(ih-out_h)/2",
+      `crop='if(gt(iw/ih,${ratio}),ih*${ratio},iw)':'if(gt(iw/ih,${ratio}),ih,iw*${targetHeight}/${targetWidth})':(iw-out_w)/2:(ih-out_h)/2`,
       "-c:v",
       "libx264",
       "-preset",
@@ -89,9 +90,8 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
       let buffer: Buffer = Buffer.from(await file.arrayBuffer());
       const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
       if (isVideo) {
-        buffer = await cropVideoTo916(buffer);
-      } else {
-        buffer = await convertAndCropToJpeg(buffer, 4, 5);
+        const [targetW, targetH] = media.length === 1 ? [9, 16] : [4, 5];
+        buffer = await cropVideo(buffer, targetW, targetH);
       }
       const path = `posts/${postId}/${i}.${ext}`;
       await writeFile(path, buffer);
