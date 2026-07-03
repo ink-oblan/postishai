@@ -72,7 +72,7 @@ export function SuccessParticles() {
 // ─── Glasses image (public/static/glasses.png, 1024×228, aspect ≈ 4.49:1) ───
 //
 // Positioned in viewBox "60 0 420 560" coordinate space.
-// mix-blend-mode: multiply makes the white PNG background transparent against
+// mix-blend-mode: multiply makes the background transparent against
 // the orange P body, leaving only the black pixel glasses visible.
 //
 // Reference position (matches the supplied logo mockup):

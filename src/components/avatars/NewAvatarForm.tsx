@@ -150,7 +150,6 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
     setLoading(true);
     const formData = new FormData();
     formData.append("file", file, file.name);
-    formData.append("cropRatio", "4:5");
     fetch("/api/media/convert-to-jpeg", { method: "POST", body: formData })
       .then(async (res) => {
         if (!res.ok) throw new Error("Failed to convert image");

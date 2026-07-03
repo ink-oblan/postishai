@@ -34,13 +34,9 @@ interface InspectResult {
   gender: Gender | null;
 }
 
-function parseBase64Image(
-  imageBase64: string,
-): { base64: string; mimeType: "image/png" | "image/jpeg" } | null {
+function parseBase64Image(imageBase64: string): { base64: string; mimeType: "image/jpeg" } | null {
   if (typeof imageBase64 !== "string" || imageBase64.length === 0) return null;
-  const mimeType: "image/png" | "image/jpeg" = imageBase64.startsWith("data:image/jpeg")
-    ? "image/jpeg"
-    : "image/png";
+  const mimeType = "image/jpeg" as const;
   const base64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
   if (base64.length === 0) return null;
   return { base64, mimeType };
