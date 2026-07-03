@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Upload, X } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { useImageConverter } from "@/lib/hooks/use-image-converter";
@@ -26,21 +26,15 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
   const mediaFilesRef = useRef<MediaFile[]>(mediaFiles);
   mediaFilesRef.current = mediaFiles;
 
-  const updateVideoCropFlags = useCallback(() => {
-    onMediaChange(
-      mediaFiles.map((f) => {
-        if (!f.file.type.startsWith("video/")) return f;
-        const [targetW, targetH] = mediaFiles.length === 1 ? [9, 16] : [4, 5];
-        const willCrop = needsCrop(f.width, f.height, targetW, targetH);
-        if (f.willCrop === willCrop) return f;
-        return { ...f, willCrop };
-      }),
-    );
-  }, [mediaFiles, onMediaChange]);
-
-  useEffect(() => {
-    updateVideoCropFlags();
-  }, [updateVideoCropFlags]);
+  const computeVideoCropFlags = (files: MediaFile[]): MediaFile[] => {
+    return files.map((f) => {
+      if (!f.file.type.startsWith("video/")) return f;
+      const [targetW, targetH] = files.length === 1 ? [9, 16] : [4, 5];
+      const willCrop = needsCrop(f.width, f.height, targetW, targetH);
+      if (f.willCrop === willCrop) return f;
+      return { ...f, willCrop };
+    });
+  };
 
   useEffect(() => {
     return () => {
@@ -136,23 +130,22 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
     }
 
     if (acceptedFiles.length > 0) {
-      onMediaChange([...mediaFiles, ...acceptedFiles]);
-      updateVideoCropFlags();
+      const newFiles = computeVideoCropFlags([...mediaFiles, ...acceptedFiles]);
+      onMediaChange(newFiles);
       const totalNow = mediaFiles.length + acceptedFiles.length;
       toast.success(`${acceptedFiles.length} file(s) added (${totalNow}/${MAX_MEDIA_FILES})`);
     }
   }
 
   function handleRemoveFile(id: string) {
-    onMediaChange(
-      mediaFiles
-        .map((f) => {
-          if (f.id === id) URL.revokeObjectURL(f.previewUrl);
-          return f;
-        })
-        .filter((f) => f.id !== id),
-    );
-    updateVideoCropFlags();
+    const filtered = mediaFiles
+      .map((f) => {
+        if (f.id === id) URL.revokeObjectURL(f.previewUrl);
+        return f;
+      })
+      .filter((f) => f.id !== id);
+    const withFlags = computeVideoCropFlags(filtered);
+    onMediaChange(withFlags);
   }
 
   const canUploadMore = mediaFiles.length < MAX_MEDIA_FILES;

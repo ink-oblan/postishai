@@ -232,7 +232,7 @@ export const postCaptionGenerateJob: JobDefinition<
     const prompt = await renderPromptTemplate("caption-generate-prompt.txt", {
       platformLabel: platform,
       topic: post.title?.trim(),
-      details: undefined,
+      details: post.details?.trim(),
       visualDescriptions: visualDescriptions.map((d) => d.trim()),
     });
 
