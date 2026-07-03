@@ -4,6 +4,7 @@ import { Loader2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import { useImageConverter } from "@/lib/hooks/use-image-converter";
 import { MAX_FILE_SIZE_BYTES, MAX_MEDIA_FILES } from "@/lib/media-constants";
 
 export interface MediaFile {
@@ -56,31 +57,8 @@ function needsCrop(width: number, height: number, targetW: number, targetH: numb
   return Math.abs(width / height - targetW / targetH) > 0.02;
 }
 
-async function convertImageForPreview(file: File): Promise<File> {
-  if (file.type === "image/jpeg" || file.type.startsWith("video/")) {
-    return file;
-  }
-  const formData = new FormData();
-  formData.append("file", file, file.name);
-  try {
-    const res = await fetch("/api/media/convert-to-jpeg", { method: "POST", body: formData });
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to convert ${file.name} to JPEG`);
-    }
-    const jpegBlob = await res.blob();
-    const name = `${file.name.replace(/\.[^.]+$/, "")}.jpg`;
-    return new File([jpegBlob], name, { type: "image/jpeg" });
-  } catch (error) {
-    throw new Error(
-      error instanceof Error
-        ? `Unable to process ${file.name}: ${error.message}`
-        : `Unable to process ${file.name}`,
-    );
-  }
-}
-
 export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: MediaUploaderProps) {
+  const convertImageForPreview = useImageConverter();
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaFilesRef = useRef<MediaFile[]>(mediaFiles);
   mediaFilesRef.current = mediaFiles;

@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useImageConverter } from "@/lib/hooks/use-image-converter";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
 import { MAX_FILE_SIZE_BYTES, MAX_MEDIA_FILES } from "@/lib/media-constants";
 import { PLATFORM_LABELS } from "@/lib/utils";
@@ -69,25 +70,11 @@ function needsCrop(width: number, height: number, targetW: number, targetH: numb
   return Math.abs(width / height - targetW / targetH) > 0.02;
 }
 
-async function convertImageForPreview(file: File): Promise<File> {
-  // Convert non-JPEG images to JPEG for preview/dimension reading.
-  // Videos pass through unchanged.
-  if (file.type === "image/jpeg" || file.type.startsWith("video/")) {
-    return file;
-  }
-  const formData = new FormData();
-  formData.append("file", file, file.name);
-  const res = await fetch("/api/media/convert-to-jpeg", { method: "POST", body: formData });
-  if (!res.ok) throw new Error(`Failed to convert ${file.name} to JPEG`);
-  const jpegBlob = await res.blob();
-  const name = `${file.name.replace(/\.[^.]+$/, "")}.jpg`;
-  return new File([jpegBlob], name, { type: "image/jpeg" });
-}
-
 const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"] as const;
 
 export function CaptionGenerator() {
   const router = useRouter();
+  const convertImageForPreview = useImageConverter();
   const [topic, setTopic] = useState("");
   const [platform, setPlatform] = useState<string>("INSTAGRAM");
   const [details, setDetails] = useState("");
