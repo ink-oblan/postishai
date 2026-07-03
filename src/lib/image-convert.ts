@@ -14,7 +14,7 @@ function isHeic(buffer: Buffer): boolean {
 
 export async function convertToJpeg(buffer: Buffer): Promise<Buffer> {
   if (isHeic(buffer)) {
-    // sharp lacks HEIC support in most libheif builds; use heic-convert directly.
+    // Use heic-convert for HEIC files as sharp may lack HEIF support in some builds.
     const output = await convert({ buffer, format: "JPEG", quality: 0.9 });
     return Buffer.from(output);
   }
@@ -53,4 +53,12 @@ export async function convertAndCropToJpeg(
     .extract({ left, top, width: cropW, height: cropH })
     .jpeg({ quality: 90 })
     .toBuffer();
+}
+
+export async function decodeAndConvertImageBase64(imageBase64: string): Promise<Buffer> {
+  // Decode base64 data URL and convert to JPEG if needed.
+  // If image is already JPEG (detected from mime type), skip conversion.
+  const base64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+  const isMimeJpeg = imageBase64.startsWith("data:image/jpeg");
+  return isMimeJpeg ? Buffer.from(base64, "base64") : convertToJpeg(Buffer.from(base64, "base64"));
 }

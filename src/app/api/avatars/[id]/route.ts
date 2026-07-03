@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
 import { prisma } from "@/lib/db";
-import { convertToJpeg } from "@/lib/image-convert";
+import { decodeAndConvertImageBase64 } from "@/lib/image-convert";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
 import { archiveFile, writeFile } from "@/lib/storage";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
@@ -79,9 +79,8 @@ export const PATCH = withAuth(async function PATCH(
 
   if (regenerate || imageBase64) {
     if (imageBase64) {
-      // Upload: process synchronously
-      const base64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-      const buffer = await convertToJpeg(Buffer.from(base64, "base64"));
+      // Upload: process synchronously. Skip conversion if already JPEG.
+      const buffer = await decodeAndConvertImageBase64(imageBase64);
 
       if (avatar.imagePath && avatar.imagePath !== "") await archiveFile(avatar.imagePath);
 
