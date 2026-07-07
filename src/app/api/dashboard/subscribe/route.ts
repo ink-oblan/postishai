@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { fetchDashboardData } from "@/lib/dashboard-utils";
 import { prisma } from "@/lib/db";
 
 interface ClientConnection {
@@ -13,7 +14,10 @@ const userSubscribers = new Map<string, Set<ClientConnection>>();
 
 function sendEventToUser(userId: string, event: string, data: unknown) {
   const subscribers = userSubscribers.get(userId);
-  if (!subscribers) return;
+  if (!subscribers || subscribers.size === 0) {
+    console.log(`[subscribe] No subscribers for userId=${userId}`);
+    return;
+  }
 
   const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   const encoder = new TextEncoder();
@@ -24,20 +28,25 @@ function sendEventToUser(userId: string, event: string, data: unknown) {
     try {
       conn.controller.enqueue(encoded);
     } catch {
-      // Client disconnected, mark for removal
       toRemove.push(conn);
     }
   }
 
-  // Clean up disconnected clients
   for (const conn of toRemove) {
     clearInterval(conn.heartbeat);
     subscribers.delete(conn);
   }
 }
 
-export function broadcastPostStatusUpdate(userId: string, postId: string, status: string) {
-  sendEventToUser(userId, "post-status-update", { postId, status });
+export async function broadcastPostStatusUpdate(userId: string, postId: string, status: string) {
+  // Fetch fresh dashboard data to include in the update
+  const freshData = await fetchDashboardData(userId);
+  console.log(`[broadcast] Sending post-status-update for postId=${postId}, status=${status}`);
+  sendEventToUser(userId, "post-status-update", {
+    postId,
+    status,
+    stats: freshData,
+  });
 }
 
 export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId }) {
@@ -52,6 +61,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
       }
 
       const encoder = new TextEncoder();
+      console.log(`[subscribe] Client connected for userId=${userId}`);
 
       // Send initial data with current stats
       const currentStats = await prisma.post.groupBy({
@@ -93,14 +103,20 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
               completedCount: updatedCompletedCount,
               postCount: updatedPostCount,
             })}\n\n`;
-            controller.enqueue(encoder.encode(statsData));
+            try {
+              controller.enqueue(encoder.encode(statsData));
+            } catch {
+              // Controller is closed (client disconnected), stop sending
+              clearInterval(statsRefresh);
+              clearInterval(heartbeat);
+              return;
+            }
           }
         } catch (err) {
           console.error("Failed to refresh stats:", err);
         }
       }, 5000);
 
-      // Send heartbeat every 30 seconds to keep connection alive
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(":heartbeat\n\n"));
@@ -108,7 +124,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
           clearInterval(heartbeat);
           clearInterval(statsRefresh);
         }
-      }, 30000);
+      }, 10000);
 
       clientConnection = { controller, heartbeat };
       userSubscribers.get(userId)?.add(clientConnection);
@@ -120,6 +136,9 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
         if (subscribers) {
           clearInterval(clientConnection.heartbeat);
           subscribers.delete(clientConnection);
+          console.log(
+            `[subscribe] Client disconnected for userId=${userId}, ${subscribers.size} subscriber(s) remaining`,
+          );
         }
       }
     },

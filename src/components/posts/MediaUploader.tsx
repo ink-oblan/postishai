@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Upload, X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { validateCaptionMedia } from "@/lib/caption-media-validation";
@@ -18,14 +18,19 @@ import type { MediaFile } from "@/lib/types/media";
 interface MediaUploaderProps {
   mediaFiles: MediaFile[];
   onMediaChange: (files: MediaFile[]) => void;
-  processingCount: number;
+  processingCount?: number;
 }
 
-export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: MediaUploaderProps) {
+export function MediaUploader({
+  mediaFiles,
+  onMediaChange,
+  processingCount = 0,
+}: MediaUploaderProps) {
   const convertMediaForPreview = useMediaConverter();
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaFilesRef = useRef<MediaFile[]>(mediaFiles);
   mediaFilesRef.current = mediaFiles;
+  const [localProcessingCount, setLocalProcessingCount] = useState(0);
 
   const computeVideoCropFlags = (files: MediaFile[]): MediaFile[] => {
     return files.map((f) => {
@@ -77,6 +82,8 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
       files = files.slice(0, spotsAvailable);
     }
 
+    setLocalProcessingCount(files.length);
+
     const results = await Promise.allSettled(
       files.map(async (file) => {
         const isVideo = file.type.startsWith("video/");
@@ -125,6 +132,7 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
       const totalNow = mediaFiles.length + newFiles.length;
       toast.success(`${newFiles.length} file(s) added (${totalNow}/${MAX_CAPTION_MEDIA_FILES})`);
     }
+    setLocalProcessingCount(0);
   }
 
   function handleRemoveFile(id: string) {
@@ -138,6 +146,7 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
     onMediaChange(withFlags);
   }
 
+  const effectiveProcessingCount = localProcessingCount || processingCount;
   const canUploadMore = mediaFiles.length < MAX_CAPTION_MEDIA_FILES;
   const spotsRemaining = MAX_CAPTION_MEDIA_FILES - mediaFiles.length;
 
@@ -188,14 +197,14 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
         <button
           type="button"
           onClick={() => canUploadMore && fileRef.current?.click()}
-          disabled={!canUploadMore || processingCount > 0}
+          disabled={!canUploadMore || effectiveProcessingCount > 0}
           className={`inline-flex items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-xs transition-colors ${
             canUploadMore && processingCount === 0
               ? "cursor-pointer text-muted-foreground hover:border-primary/40 hover:text-foreground"
               : "cursor-not-allowed text-muted-foreground/50 opacity-50"
           }`}
         >
-          {processingCount > 0 ? (
+          {effectiveProcessingCount > 0 ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Processing…

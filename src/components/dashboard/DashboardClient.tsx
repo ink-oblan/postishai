@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { DashboardData } from "@/lib/dashboard-utils";
+import { addEventListener, onTabMessage } from "@/lib/sse-client";
 import { DashboardContent } from "./DashboardContent";
 
 interface Props {
@@ -11,76 +12,34 @@ interface Props {
 export function DashboardClient({ initialData }: Props) {
   const [data, setData] = useState<DashboardData>(initialData);
 
-  // Connect to SSE for real-time updates
   useEffect(() => {
-    const eventSource = new EventSource("/api/dashboard/subscribe");
-
-    // BroadcastChannel for cross-tab communication
-    const channel = new BroadcastChannel("dashboard-updates");
-
-    eventSource.addEventListener("init", async () => {
-      // Initial connection, fetch fresh stats
-      try {
-        const res = await fetch("/api/dashboard/stats");
-        if (res.ok) {
-          const newData = await res.json();
-          setData(newData);
+    const handleUpdate = async (payload: unknown) => {
+      const update = payload as { stats?: DashboardData };
+      if (update.stats) {
+        setData(update.stats);
+      } else {
+        try {
+          const res = await fetch("/api/dashboard/stats");
+          if (res.ok) {
+            const newData = await res.json();
+            setData(newData);
+          }
+        } catch (err) {
+          console.error("[dashboard] Fetch error:", err);
         }
-      } catch (err) {
-        console.error("Failed to fetch fresh stats:", err);
-      }
-    });
-
-    eventSource.addEventListener("stats-refresh", async () => {
-      // Server detected stats change, fetch fresh data
-      try {
-        const res = await fetch("/api/dashboard/stats");
-        if (res.ok) {
-          const newData = await res.json();
-          setData(newData);
-        }
-      } catch (err) {
-        console.error("Failed to fetch fresh stats:", err);
-      }
-    });
-
-    eventSource.addEventListener("post-status-update", async (event) => {
-      // Post status changed, refresh stats and broadcast to other tabs
-      try {
-        const payload = JSON.parse(event.data);
-        console.log("[dashboard] Post status update:", payload);
-
-        const res = await fetch("/api/dashboard/stats");
-        if (res.ok) {
-          const newData = await res.json();
-          setData(newData);
-          // Broadcast to other tabs
-          channel.postMessage({
-            type: "stats-updated",
-            data: newData,
-          });
-        }
-      } catch (err) {
-        console.error("Failed to handle post-status-update:", err);
-      }
-    });
-
-    eventSource.addEventListener("error", () => {
-      console.error("SSE connection error");
-      eventSource.close();
-    });
-
-    // Listen for updates from other tabs
-    channel.onmessage = (event) => {
-      if (event.data.type === "stats-updated") {
-        console.log("[dashboard] Received stats update from another tab");
-        setData(event.data.data);
       }
     };
 
+    const unsubscribeInit = addEventListener("init", handleUpdate);
+    const unsubscribeStatsRefresh = addEventListener("stats-refresh", handleUpdate);
+    const unsubscribePostUpdate = addEventListener("post-status-update", handleUpdate);
+    const unsubscribeTab = onTabMessage("post-status-update", handleUpdate);
+
     return () => {
-      eventSource.close();
-      channel.close();
+      unsubscribeInit();
+      unsubscribeStatsRefresh();
+      unsubscribePostUpdate();
+      unsubscribeTab();
     };
   }, []);
 

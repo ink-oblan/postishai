@@ -1,5 +1,6 @@
 import type { Platform } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
+import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { validateCaptionMedia } from "@/lib/caption-media-validation";
 import { prisma } from "@/lib/db";
@@ -14,12 +15,17 @@ const VIDEO_EXTENSIONS: Record<string, string> = {
 };
 
 export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userId }) {
+  console.log("[generate-caption] POST request started");
   const formData = await req.formData();
   const title = formData.get("title")?.toString();
   const platform = formData.get("platform")?.toString();
   const details = formData.get("details")?.toString();
   const llmModelId = formData.get("llmModelId")?.toString();
   const media = formData.getAll("media").filter((v): v is File => v instanceof File);
+
+  console.log(
+    `[generate-caption] title=${title}, platform=${platform}, media count=${media.length}`,
+  );
 
   if (!title?.trim()) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -72,22 +78,40 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
     // Save media files to storage in parallel (after transaction succeeds)
     await Promise.all(
       media.map(async (file, i) => {
-        const isVideo = file.type.startsWith("video/");
-        const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
-        const path = `posts/${post.id}/${i}.${ext}`;
-        let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
+        try {
+          const isVideo = file.type.startsWith("video/");
+          const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
+          const path = `posts/${post.id}/${i}.${ext}`;
+          let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
 
-        // Convert images to JPEG
-        if (!isVideo) {
-          buffer = await convertToJpeg(buffer);
+          console.log(
+            `[generate-caption] Processing media ${i}: isVideo=${isVideo}, type=${file.type}, size=${buffer.length}`,
+          );
+
+          // Convert images to JPEG
+          if (!isVideo) {
+            console.log(`[generate-caption] Converting image to JPEG`);
+            buffer = await convertToJpeg(buffer);
+            console.log(`[generate-caption] Converted, new size=${buffer.length}`);
+          }
+
+          console.log(`[generate-caption] Writing to storage: ${path}`);
+          await writeFile(path, buffer);
+          console.log(`[generate-caption] Saved successfully: ${path}`);
+        } catch (err) {
+          console.error(`[generate-caption] Failed to save media ${i}:`, err);
+          throw err;
         }
-
-        await writeFile(path, buffer);
       }),
     );
 
     // Enqueue caption generation job
     await enqueuePostCaptionGenerateJob({ postId: post.id });
+
+    // Broadcast post creation and generation start to connected clients (don't wait)
+    broadcastPostStatusUpdate(userId, post.id, "GENERATING").catch((err) => {
+      console.error("Failed to broadcast generation start:", err);
+    });
 
     return NextResponse.json({
       postId: post.id,

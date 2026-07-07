@@ -250,7 +250,9 @@ export const postCaptionGenerateJob: JobDefinition<
       },
     });
     if (post.userId) {
-      broadcastPostStatusUpdate(post.userId, payload.postId, "COMPLETED");
+      broadcastPostStatusUpdate(post.userId, payload.postId, "COMPLETED").catch((err) => {
+        console.error("Failed to broadcast completion:", err);
+      });
     }
   },
   async onFailure(db, payload, error) {
@@ -264,7 +266,9 @@ export const postCaptionGenerateJob: JobDefinition<
       })
       .catch(() => null);
     if (post?.userId) {
-      broadcastPostStatusUpdate(post.userId, payload.postId, "FAILED");
+      broadcastPostStatusUpdate(post.userId, payload.postId, "FAILED").catch((err) => {
+        console.error("Failed to broadcast failure:", err);
+      });
     }
   },
   classifyError(error) {

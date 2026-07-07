@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CaptionPostPanel } from "@/components/posts/CaptionPostPanel";
+import { PostDetailClient } from "@/components/posts/PostDetailClient";
 import { PostEditPanel } from "@/components/posts/PostEditPanel";
 import { VideoSection } from "@/components/posts/VideoSection";
 import { prisma } from "@/lib/db";
@@ -32,6 +33,7 @@ export default async function PostDetailPage({
   if (post.type === "CAPTION") {
     return (
       <div className="space-y-6 px-6 py-8 sm:px-10">
+        <PostDetailClient postId={post.id} initialStatus={post.status} />
         <div className="flex items-center gap-3">
           <Link
             href="/posts"
@@ -75,6 +77,7 @@ export default async function PostDetailPage({
 
   return (
     <div className="space-y-6 px-6 py-8 sm:px-10">
+      <PostDetailClient postId={post.id} initialStatus={post.status} />
       <div className="flex items-center gap-3">
         <Link
           href="/posts"

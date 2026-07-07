@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { convertAndCropToJpeg, convertToJpeg } from "@/lib/image-convert";
-import { MAX_FILE_SIZE_BYTES } from "@/lib/media-constants";
+import { MAX_CAPTION_FILE_SIZE_BYTES } from "@/lib/media-constants";
 
 export const POST = withAuth(async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -12,9 +12,9 @@ export const POST = withAuth(async function POST(req: NextRequest) {
     return NextResponse.json({ error: "file is required" }, { status: 400 });
   }
 
-  if (file.size > MAX_FILE_SIZE_BYTES) {
+  if (file.size > MAX_CAPTION_FILE_SIZE_BYTES) {
     return NextResponse.json(
-      { error: `File size exceeds ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB limit` },
+      { error: `File size exceeds ${MAX_CAPTION_FILE_SIZE_BYTES / 1024 / 1024}MB limit` },
       { status: 413 },
     );
   }
