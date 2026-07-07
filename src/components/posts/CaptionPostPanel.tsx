@@ -41,7 +41,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [captionLoading, setCaptionLoading] = useState(!post.caption);
+  const [captionLoading, setCaptionLoading] = useState(post.status === "GENERATING");
   const [status, setStatus] = useState(post.status);
 
   const captionChanged = caption.trim() !== (savedCaption?.trim() ?? "");

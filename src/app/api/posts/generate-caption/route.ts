@@ -67,21 +67,22 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
       return createdPost;
     });
 
-    // Save media files to storage (after transaction succeeds)
-    for (let i = 0; i < media.length; i++) {
-      const file = media[i];
-      const isVideo = file.type.startsWith("video/");
-      const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
-      const path = `posts/${post.id}/${i}.${ext}`;
-      let buffer = Buffer.from(await file.arrayBuffer());
+    // Save media files to storage in parallel (after transaction succeeds)
+    await Promise.all(
+      media.map(async (file, i) => {
+        const isVideo = file.type.startsWith("video/");
+        const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
+        const path = `posts/${post.id}/${i}.${ext}`;
+        let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
 
-      // Convert images to JPEG
-      if (!isVideo) {
-        buffer = await convertToJpeg(buffer);
-      }
+        // Convert images to JPEG
+        if (!isVideo) {
+          buffer = await convertToJpeg(buffer);
+        }
 
-      await writeFile(path, buffer);
-    }
+        await writeFile(path, buffer);
+      }),
+    );
 
     // Enqueue caption generation job
     await enqueuePostCaptionGenerateJob({ postId: post.id });

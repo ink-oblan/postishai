@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-export function useImageConverter() {
+export function useMediaConverter() {
   return useCallback(async (file: File): Promise<File> => {
     // Convert non-JPEG images to JPEG. Videos and JPEG files pass through unchanged.
     if (file.type === "image/jpeg" || file.type.startsWith("video/")) {

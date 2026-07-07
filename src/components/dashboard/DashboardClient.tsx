@@ -1,23 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-interface DashboardData {
-  avatarCount: number;
-  postCount: number;
-  completedCount: number;
-  generatingCount: number;
-  completionRate: number;
-  recentPosts: Array<{
-    id: string;
-    type: string;
-    title: string;
-    status: string;
-    avatar: { name: string } | null;
-    createdAt: string;
-  }>;
-}
-
+import type { DashboardData } from "@/lib/dashboard-utils";
 import { DashboardContent } from "./DashboardContent";
 
 interface Props {

@@ -1,21 +1,8 @@
 import { ArrowUpRight, Plus, Zap } from "lucide-react";
 import Link from "next/link";
-
-interface DashboardData {
-  avatarCount: number;
-  postCount: number;
-  completedCount: number;
-  generatingCount: number;
-  completionRate: number;
-  recentPosts: Array<{
-    id: string;
-    type: string;
-    title: string;
-    status: string;
-    avatar: { name: string } | null;
-    createdAt: string;
-  }>;
-}
+import { PlatformChip } from "@/components/ui/platform-chip";
+import { StatusPip } from "@/components/ui/status-pip";
+import type { DashboardData } from "@/lib/dashboard-utils";
 
 export function DashboardContent({ data }: { data: DashboardData }) {
   const { avatarCount, postCount, completedCount, generatingCount, completionRate, recentPosts } =
@@ -218,36 +205,6 @@ export function DashboardContent({ data }: { data: DashboardData }) {
           </Link>
         </div>
       </div>
-    </div>
-  );
-}
-
-function PlatformChip({ platform }: { platform: string }) {
-  const PLATFORM_LABELS: Record<string, string> = {
-    AVATAR_VIDEO: "Video",
-    CAPTION: "Caption",
-  };
-
-  return (
-    <span className="hidden rounded-md border border-border px-2 py-0.5 font-semibold text-[11px] text-muted-foreground tracking-wide sm:inline-flex">
-      {PLATFORM_LABELS[platform] ?? platform}
-    </span>
-  );
-}
-
-const STATUS_CONFIG: Record<string, { dot: string; label: string }> = {
-  DRAFT: { dot: "bg-muted-foreground/40", label: "Draft" },
-  GENERATING: { dot: "bg-yellow-400 animate-pulse", label: "Generating" },
-  COMPLETED: { dot: "bg-primary", label: "Done" },
-  FAILED: { dot: "bg-destructive", label: "Failed" },
-};
-
-function StatusPip({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.DRAFT;
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.dot}`} />
-      <span className="hidden text-muted-foreground text-xs sm:inline">{cfg.label}</span>
     </div>
   );
 }

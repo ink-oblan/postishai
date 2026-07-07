@@ -7,6 +7,7 @@ import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { LLMModelAdapter } from "@/lib/llm-models/types";
 import { renderPromptTemplate } from "@/lib/prompts";
 import { readFile as readFileStorage } from "@/lib/storage";
+import { PLATFORM_FULL_NAMES } from "@/lib/utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition, PostCaptionGeneratePayload } from "@/workers/types";
 
@@ -215,14 +216,7 @@ export const postCaptionGenerateJob: JobDefinition<
       }
     }
 
-    const platform =
-      post.platform === "INSTAGRAM"
-        ? "Instagram Reels"
-        : post.platform === "TIKTOK"
-          ? "TikTok"
-          : post.platform === "YOUTUBE_SHORTS"
-            ? "YouTube Shorts"
-            : "short-form video";
+    const platform = PLATFORM_FULL_NAMES[post.platform] ?? "short-form video";
 
     // Get media descriptions
     const adapter = getLLMAdapter(post.llmModelId);
