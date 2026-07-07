@@ -4,6 +4,7 @@ import { Loader2, Upload, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import { validateCaptionMedia } from "@/lib/caption-media-validation";
 import { useMediaConverter } from "@/lib/hooks/use-media-converter";
 import {
   ASPECT_RATIO_MULTI_MEDIA,
@@ -47,24 +48,27 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
     e.target.value = "";
     if (files.length === 0) return;
 
-    // Check file sizes
-    const oversizedFiles = files.filter((f) => f.size > MAX_CAPTION_FILE_SIZE_BYTES);
-    if (oversizedFiles.length > 0) {
-      toast.error(
-        `${oversizedFiles.length} file(s) exceed ${Math.round(MAX_CAPTION_FILE_SIZE_BYTES / 1024 / 1024)}MB limit: ${oversizedFiles.map((f) => f.name).join(", ")}`,
-      );
+    // Validate individual files first
+    const validationError = validateCaptionMedia(files);
+    if (validationError?.type === "oversized_files") {
+      toast.error(validationError.message);
+      // Filter out oversized files and continue
       files = files.filter((f) => f.size <= MAX_CAPTION_FILE_SIZE_BYTES);
       if (files.length === 0) return;
+    } else if (validationError) {
+      // For other errors, just toast and return
+      toast.error(validationError.message);
+      return;
     }
 
-    // Check if we can accept any more files
-    if (mediaFiles.length >= MAX_CAPTION_MEDIA_FILES) {
+    // Check if we can accept any more files (accounting for already uploaded)
+    const spotsAvailable = MAX_CAPTION_MEDIA_FILES - mediaFiles.length;
+    if (spotsAvailable <= 0) {
       toast.error(`Maximum ${MAX_CAPTION_MEDIA_FILES} files reached. Remove files to add more.`);
       return;
     }
 
-    // Limit files to available spots
-    const spotsAvailable = MAX_CAPTION_MEDIA_FILES - mediaFiles.length;
+    // Limit to available spots
     const selectedCount = files.length;
     if (files.length > spotsAvailable) {
       toast.warning(
@@ -115,27 +119,11 @@ export function MediaUploader({ mediaFiles, onMediaChange, processingCount }: Me
       }
     }
 
-    // Enforce strict 20-file limit - reject excess files
-    let acceptedFiles = newFiles;
-    const finalSpotsAvailable = MAX_CAPTION_MEDIA_FILES - mediaFiles.length;
-    if (acceptedFiles.length > finalSpotsAvailable) {
-      // Revoke URLs for files that won't be accepted
-      acceptedFiles.slice(finalSpotsAvailable).forEach((f) => {
-        URL.revokeObjectURL(f.previewUrl);
-      });
-      toast.error(
-        `Only ${finalSpotsAvailable} more file(s) can be added. You have ${mediaFiles.length}/${MAX_CAPTION_MEDIA_FILES} files.`,
-      );
-      acceptedFiles = acceptedFiles.slice(0, finalSpotsAvailable);
-    }
-
-    if (acceptedFiles.length > 0) {
-      const newFiles = computeVideoCropFlags([...mediaFiles, ...acceptedFiles]);
-      onMediaChange(newFiles);
-      const totalNow = mediaFiles.length + acceptedFiles.length;
-      toast.success(
-        `${acceptedFiles.length} file(s) added (${totalNow}/${MAX_CAPTION_MEDIA_FILES})`,
-      );
+    if (newFiles.length > 0) {
+      const filesWithCropFlags = computeVideoCropFlags([...mediaFiles, ...newFiles]);
+      onMediaChange(filesWithCropFlags);
+      const totalNow = mediaFiles.length + newFiles.length;
+      toast.success(`${newFiles.length} file(s) added (${totalNow}/${MAX_CAPTION_MEDIA_FILES})`);
     }
   }
 
