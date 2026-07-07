@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
+import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { runFfmpeg, runFfprobe } from "@/lib/ffmpeg";
 import { convertToJpeg } from "@/lib/image-convert";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
@@ -245,7 +246,7 @@ export const postCaptionGenerateJob: JobDefinition<
     };
   },
   async onSuccess(db, payload, result) {
-    await db.post.update({
+    const post = await db.post.update({
       where: { id: payload.postId },
       data: {
         status: "COMPLETED",
@@ -254,9 +255,12 @@ export const postCaptionGenerateJob: JobDefinition<
         updatedAt: new Date(),
       },
     });
+    if (post.userId) {
+      broadcastPostStatusUpdate(post.userId, payload.postId, "COMPLETED");
+    }
   },
   async onFailure(db, payload, error) {
-    await db.post
+    const post = await db.post
       .update({
         where: { id: payload.postId },
         data: {
@@ -264,7 +268,10 @@ export const postCaptionGenerateJob: JobDefinition<
           errorMessage: error,
         },
       })
-      .catch(() => {});
+      .catch(() => null);
+    if (post?.userId) {
+      broadcastPostStatusUpdate(post.userId, payload.postId, "FAILED");
+    }
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";
