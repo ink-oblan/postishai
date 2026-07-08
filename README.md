@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/ink-oblan/postishai/actions/workflows/ci.yml"><img src="https://github.com/ink-oblan/postishai/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://github.com/ink-oblan/postishai/actions/workflows/deploy.yml"><img src="https://github.com/ink-oblan/postishai/actions/workflows/deploy.yml/badge.svg" alt="Deploy" /></a>
   <a href="./LICENSE.md"><img src="https://img.shields.io/badge/license-Sustainable%20Use-blue" alt="License" /></a>
   <img src="https://img.shields.io/badge/self--hosted-%E2%9C%93-green" alt="Self-hosted" />
