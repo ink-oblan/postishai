@@ -1,9 +1,14 @@
 // Global SSE connection + BroadcastChannel for tab sync
 
 type EventHandler = (data: unknown) => void;
+type EventType = "init" | "stats-refresh" | "post-status-update";
+
+const DEBUG = typeof window !== "undefined" && process.env.NODE_ENV === "development";
 
 let eventSource: EventSource | null = null;
 let channel: BroadcastChannel | null = null;
+let reconnectDelay = 1000; // Start with 1 second
+const MAX_RECONNECT_DELAY = 30000; // Cap at 30 seconds
 const sseHandlers = new Map<string, Set<EventHandler>>();
 const tabHandlers = new Map<string, Set<EventHandler>>();
 
@@ -25,37 +30,46 @@ function initChannel() {
 
 function connect() {
   if (eventSource) {
-    console.log("[SSE] Already connected");
+    if (DEBUG) console.log("[SSE] Already connected");
     return;
   }
 
-  console.log("[SSE] Connecting");
+  if (DEBUG) console.log("[SSE] Connecting");
   const source = new EventSource("/api/dashboard/subscribe");
 
   let isOpen = false;
 
   source.onopen = () => {
     isOpen = true;
-    console.log("[SSE] Connected");
+    reconnectDelay = 1000; // Reset backoff on successful connection
+    if (DEBUG) console.log("[SSE] Connected");
   };
 
   const handleEvent = (eventType: string) => {
     return (event: Event) => {
       try {
         const data = JSON.parse((event as MessageEvent).data);
-        console.log(`[SSE] Got ${eventType}`);
+        if (DEBUG) console.log(`[SSE] Got ${eventType}`);
 
         // Call local handlers
         const handlers = sseHandlers.get(eventType);
         if (handlers) {
           for (const handler of handlers) {
-            handler(data);
+            try {
+              handler(data);
+            } catch (handlerErr) {
+              console.error(`[SSE] Handler error for ${eventType}:`, handlerErr);
+            }
           }
         }
 
         // Broadcast to other tabs
         if (channel) {
-          channel.postMessage({ type: eventType, data });
+          try {
+            channel.postMessage({ type: eventType, data });
+          } catch (broadcastErr) {
+            console.error(`[SSE] Failed to broadcast ${eventType}:`, broadcastErr);
+          }
         }
       } catch (err) {
         console.error(`[SSE] Parse error for ${eventType}:`, err);
@@ -63,19 +77,21 @@ function connect() {
     };
   };
 
-  source.addEventListener("init", handleEvent("init"));
-  source.addEventListener("stats-refresh", handleEvent("stats-refresh"));
-  source.addEventListener("post-status-update", handleEvent("post-status-update"));
+  const eventTypes: EventType[] = ["init", "stats-refresh", "post-status-update"];
+  for (const eventType of eventTypes) {
+    source.addEventListener(eventType, handleEvent(eventType));
+  }
 
   source.onerror = () => {
     if (isOpen) {
-      console.log("[SSE] Connection closed, reconnecting in 3s");
+      if (DEBUG) console.log(`[SSE] Connection closed, reconnecting in ${reconnectDelay}ms`);
     } else {
-      console.log("[SSE] Connection failed");
+      if (DEBUG) console.log(`[SSE] Connection failed, reconnecting in ${reconnectDelay}ms`);
     }
     source.close();
     eventSource = null;
-    setTimeout(connect, 3000);
+    setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
   };
 
   eventSource = source;
@@ -92,7 +108,17 @@ export function addEventListener(type: string, handler: EventHandler): () => voi
   }
 
   return () => {
-    sseHandlers.get(type)?.delete(handler);
+    const handlers = sseHandlers.get(type);
+    handlers?.delete(handler);
+
+    if (handlers?.size === 0) {
+      const hasAnyHandlers = Array.from(sseHandlers.values()).some((set) => set.size > 0);
+      if (!hasAnyHandlers && eventSource) {
+        if (DEBUG) console.log("[SSE] No more handlers, closing connection");
+        eventSource.close();
+        eventSource = null;
+      }
+    }
   };
 }
 
@@ -105,7 +131,17 @@ export function onTabMessage(type: string, handler: EventHandler): () => void {
   tabHandlers.get(type)?.add(handler);
 
   return () => {
-    tabHandlers.get(type)?.delete(handler);
+    const handlers = tabHandlers.get(type);
+    handlers?.delete(handler);
+
+    if (handlers?.size === 0) {
+      const hasAnyTabHandlers = Array.from(tabHandlers.values()).some((set) => set.size > 0);
+      if (!hasAnyTabHandlers && channel) {
+        if (DEBUG) console.log("[SSE] No more tab listeners, closing BroadcastChannel");
+        channel.close();
+        channel = null;
+      }
+    }
   };
 }
 

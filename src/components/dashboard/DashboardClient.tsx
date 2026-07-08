@@ -1,9 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DashboardData } from "@/lib/dashboard-utils";
-import { addEventListener, onTabMessage } from "@/lib/sse-client";
+import { addEventListener } from "@/lib/sse-client";
 import { DashboardContent } from "./DashboardContent";
+
+function createDebounce<T>(callback: (value: T) => void, delay: number) {
+  let timeoutId: NodeJS.Timeout | null = null;
+  return (value: T) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      callback(value);
+      timeoutId = null;
+    }, delay);
+  };
+}
 
 interface Props {
   initialData: DashboardData;
@@ -12,36 +23,24 @@ interface Props {
 export function DashboardClient({ initialData }: Props) {
   const [data, setData] = useState<DashboardData>(initialData);
 
+  const debouncedSetData = useMemo(() => createDebounce(setData, 300), []);
+
   useEffect(() => {
-    const handleUpdate = async (payload: unknown) => {
-      const update = payload as { stats?: DashboardData };
-      if (update.stats) {
-        setData(update.stats);
-      } else {
-        try {
-          const res = await fetch("/api/dashboard/stats");
-          if (res.ok) {
-            const newData = await res.json();
-            setData(newData);
-          }
-        } catch (err) {
-          console.error("[dashboard] Fetch error:", err);
-        }
-      }
+    const handleUpdate = (payload: unknown) => {
+      const update = payload as { stats: DashboardData };
+      debouncedSetData(update.stats);
     };
 
     const unsubscribeInit = addEventListener("init", handleUpdate);
     const unsubscribeStatsRefresh = addEventListener("stats-refresh", handleUpdate);
     const unsubscribePostUpdate = addEventListener("post-status-update", handleUpdate);
-    const unsubscribeTab = onTabMessage("post-status-update", handleUpdate);
 
     return () => {
       unsubscribeInit();
       unsubscribeStatsRefresh();
       unsubscribePostUpdate();
-      unsubscribeTab();
     };
-  }, []);
+  }, [debouncedSetData]);
 
   return <DashboardContent data={data} />;
 }

@@ -47,9 +47,9 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     const result = await adapter.generate({ prompt, aspectRatio: "9:16" });
 
     // Always save avatars as JPG.
-    let buffer = Buffer.from(result.base64, "base64");
+    let buffer: Buffer = Buffer.from(result.base64, "base64");
     if (result.mimeType !== "image/jpeg") {
-      buffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
+      buffer = (await sharp(buffer).jpeg({ quality: 90 }).toBuffer()) as Buffer;
     }
     const imagePath = `avatars/${avatarId}.jpg`;
 

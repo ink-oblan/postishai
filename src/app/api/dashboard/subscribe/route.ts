@@ -64,21 +64,24 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
       console.log(`[subscribe] Client connected for userId=${userId}`);
 
       // Send initial data with current stats
-      const currentStats = await prisma.post.groupBy({
-        by: ["status"],
-        where: { userId, archivedAt: null },
-        _count: true,
-      });
-
-      const byStatus = Object.fromEntries(currentStats.map((s) => [s.status, s._count]));
-      const generatingCount = byStatus.GENERATING ?? 0;
-
-      const initialData = `event: init\ndata: ${JSON.stringify({ generatingCount })}\n\n`;
+      const currentStats = await fetchDashboardData(userId);
+      const initialData = `event: init\ndata: ${JSON.stringify({ stats: currentStats })}\n\n`;
       controller.enqueue(encoder.encode(initialData));
 
-      // Refresh stats every 5 seconds to catch updates from other processes
-      let lastGeneratingCount = generatingCount;
+      const byStatus = Object.fromEntries(
+        (
+          await prisma.post.groupBy({
+            by: ["status"],
+            where: { userId, archivedAt: null },
+            _count: true,
+          })
+        ).map((s) => [s.status, s._count]),
+      );
+      let lastGeneratingCount = byStatus.GENERATING ?? 0;
 
+      let heartbeat: NodeJS.Timeout;
+
+      // Refresh stats every 5 seconds to catch updates from other processes
       const statsRefresh = setInterval(async () => {
         try {
           const updated = await prisma.post.groupBy({
@@ -89,20 +92,12 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
 
           const updatedByStatus = Object.fromEntries(updated.map((s) => [s.status, s._count]));
           const updatedGeneratingCount = updatedByStatus.GENERATING ?? 0;
-          const updatedCompletedCount = updatedByStatus.COMPLETED ?? 0;
-          const updatedPostCount = Object.values(updatedByStatus).reduce(
-            (a, b) => a + (b as number),
-            0,
-          );
 
           // Send stats-refresh if any count changed
           if (updatedGeneratingCount !== lastGeneratingCount) {
             lastGeneratingCount = updatedGeneratingCount;
-            const statsData = `event: stats-refresh\ndata: ${JSON.stringify({
-              generatingCount: updatedGeneratingCount,
-              completedCount: updatedCompletedCount,
-              postCount: updatedPostCount,
-            })}\n\n`;
+            const freshData = await fetchDashboardData(userId);
+            const statsData = `event: stats-refresh\ndata: ${JSON.stringify({ stats: freshData })}\n\n`;
             try {
               controller.enqueue(encoder.encode(statsData));
             } catch {
@@ -117,7 +112,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
         }
       }, 5000);
 
-      const heartbeat = setInterval(() => {
+      heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(":heartbeat\n\n"));
         } catch {

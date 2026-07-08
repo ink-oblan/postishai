@@ -12,12 +12,14 @@ export function PostDetailClient({ postId, initialStatus }: PostDetailClientProp
   const [status, setStatus] = useState(initialStatus);
 
   useEffect(() => {
-    const unsubscribe = addEventListener("post-status-update", (payload: unknown) => {
+    const handleUpdate = (payload: unknown) => {
       const update = payload as { postId: string; status: string };
       if (update.postId === postId) {
         setStatus(update.status);
       }
-    });
+    };
+
+    const unsubscribe = addEventListener("post-status-update", handleUpdate);
 
     return () => {
       unsubscribe();

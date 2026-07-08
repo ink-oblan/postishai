@@ -120,7 +120,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
         title: post.title,
         platform: post.platform,
         caption: post.caption,
-        status: post.status,
+        status: "GENERATING",
         media: await prisma.postMedia.findMany({
           where: { postId: post.id },
           orderBy: { order: "asc" },
