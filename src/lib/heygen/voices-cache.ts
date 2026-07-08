@@ -51,36 +51,44 @@ export async function refreshHeyGenVoiceCache(): Promise<HeyGenVoice[]> {
   const now = new Date();
   const voiceIds = voices.map((voice) => voice.voice_id);
 
-  await prisma.$transaction([
-    ...voices.map((voice) =>
-      prisma.heyGenVoice.upsert({
-        where: { voiceId: voice.voice_id },
-        create: {
-          voiceId: voice.voice_id,
-          name: voice.name,
-          language: voice.language,
-          gender: voice.gender,
-          previewAudio: voice.preview_audio ?? null,
-          raw: voice as unknown as Prisma.InputJsonValue,
-          active: true,
-          lastSeenAt: now,
-        },
-        update: {
-          name: voice.name,
-          language: voice.language,
-          gender: voice.gender,
-          previewAudio: voice.preview_audio ?? null,
-          raw: voice as unknown as Prisma.InputJsonValue,
-          active: true,
-          lastSeenAt: now,
-        },
-      }),
-    ),
-    prisma.heyGenVoice.updateMany({
-      where: { voiceId: { notIn: voiceIds }, active: true },
-      data: { active: false },
-    }),
-  ]);
+  // Batch upserts in chunks to avoid transaction timeout
+  // Processing all voices in one transaction was causing 5s+ operations
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < voices.length; i += BATCH_SIZE) {
+    const batch = voices.slice(i, i + BATCH_SIZE);
+    await prisma.$transaction(
+      batch.map((voice) =>
+        prisma.heyGenVoice.upsert({
+          where: { voiceId: voice.voice_id },
+          create: {
+            voiceId: voice.voice_id,
+            name: voice.name,
+            language: voice.language,
+            gender: voice.gender,
+            previewAudio: voice.preview_audio ?? null,
+            raw: voice as unknown as Prisma.InputJsonValue,
+            active: true,
+            lastSeenAt: now,
+          },
+          update: {
+            name: voice.name,
+            language: voice.language,
+            gender: voice.gender,
+            previewAudio: voice.preview_audio ?? null,
+            raw: voice as unknown as Prisma.InputJsonValue,
+            active: true,
+            lastSeenAt: now,
+          },
+        }),
+      ),
+    );
+  }
+
+  // Mark voices that are no longer from HeyGen as inactive
+  await prisma.heyGenVoice.updateMany({
+    where: { voiceId: { notIn: voiceIds }, active: true },
+    data: { active: false },
+  });
 
   return readCachedVoices();
 }
