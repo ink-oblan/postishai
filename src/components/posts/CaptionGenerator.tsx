@@ -1,9 +1,10 @@
 "use client";
 
-import { Check, Copy, Loader2, Save, Sparkles, Upload, X } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { MediaUploader } from "@/components/posts/MediaUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
+import type { MediaFile } from "@/lib/types/media";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
 interface LLMModel {
@@ -24,75 +26,17 @@ interface LLMModel {
   description: string;
 }
 
-interface MediaFile {
-  id: string;
-  name: string;
-  file: File;
-  previewUrl: string;
-  willCrop: boolean;
-}
-
-function getMediaDimensions(file: File): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    if (file.type.startsWith("video/")) {
-      const video = document.createElement("video");
-      video.preload = "metadata";
-      video.onloadedmetadata = () => {
-        URL.revokeObjectURL(url);
-        resolve({ width: video.videoWidth, height: video.videoHeight });
-      };
-      video.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error(`Could not read dimensions of ${file.name}`));
-      };
-      video.src = url;
-    } else {
-      const img = new window.Image();
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        resolve({ width: img.naturalWidth, height: img.naturalHeight });
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error(`Could not read dimensions of ${file.name}`));
-      };
-      img.src = url;
-    }
-  });
-}
-
-function needsCrop(width: number, height: number, targetW: number, targetH: number): boolean {
-  return Math.abs(width / height - targetW / targetH) > 0.02;
-}
-
-async function toJpegFile(file: File): Promise<File> {
-  const formData = new FormData();
-  formData.append("file", file, file.name);
-  const res = await fetch("/api/media/convert-image", { method: "POST", body: formData });
-  if (!res.ok) throw new Error(`Failed to convert ${file.name} to JPEG`);
-  const jpegBlob = await res.blob();
-  const name = `${file.name.replace(/\.[^.]+$/, "")}.jpg`;
-  return new File([jpegBlob], name, { type: "image/jpeg" });
-}
-
 const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"] as const;
 
 export function CaptionGenerator() {
   const router = useRouter();
-  const [topic, setTopic] = useState("");
+  const [title, setTitle] = useState("");
   const [platform, setPlatform] = useState<string>("INSTAGRAM");
   const [details, setDetails] = useState("");
   const [llmModelId, setLlmModelId] = useState(DEFAULT_LLM_MODEL_ID);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
-  const [caption, setCaption] = useState("");
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
-  const mediaFilesRef = useRef<MediaFile[]>(mediaFiles);
-  mediaFilesRef.current = mediaFiles;
-  const [title, setTitle] = useState("");
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/llm-models")
@@ -100,59 +44,19 @@ export function CaptionGenerator() {
       .then(setLLMModels);
   }, []);
 
-  async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    if (files.length === 0) return;
-
-    const results = await Promise.allSettled(
-      files.map(async (file) => {
-        const isVideo = file.type.startsWith("video/");
-        const [resolved, { width, height }] = await Promise.all([
-          isVideo ? file : toJpegFile(file),
-          getMediaDimensions(file),
-        ]);
-        const [targetW, targetH] = isVideo ? [9, 16] : [4, 5];
-        return {
-          id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
-          name: resolved.name,
-          file: resolved,
-          previewUrl: URL.createObjectURL(resolved),
-          willCrop: needsCrop(width, height, targetW, targetH),
-        };
-      }),
-    );
-
-    const newFiles: MediaFile[] = [];
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        newFiles.push(result.value);
-      } else {
-        toast.error(result.reason instanceof Error ? result.reason.message : "Failed to add file");
-      }
-    }
-    if (newFiles.length > 0) setMediaFiles((prev) => [...prev, ...newFiles]);
-  }
-
-  function handleRemoveFile(id: string) {
-    setMediaFiles((prev) => {
-      const removed = prev.find((f) => f.id === id);
-      if (removed) URL.revokeObjectURL(removed.previewUrl);
-      return prev.filter((f) => f.id !== id);
-    });
-  }
-
-  useEffect(() => {
-    return () => {
-      for (const f of mediaFilesRef.current) URL.revokeObjectURL(f.previewUrl);
-    };
-  }, []);
-
   async function handleGenerate() {
+    if (!title.trim()) {
+      toast.error("Please enter a title for the post");
+      return;
+    }
+    if (mediaFiles.length === 0) {
+      toast.error("Please upload at least one media file");
+      return;
+    }
     setLoading(true);
     try {
       const formData = new FormData();
-      if (topic.trim()) formData.set("topic", topic.trim());
+      formData.set("title", title.trim());
       formData.set("platform", platform);
       if (details.trim()) formData.set("details", details.trim());
       formData.set("llmModelId", llmModelId);
@@ -166,119 +70,28 @@ export function CaptionGenerator() {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to generate caption");
       }
-      const { caption: generated } = await res.json();
-      setCaption(generated);
-      setCopied(false);
-      if (!title.trim()) setTitle(topic.trim() || "Caption post");
-      toast.success("Caption generated!");
+      const { postId } = await res.json();
+
+      // Navigate to post page where caption will load
+      router.push(`/posts/${postId}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate caption");
-    } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleCopy() {
-    await navigator.clipboard.writeText(caption);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
-  async function handleSavePost() {
-    setSaving(true);
-    try {
-      const formData = new FormData();
-      formData.set("title", title.trim());
-      formData.set("platform", platform);
-      formData.set("caption", caption);
-      for (const f of mediaFiles) formData.append("media", f.file, f.name);
-
-      const res = await fetch("/api/posts/caption", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to save post");
-      }
-      const post = await res.json();
-      toast.success("Post saved!");
-      router.push(`/posts/${post.id}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save post");
-    } finally {
-      setSaving(false);
     }
   }
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Media (optional)</Label>
-        <p className="text-muted-foreground text-xs">
-          Upload your finished media so the AI can describe what&apos;s shown and write a caption
-          that fits. Photos and carousels must be 4:5; single videos must be 9:16.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {mediaFiles.map((f) => (
-            <div
-              key={f.id}
-              className="group relative h-20 w-20 overflow-hidden rounded-md border bg-muted/40"
-            >
-              {f.file.type.startsWith("video/") ? (
-                // eslint-disable-next-line jsx-a11y/media-has-caption
-                <video
-                  src={f.previewUrl}
-                  className="h-full w-full object-cover"
-                  muted
-                  playsInline
-                />
-              ) : (
-                // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
-                <img src={f.previewUrl} alt={f.name} className="h-full w-full object-cover" />
-              )}
-              <button
-                type="button"
-                onClick={() => handleRemoveFile(f.id)}
-                className="absolute top-1 right-1 rounded-full bg-background/80 p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
-                aria-label={`Remove ${f.name}`}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-              {f.willCrop && (
-                <span className="absolute top-1 left-1 rounded bg-black/60 px-1 text-[9px] text-white">
-                  Will crop
-                </span>
-              )}
-              <span className="absolute inset-x-0 bottom-0 truncate bg-background/70 px-1 text-[10px]">
-                {f.name}
-              </span>
-            </div>
-          ))}
-          <Label
-            htmlFor="media-upload"
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-muted-foreground text-xs transition-colors hover:border-primary/40 hover:text-foreground"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            Upload media
-          </Label>
-          <input
-            id="media-upload"
-            type="file"
-            accept="image/*,video/*,.heic,.heif"
-            multiple
-            className="sr-only"
-            onChange={handleFilesSelected}
-          />
-        </div>
-      </div>
+      <MediaUploader mediaFiles={mediaFiles} onMediaChange={setMediaFiles} processingCount={0} />
 
       <div className="space-y-2">
-        <Label htmlFor="topic">Topic (optional)</Label>
+        <Label htmlFor="title">
+          Post Title<span className="text-destructive">*</span>
+        </Label>
         <Input
-          id="topic"
-          value={topic}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTopic(e.target.value)}
+          id="title"
+          value={title}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
           placeholder="e.g. Summer Sale Announcement"
         />
       </div>
@@ -329,7 +142,7 @@ export function CaptionGenerator() {
         </Select>
       </div>
 
-      <Button onClick={handleGenerate} disabled={loading}>
+      <Button onClick={handleGenerate} disabled={loading || !title.trim()}>
         {loading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -342,62 +155,6 @@ export function CaptionGenerator() {
           </>
         )}
       </Button>
-
-      {caption && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="caption">Caption</Label>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 font-medium text-primary text-xs transition-colors hover:text-primary/80"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3.5 w-3.5" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" />
-                  Copy
-                </>
-              )}
-            </button>
-          </div>
-          <Textarea
-            id="caption"
-            value={caption}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCaption(e.target.value)}
-            rows={4}
-          />
-          <p className="text-muted-foreground text-xs">{caption.length} characters</p>
-
-          <div className="space-y-2 pt-2">
-            <Label htmlFor="post-title">Post title</Label>
-            <Input
-              id="post-title"
-              value={title}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-              placeholder="e.g. Summer Sale Announcement"
-            />
-          </div>
-
-          <Button onClick={handleSavePost} disabled={saving || !title.trim() || !caption.trim()}>
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Post
-              </>
-            )}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

@@ -17,7 +17,7 @@ function headers(extra?: Record<string, string>) {
 
 export async function uploadAvatarImage(
   imageBuffer: Buffer,
-  mimeType = "image/png",
+  mimeType = "image/jpeg",
 ): Promise<{ assetId: string; assetUrl: string }> {
   const res = await fetch(`${UPLOAD_BASE}/v1/asset`, {
     method: "POST",

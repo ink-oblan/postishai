@@ -11,14 +11,10 @@ interface ImageCropperProps {
   src: string | null;
   aspect?: number;
   onCancel: () => void;
-  onConfirm: (croppedDataUrl: string, mimeType: "image/png" | "image/jpeg") => void;
+  onConfirm: (croppedDataUrl: string, mimeType: "image/jpeg") => void;
 }
 
-function renderCrop(
-  img: HTMLImageElement,
-  pixelCrop: PixelCrop,
-  mimeType: "image/png" | "image/jpeg",
-): string {
+function renderCrop(img: HTMLImageElement, pixelCrop: PixelCrop, mimeType: "image/jpeg"): string {
   const scaleX = img.naturalWidth / img.width;
   const scaleY = img.naturalHeight / img.height;
   const canvas = document.createElement("canvas");
@@ -75,9 +71,7 @@ export function ImageCropper({
     if (!imgRef.current || !completedCrop) return;
     setBusy(true);
     try {
-      const mimeType: "image/png" | "image/jpeg" = displaySrc?.startsWith("data:image/jpeg")
-        ? "image/jpeg"
-        : "image/png";
+      const mimeType = "image/jpeg" as const;
       const dataUrl = renderCrop(imgRef.current, completedCrop, mimeType);
       onConfirm(dataUrl, mimeType);
     } finally {

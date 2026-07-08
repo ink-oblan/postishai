@@ -24,6 +24,12 @@ export const PLATFORM_LABELS: Record<string, string> = {
   YOUTUBE_SHORTS: "YT Shorts",
 };
 
+export const PLATFORM_FULL_NAMES: Record<string, string> = {
+  INSTAGRAM: "Instagram Reels",
+  TIKTOK: "TikTok",
+  YOUTUBE_SHORTS: "YouTube Shorts",
+};
+
 export const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   DRAFT: { label: "Draft", className: "bg-muted text-muted-foreground" },
   GENERATING: {

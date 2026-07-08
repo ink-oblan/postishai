@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
+import { MAX_AVATAR_SIZE_BYTES } from "@/lib/media-constants";
 
 interface ImageModel {
   id: string;
@@ -52,8 +53,6 @@ const WARNING_LABELS: Record<string, string> = {
   multiple_people: "more than one person in the frame",
   heavy_filter: "a strong filter or beautification effect altering the subject",
 };
-
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 
 interface InspectionResult {
   decision: "accept" | "reject";
@@ -143,17 +142,33 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
   }, [gender, mode, voiceManuallySelected, voices]);
 
   const processFile = useCallback((file: File): void => {
-    if (file.size > MAX_UPLOAD_BYTES) {
-      toast.error("Photo is too large. Maximum size is 10 MB.");
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      toast.error(
+        `Photo is too large. Maximum size is ${Math.round(MAX_AVATAR_SIZE_BYTES / 1024 / 1024)} MB.`,
+      );
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      setOriginalSrc(result);
-      setCropperSrc(result);
-    };
-    reader.readAsDataURL(file);
+    setLoading(true);
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    fetch("/api/media/convert-to-jpeg", { method: "POST", body: formData })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to convert image");
+        const jpegBlob = await res.blob();
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const result = ev.target?.result as string;
+          setOriginalSrc(result);
+          setCropperSrc(result);
+        };
+        reader.readAsDataURL(jpegBlob);
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Failed to process image");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>): void {
@@ -195,28 +210,9 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
 
   function handleCropConfirm(croppedDataUrl: string): void {
     setCropperSrc(null);
-    const formData = new FormData();
-    const [, base64] = croppedDataUrl.split(",");
-    const blob = new Blob([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))], {
-      type: "image/jpeg",
-    });
-    formData.append("file", blob, "image.jpg");
-    fetch("/api/media/convert-image", { method: "POST", body: formData })
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to process image");
-        const jpegBlob = await res.blob();
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const result = ev.target?.result as string;
-          setImageBase64(result);
-          setPreviewUrl(result);
-          void inspectImage(result);
-        };
-        reader.readAsDataURL(jpegBlob);
-      })
-      .catch((error) => {
-        toast.error(error instanceof Error ? error.message : "Failed to process image");
-      });
+    setImageBase64(croppedDataUrl);
+    setPreviewUrl(croppedDataUrl);
+    void inspectImage(croppedDataUrl);
   }
 
   function clearImage(): void {
@@ -517,6 +513,11 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
                   {previewUrl ? (
                     // biome-ignore lint/performance/noImgElement: blob preview URL, not suited for next/image
                     <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
+                  ) : loading ? (
+                    <>
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      <p className="text-muted-foreground text-sm">Converting image…</p>
+                    </>
                   ) : (
                     <>
                       <Upload className="h-8 w-8 text-muted-foreground" />

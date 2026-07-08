@@ -1,6 +1,6 @@
 export interface LLMImageInput {
   base64: string;
-  mimeType: "image/png" | "image/jpeg";
+  mimeType: "image/jpeg";
 }
 
 export interface LLMModelAdapter {

@@ -138,6 +138,7 @@ model Post {
   title               String
   platform            Platform
   script              String?
+  details             String?
   avatarId            String?
   avatar              Avatar?          @relation(fields: [avatarId], references: [id])
   avatarVariationId   String?

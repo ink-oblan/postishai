@@ -1,6 +1,7 @@
-import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:fs/promises";
+import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
+import { runFfmpeg } from "@/lib/ffmpeg";
 import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
 import { readFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
@@ -73,9 +74,8 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
 
       if (!heygenAssetId) {
         const imagePath = variation ? variation.imagePath : post.avatar.imagePath;
-        const mimeType = imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
         const imageBuffer = await readFile(imagePath);
-        const uploaded = await uploadAvatarImage(imageBuffer, mimeType);
+        const uploaded = await uploadAvatarImage(imageBuffer, "image/jpeg");
         heygenAssetId = uploaded.assetId;
         if (variation) {
           await ctx.db.avatarVariation.update({
@@ -134,7 +134,7 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     throw new Error(`HeyGen polling timed out after ${HEYGEN_POLL_TIMEOUT_MS / 1000}s`);
   },
   async onSuccess(db, payload, result) {
-    await db.post.update({
+    const post = await db.post.update({
       where: { id: payload.postId },
       data: {
         status: "COMPLETED",
@@ -143,9 +143,14 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
         errorMessage: null,
       },
     });
+    if (post.userId) {
+      broadcastPostStatusUpdate(post.userId, payload.postId, "COMPLETED").catch((err) => {
+        console.error("Failed to broadcast completion:", err);
+      });
+    }
   },
   async onFailure(db, payload, error) {
-    await db.post
+    const post = await db.post
       .update({
         where: { id: payload.postId },
         data: {
@@ -153,7 +158,12 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
           errorMessage: error,
         },
       })
-      .catch(() => {});
+      .catch(() => null);
+    if (post?.userId) {
+      broadcastPostStatusUpdate(post.userId, payload.postId, "FAILED").catch((err) => {
+        console.error("Failed to broadcast failure:", err);
+      });
+    }
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";
@@ -169,47 +179,43 @@ async function removeEdgePillars(input: Buffer): Promise<Buffer> {
     await writeFileFs(tmpIn, input);
 
     try {
-      await runFfmpeg(tmpIn, tmpOut, ["-c:v", "h264_nvenc", "-preset", "p1", "-cq", "28"]);
+      await runFfmpeg([
+        "-i",
+        tmpIn,
+        "-vf",
+        "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
+        "-c:v",
+        "h264_nvenc",
+        "-preset",
+        "p1",
+        "-cq",
+        "28",
+        "-c:a",
+        "copy",
+        "-y",
+        tmpOut,
+      ]);
     } catch {
-      await runFfmpeg(tmpIn, tmpOut, ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23"]);
+      await runFfmpeg([
+        "-i",
+        tmpIn,
+        "-vf",
+        "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "23",
+        "-c:a",
+        "copy",
+        "-y",
+        tmpOut,
+      ]);
     }
 
     return await readFileFs(tmpOut);
   } finally {
     await Promise.all([unlink(tmpIn).catch(() => {}), unlink(tmpOut).catch(() => {})]);
   }
-}
-
-async function runFfmpeg(
-  inputPath: string,
-  outputPath: string,
-  videoCodecArgs: string[],
-): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const proc = spawn("ffmpeg", [
-      "-i",
-      inputPath,
-      "-vf",
-      "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
-      ...videoCodecArgs,
-      "-c:a",
-      "copy",
-      "-y",
-      outputPath,
-    ]);
-
-    let stderr = "";
-    proc.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    proc.on("error", reject);
-    proc.on("close", (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-
-      reject(new Error(stderr || `ffmpeg exited with code ${code}`));
-    });
-  });
 }

@@ -11,6 +11,10 @@ export const GET = withAuth(async function GET(
   const post = await prisma.post.findFirst({
     where: { id, userId },
     select: {
+      id: true,
+      title: true,
+      caption: true,
+      platform: true,
       status: true,
       videoPath: true,
       errorMessage: true,
@@ -18,6 +22,15 @@ export const GET = withAuth(async function GET(
       metadataStatus: true,
       metadataErrorMessage: true,
       metadata: true,
+      media: {
+        select: {
+          id: true,
+          type: true,
+          path: true,
+          order: true,
+        },
+        orderBy: { order: "asc" },
+      },
     },
   });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });

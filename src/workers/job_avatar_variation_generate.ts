@@ -56,9 +56,7 @@ export const avatarVariationGenerateJob: JobDefinition<
     ctx.log(`[variation.generate] reading source image (${elapsed()})`);
     const sourcePath = sourceImagePath ?? variation.avatar.imagePath;
     const sourceImageBuffer = await readFile(sourcePath);
-    const sourceMimeType: "image/png" | "image/jpeg" = sourcePath.endsWith(".jpg")
-      ? "image/jpeg"
-      : "image/png";
+    const sourceMimeType = "image/jpeg" as const;
     const sourceBase64 = sourceImageBuffer.toString("base64");
     ctx.log(
       `[variation.generate] source image loaded ${(sourceImageBuffer.length / 1024).toFixed(0)}KB (${elapsed()})`,
@@ -73,8 +71,7 @@ export const avatarVariationGenerateJob: JobDefinition<
     });
     ctx.log(`[variation.generate] image model returned ${result.mimeType} (${elapsed()})`);
 
-    const ext = result.mimeType === "image/jpeg" ? "jpg" : "png";
-    const imagePath = `avatars/variations/${variationId}.${ext}`;
+    const imagePath = `avatars/variations/${variationId}.jpg`;
 
     if (variation.imagePath) {
       await archiveFile(variation.imagePath).catch(() => null);

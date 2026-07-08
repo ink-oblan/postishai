@@ -2,16 +2,11 @@
 
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
-import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Combobox = ComboboxPrimitive.Root;
 
-function ComboboxInputGroup({
-  className,
-  children,
-  ...props
-}: ComboboxPrimitive.InputGroup.Props) {
+function ComboboxInputGroup({ className, children, ...props }: ComboboxPrimitive.InputGroup.Props) {
   return (
     <ComboboxPrimitive.InputGroup
       data-slot="combobox-input-group"
@@ -79,7 +74,7 @@ function ComboboxItem({ className, children, ...props }: ComboboxPrimitive.Item.
     <ComboboxPrimitive.Item
       data-slot="combobox-item"
       className={cn(
-        "relative flex w-full cursor-default select-none items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-accent data-highlighted:text-accent-foreground",
+        "relative flex w-full cursor-default select-none items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-none data-disabled:pointer-events-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-50",
         className,
       )}
       {...props}
@@ -100,7 +95,7 @@ function ComboboxEmpty({ className, children, ...props }: ComboboxPrimitive.Empt
   return (
     <ComboboxPrimitive.Empty
       data-slot="combobox-empty"
-      className={cn("px-2 py-3 text-center text-sm text-muted-foreground", className)}
+      className={cn("px-2 py-3 text-center text-muted-foreground text-sm", className)}
       {...props}
     >
       {children ?? "No results found"}
@@ -108,4 +103,11 @@ function ComboboxEmpty({ className, children, ...props }: ComboboxPrimitive.Empt
   );
 }
 
-export { Combobox, ComboboxInputGroup, ComboboxInput, ComboboxContent, ComboboxItem, ComboboxEmpty };
+export {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+};

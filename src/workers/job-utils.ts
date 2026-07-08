@@ -37,6 +37,16 @@ export function isRetryableError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   const normalized = message.toLowerCase();
 
+  // Check for non-retryable errors first
+  if (
+    normalized.includes("prepayment credits are depleted") ||
+    normalized.includes("billing") ||
+    normalized.includes("authentication failed") ||
+    normalized.includes("invalid api key")
+  ) {
+    return false;
+  }
+
   if (
     normalized.includes("fetch failed") ||
     normalized.includes("timed out") ||

@@ -19,7 +19,6 @@ export const GET = withAuth(async function GET(
   }
 
   const buffer = await readFile(avatar.imagePath);
-  const contentType = avatar.imagePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
   const etag = `"${avatar.updatedAt.getTime()}"`;
 
   if (_req.headers.get("if-none-match") === etag) {
@@ -28,7 +27,7 @@ export const GET = withAuth(async function GET(
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
-      "Content-Type": contentType,
+      "Content-Type": "image/jpeg",
       "Cache-Control": "public, max-age=0, must-revalidate",
       ETag: etag,
     },

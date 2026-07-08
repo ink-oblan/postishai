@@ -125,9 +125,7 @@ function SelectItem({
         <SelectPrimitive.ItemText className="flex items-center gap-2 whitespace-nowrap">
           {children}
         </SelectPrimitive.ItemText>
-        {description && (
-          <span className="text-muted-foreground text-xs">{description}</span>
-        )}
+        {description && <span className="text-muted-foreground text-xs">{description}</span>}
       </div>
       <SelectPrimitive.ItemIndicator
         render={

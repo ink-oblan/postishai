@@ -263,7 +263,9 @@ describe("withAuth", () => {
       user: fakeUser,
     });
 
-    const handler = vi.fn().mockRejectedValue(Object.assign(new Error("not found"), { code: "P2025" }));
+    const handler = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error("not found"), { code: "P2025" }));
     const response = await withAuth(handler)(
       new Request("http://localhost/api/test") as unknown as NextRequest,
       {} as unknown as NextRouteContext,
