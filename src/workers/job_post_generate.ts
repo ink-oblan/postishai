@@ -1,7 +1,7 @@
-import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
+import { runFfmpeg } from "@/lib/ffmpeg";
 import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
 import { readFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
@@ -179,47 +179,43 @@ async function removeEdgePillars(input: Buffer): Promise<Buffer> {
     await writeFileFs(tmpIn, input);
 
     try {
-      await runFfmpeg(tmpIn, tmpOut, ["-c:v", "h264_nvenc", "-preset", "p1", "-cq", "28"]);
+      await runFfmpeg([
+        "-i",
+        tmpIn,
+        "-vf",
+        "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
+        "-c:v",
+        "h264_nvenc",
+        "-preset",
+        "p1",
+        "-cq",
+        "28",
+        "-c:a",
+        "copy",
+        "-y",
+        tmpOut,
+      ]);
     } catch {
-      await runFfmpeg(tmpIn, tmpOut, ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23"]);
+      await runFfmpeg([
+        "-i",
+        tmpIn,
+        "-vf",
+        "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "23",
+        "-c:a",
+        "copy",
+        "-y",
+        tmpOut,
+      ]);
     }
 
     return await readFileFs(tmpOut);
   } finally {
     await Promise.all([unlink(tmpIn).catch(() => {}), unlink(tmpOut).catch(() => {})]);
   }
-}
-
-async function runFfmpeg(
-  inputPath: string,
-  outputPath: string,
-  videoCodecArgs: string[],
-): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const proc = spawn("ffmpeg", [
-      "-i",
-      inputPath,
-      "-vf",
-      "split=3[a][b][c];[a]crop=4:ih:4:0[lf];[b]crop=1072:ih:4:0[mid];[c]crop=4:ih:1072:0[rf];[lf][mid][rf]hstack=inputs=3",
-      ...videoCodecArgs,
-      "-c:a",
-      "copy",
-      "-y",
-      outputPath,
-    ]);
-
-    let stderr = "";
-    proc.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    proc.on("error", reject);
-    proc.on("close", (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-
-      reject(new Error(stderr || `ffmpeg exited with code ${code}`));
-    });
-  });
 }
