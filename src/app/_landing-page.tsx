@@ -2,7 +2,7 @@
 
 import type { Variants } from "framer-motion";
 import { motion } from "framer-motion";
-import { Briefcase, Megaphone, Rocket } from "lucide-react";
+import { Briefcase, Check, Clock, Megaphone, Rocket } from "lucide-react";
 import Image from "next/image";
 import { BrandLogo } from "@/components/brand-logo";
 import { EmailSignupForm } from "@/components/email-signup-form";
@@ -51,11 +51,7 @@ export default function LandingPage() {
             height={63}
             className="h-9 w-auto sm:h-9"
           />
-          <div className="flex shrink-0 items-center gap-3 sm:gap-8">
-            <span className="rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 font-medium text-primary text-sm">
-              Coming soon
-            </span>
-          </div>
+          <div className="flex shrink-0 items-center gap-3 sm:gap-8"></div>
         </div>
       </motion.nav>
 
@@ -94,10 +90,18 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.15 }}
+            className="mx-auto mb-4 max-w-2xl font-semibold text-gray-900 text-xl leading-snug sm:text-2xl"
+          >
+            Create AI-powered social media content in minutes
+          </motion.p>
+
+          <motion.p
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.2 }}
             className="mx-auto mb-12 max-w-2xl text-gray-600 text-lg leading-relaxed sm:text-xl"
           >
-            Transform your content workflow. Generate product videos, testimonials, and marketing
-            materials in minutes—powered by AI that feels human.
+            Generate posts, videos, captions for social networks — without hiring a marketing team.
           </motion.p>
 
           <motion.div
@@ -195,76 +199,84 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* Features */}
       <section className="relative flex min-h-screen items-center bg-background px-6 py-20">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto w-full max-w-3xl">
           <motion.div {...scrollReveal} className="mb-16 text-center">
             <h2
-              className="mb-6 font-black text-5xl text-gray-900 sm:text-6xl"
+              className="mb-4 font-black text-5xl text-gray-900 sm:text-6xl"
               style={{
                 fontFamily: "system-ui, -apple-system, sans-serif",
                 fontWeight: 900,
                 letterSpacing: "-0.02em",
               }}
             >
-              Three Steps to Success
+              What&apos;s on the platform
             </h2>
-            <p className="mx-auto max-w-2xl text-gray-600 text-lg">
-              Streamlined process from concept to publication
-            </p>
           </motion.div>
 
-          <div className="grid gap-8 md:grid-cols-3">
-            {[
-              {
-                number: "01",
-                title: "Define Your Content",
-                desc: "Specify your product, script, and target audience. Our AI understands your vision.",
-              },
-              {
-                number: "02",
-                title: "Generate & Customize",
-                desc: "Watch as AI creates variations instantly. Edit avatars, voices, and scripts easily.",
-              },
-              {
-                number: "03",
-                title: "Publish & Measure",
-                desc: "Share across channels. Track performance and iterate based on real data.",
-              },
-            ].map((step, idx) => (
-              <motion.div
-                key={step.number}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8, delay: idx * 0.15 }}
-                className="relative"
-              >
-                <div className="text-center">
-                  <div className="mb-4 font-black text-6xl text-primary">{step.number}</div>
-                  <h3 className="mb-3 font-bold text-gray-900 text-xl">{step.title}</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">{step.desc}</p>
+          <div className="grid justify-items-center gap-12 md:grid-cols-2">
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+            >
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                  <Check className="h-4 w-4 text-primary" strokeWidth={2.5} />
                 </div>
-              </motion.div>
-            ))}
+                <span className="font-semibold text-gray-900 text-lg">Available now</span>
+              </div>
+              <ul className="space-y-5">
+                {[
+                  "Avatar video with transcript or AI-generated script",
+                  "Extended avatar editor to create different variations of your avatar",
+                  "Upload your own avatar",
+                  "Captions from your video or photo",
+                ].map((feature) => (
+                  <li key={feature} className="flex items-start gap-3">
+                    <Check className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                    <span className="text-base text-gray-700 leading-snug">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.15 }}
+            >
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
+                  <Clock className="h-4 w-4 text-amber-600" strokeWidth={2.5} />
+                </div>
+                <span className="font-semibold text-gray-900 text-lg">Coming soon</span>
+              </div>
+              <ul className="space-y-5">
+                {["Voiceover", "Carousel", "Branding-aware AI"].map((feature) => (
+                  <li key={feature} className="flex items-start gap-3">
+                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+                    <span className="text-base text-gray-500 leading-snug">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-primary to-primary/90 px-6 py-24">
-        <div className="absolute inset-0 overflow-hidden opacity-5">
-          <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-white blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-white blur-3xl" />
-        </div>
-
-        <div className="relative mx-auto max-w-3xl text-center text-white">
+      <section className="relative flex min-h-screen items-center overflow-hidden bg-sidebar px-6 py-24">
+        <div className="relative mx-auto max-w-3xl text-center">
           <motion.h2
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.9 }}
-            className="mb-4 font-black text-5xl leading-tight sm:text-6xl"
+            className="mb-4 font-black text-5xl text-gray-900 leading-tight sm:text-6xl"
             style={{
               fontFamily: "system-ui, -apple-system, sans-serif",
               fontWeight: 900,
@@ -278,7 +290,7 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.9, delay: 0.1 }}
-            className="mb-10 text-lg text-white/80"
+            className="mb-10 text-gray-600 text-lg"
           >
             We&apos;re opening up access gradually. Drop your email and we&apos;ll notify you when
             it&apos;s your turn.
@@ -291,7 +303,7 @@ export default function LandingPage() {
             transition={{ duration: 0.9, delay: 0.2, ease: "easeOut" }}
             className="flex justify-center"
           >
-            <EmailSignupForm variant="dark" label="Get early access" />
+            <EmailSignupForm variant="light" label="Get early access" />
           </motion.div>
         </div>
       </section>
