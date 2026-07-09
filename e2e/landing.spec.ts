@@ -11,28 +11,26 @@ test("landing page renders correctly on all viewports", async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.goto("/", { waitUntil: "networkidle" });
 
-    // Hero section
-    await expect(page.locator("h1")).toBeVisible();
-    await expect(page.locator("h1")).toContainText("Generate");
-
     // Navigation
     await expect(page.locator("nav")).toBeVisible();
-    await expect(page.locator('img[alt="Postishai"]').first()).toBeVisible();
+    await expect(page.locator('img[alt="PostishAI"]').first()).toBeVisible();
 
-    // CTA buttons
-    const ctaButtons = page.locator('a[href="/app"], a[href="/signup"]');
-    expect(await ctaButtons.count()).toBeGreaterThan(0);
-    for (const btn of await ctaButtons.all()) {
-      await expect(btn).toBeVisible();
-    }
+    // Hero section
+    await expect(page.locator("h1")).toBeVisible();
+    await expect(page.locator("h1")).toContainText("Social media marketing");
 
-    // Feature cards
-    const cards = page.locator('[class*="rounded-2xl"][class*="from-amber"]');
-    expect(await cards.count()).toBeGreaterThanOrEqual(6);
+    // Email signup CTAs (hero + bottom CTA section each render one)
+    const emailInputs = page.locator('input[type="email"]');
+    expect(await emailInputs.count()).toBeGreaterThanOrEqual(1);
+    await expect(emailInputs.first()).toBeVisible();
 
-    // Testimonials
-    const testimonials = page.locator('[class*="rounded-2xl"][class*="border-gray-200"]');
-    expect(await testimonials.count()).toBeGreaterThan(0);
+    // Content cards (audience, outcomes, live features — all use border-orange-100)
+    const contentCards = page.locator('[class*="rounded-2xl"][class*="border-orange-100"]');
+    expect(await contentCards.count()).toBeGreaterThanOrEqual(6);
+
+    // Features section badges
+    await expect(page.getByText("Live now").first()).toBeVisible();
+    await expect(page.getByText("Coming soon").first()).toBeVisible();
   }
 });
 

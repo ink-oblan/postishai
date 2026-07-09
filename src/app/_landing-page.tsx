@@ -6,6 +6,7 @@ import { Briefcase, Check, Clock, Megaphone, Rocket } from "lucide-react";
 import Image from "next/image";
 import { BrandLogo } from "@/components/brand-logo";
 import { EmailSignupForm } from "@/components/email-signup-form";
+import { GithubIcon } from "@/components/ui/github-icon";
 
 const scrollReveal = {
   initial: { opacity: 0, y: 40 },
@@ -51,7 +52,17 @@ export default function LandingPage() {
             height={63}
             className="h-9 w-auto sm:h-9"
           />
-          <div className="flex shrink-0 items-center gap-3 sm:gap-8"></div>
+          <div className="flex shrink-0 items-center gap-3 sm:gap-8">
+            <a
+              href="https://github.com/ink-oblan/postishai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-muted-foreground text-sm transition hover:text-foreground"
+            >
+              <GithubIcon className="h-5 w-5" />
+              <span className="hidden sm:inline">Source available</span>
+            </a>
+          </div>
         </div>
       </motion.nav>
 
@@ -137,9 +148,9 @@ export default function LandingPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Made for founders.
+            Built for small teams.
             <br />
-            <span className="text-primary">Made for creators.</span>
+            <span className="text-primary">Open for builders.</span>
           </motion.h2>
 
           <motion.div
@@ -151,28 +162,28 @@ export default function LandingPage() {
           >
             {[
               {
-                Icon: Megaphone,
-                label: "Social Sellers",
-                title: "Turn products into scroll-stopping videos",
-                desc: "Go from product idea to polished video in minutes — ready to post on Instagram, TikTok, and LinkedIn without a studio or crew.",
+                Icon: Rocket,
+                label: "Startups & Solo Founders",
+                title: "Marketing output without the marketing team",
+                desc: "Move fast and stay visible. Generate polished social content in minutes — without hiring an agency or a contractor.",
                 iconBg: "bg-orange-100",
                 iconColor: "text-orange-500",
                 labelColor: "text-orange-500",
               },
               {
-                Icon: Rocket,
-                label: "Bootstrap Teams",
-                title: "Marketing muscle without the headcount",
-                desc: "Small teams move fast. PostishAI moves faster — generate a week's worth of content in an afternoon, without hiring a single contractor.",
+                Icon: Briefcase,
+                label: "Small & Medium Businesses",
+                title: "Consistent presence on every channel",
+                desc: "Stay active on Instagram, TikTok, and LinkedIn without a dedicated team. Simplify your content workflow and cut production costs.",
                 iconBg: "bg-blue-100",
                 iconColor: "text-blue-500",
                 labelColor: "text-blue-500",
               },
               {
-                Icon: Briefcase,
-                label: "Solopreneurs",
-                title: "Professional content on a founder's budget",
-                desc: "You wear every hat. Let AI handle the marketing hat. Create polished video content without an agency, a studio, or a big budget.",
+                Icon: Megaphone,
+                label: "Developers",
+                title: "Self-host it, make it yours",
+                desc: "PostishAI is source-available. Run it on your own infrastructure, customize it for your use case, and keep full control of your data.",
                 iconBg: "bg-emerald-100",
                 iconColor: "text-emerald-600",
                 labelColor: "text-emerald-600",
@@ -199,12 +210,64 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="relative flex min-h-screen items-center bg-background px-6 py-20">
-        <div className="mx-auto w-full max-w-3xl">
+      {/* Outcomes */}
+      <section className="relative bg-sidebar px-6 py-24">
+        <div className="mx-auto w-full max-w-5xl">
           <motion.div {...scrollReveal} className="mb-16 text-center">
             <h2
-              className="mb-4 font-black text-5xl text-gray-900 sm:text-6xl"
+              className="font-black text-5xl text-gray-900 sm:text-6xl"
+              style={{
+                fontFamily: "system-ui, -apple-system, sans-serif",
+                fontWeight: 900,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              What changes for you
+            </h2>
+          </motion.div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              {
+                headline: "Post every day without burning out",
+                desc: "AI writes the script and generates captions. You just download and post.",
+              },
+              {
+                headline: "Pro-looking content on a lean budget",
+                desc: "Professional avatar videos and captions — no crew, no studio, no agency.",
+              },
+              {
+                headline: "One workflow, every platform",
+                desc: "From script to published post on Instagram, TikTok, and YouTube in minutes.",
+              },
+              {
+                headline: "Content that actually looks like you",
+                desc: "Upload your own avatar and generate videos in your likeness — not a generic AI face.",
+              },
+            ].map(({ headline, desc }, i) => (
+              <motion.div
+                key={headline}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: i * 0.09 }}
+                className="rounded-2xl border border-orange-100 bg-background p-8 transition-all duration-300 hover:border-orange-200 hover:shadow-md"
+              >
+                <div className="mb-2 h-1 w-8 rounded-full bg-primary" />
+                <h3 className="mb-2 font-black text-gray-900 text-xl leading-snug">{headline}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="relative bg-background px-6 py-24">
+        <div className="mx-auto w-full max-w-5xl">
+          <motion.div {...scrollReveal} className="mb-16 text-center">
+            <h2
+              className="font-black text-5xl text-gray-900 sm:text-6xl"
               style={{
                 fontFamily: "system-ui, -apple-system, sans-serif",
                 fontWeight: 900,
@@ -215,56 +278,103 @@ export default function LandingPage() {
             </h2>
           </motion.div>
 
-          <div className="grid justify-items-center gap-12 md:grid-cols-2">
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-            >
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                  <Check className="h-4 w-4 text-primary" strokeWidth={2.5} />
-                </div>
-                <span className="font-semibold text-gray-900 text-lg">Available now</span>
+          {/* Live now */}
+          <div className="mb-14">
+            <motion.div {...scrollReveal} className="mb-7 flex items-center gap-4">
+              <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                <span className="font-bold text-emerald-700 text-xs uppercase tracking-widest">
+                  Live now
+                </span>
               </div>
-              <ul className="space-y-5">
-                {[
-                  "Avatar video with transcript or AI-generated script",
-                  "Extended avatar editor to create different variations of your avatar",
-                  "Upload your own avatar",
-                  "Captions from your video or photo",
-                ].map((feature) => (
-                  <li key={feature} className="flex items-start gap-3">
-                    <Check className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                    <span className="text-base text-gray-700 leading-snug">{feature}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="h-px flex-1 bg-gray-100" />
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.15 }}
-            >
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
-                  <Clock className="h-4 w-4 text-amber-600" strokeWidth={2.5} />
-                </div>
-                <span className="font-semibold text-gray-900 text-lg">Coming soon</span>
-              </div>
-              <ul className="space-y-5">
-                {["Voiceover", "Carousel", "Branding-aware AI"].map((feature) => (
-                  <li key={feature} className="flex items-start gap-3">
-                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-                    <span className="text-base text-gray-500 leading-snug">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  title: "Avatar video",
+                  desc: "Generate from your own transcript or let AI write the script for you",
+                },
+                {
+                  title: "Avatar editor",
+                  desc: "Create multiple variations of your avatar for different campaigns",
+                },
+                {
+                  title: "Custom avatar upload",
+                  desc: "Bring your own avatar and train the model on your likeness",
+                },
+                {
+                  title: "Caption generation",
+                  desc: "Auto-generate captions from any video or photo you upload",
+                },
+              ].map(({ title, desc }, i) => (
+                <motion.div
+                  key={title}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: i * 0.09 }}
+                  className="rounded-2xl border border-orange-100 bg-white p-6 transition-all duration-300 hover:border-orange-200 hover:shadow-md"
+                >
+                  <Check className="mb-3 h-5 w-5 text-primary" strokeWidth={2.5} />
+                  <h3 className="mb-1 font-bold text-gray-900 text-lg">{title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
+
+          {/* Coming soon */}
+          <motion.div {...scrollReveal}>
+            <div className="mb-7 flex items-center gap-4">
+              <div className="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1">
+                <Clock className="h-3 w-3 text-amber-600" />
+                <span className="font-bold text-amber-700 text-xs uppercase tracking-widest">
+                  Coming soon
+                </span>
+              </div>
+              <div className="h-px flex-1 bg-gray-100" />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {[
+                {
+                  title: "Voiceover",
+                  desc: "Natural-sounding voiceover in your brand's tone",
+                },
+                {
+                  title: "Carousel",
+                  desc: "Multi-slide carousel posts for Instagram and LinkedIn",
+                },
+                {
+                  title: "Branding-aware AI",
+                  desc: "Train the AI on your brand guidelines and tone of voice",
+                },
+                {
+                  title: "Direct publishing",
+                  desc: "Publish directly to Instagram, TikTok, and YouTube without leaving the app",
+                },
+                {
+                  title: "Calendar scheduling",
+                  desc: "Schedule posts in advance and manage your content calendar",
+                },
+              ].map(({ title, desc }, i) => (
+                <motion.div
+                  key={title}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: i * 0.09 }}
+                  className="rounded-2xl border border-gray-200 border-dashed bg-gray-50/50 p-6"
+                >
+                  <Clock className="mb-3 h-5 w-5 text-amber-400" strokeWidth={1.5} />
+                  <h3 className="mb-1 font-bold text-gray-400 text-lg">{title}</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">{desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -316,44 +426,38 @@ export default function LandingPage() {
               <div className="mb-4">
                 <BrandLogo className="text-lg text-white" />
               </div>
-              <p className="text-sm">AI-powered content automation for the modern marketer.</p>
+              <p className="text-sm">AI-powered content creation.</p>
             </div>
-            {[
-              {
-                title: "Product",
-                links: ["Features", "Pricing", "Security"],
-              },
-              {
-                title: "Company",
-                links: ["About", "Blog", "Careers"],
-              },
-              {
-                title: "Resources",
-                links: ["Docs", "API", "Community"],
-              },
-            ].map((section) => (
-              <div key={section.title}>
-                <h4 className="mb-4 font-semibold text-white">{section.title}</h4>
-                <ul className="space-y-2 text-sm">
-                  {section.links.map((link) => (
-                    <li key={link}>
-                      <button
-                        type="button"
-                        className="transition hover:text-white"
-                        onClick={() => {}}
-                      >
-                        {link}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            <div>
+              <h4 className="mb-4 font-semibold text-white">Company</h4>
+              <ul className="space-y-2 text-sm">
+                {["About", "Blog", "Careers"].map((link) => (
+                  <li key={link}>
+                    <button
+                      type="button"
+                      className="transition hover:text-white"
+                      onClick={() => {}}
+                    >
+                      {link}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           <div className="flex flex-col items-center justify-between border-gray-800 border-t pt-8 text-sm sm:flex-row">
             <p>&copy; 2026 Postishai. All rights reserved.</p>
             <div className="mt-4 flex gap-6 sm:mt-0">
+              <a
+                href="https://github.com/ink-oblan/postishai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 transition hover:text-white"
+              >
+                <GithubIcon className="h-4 w-4" />
+                Source available
+              </a>
               <button type="button" className="transition hover:text-white" onClick={() => {}}>
                 Privacy
               </button>
