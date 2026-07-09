@@ -65,7 +65,7 @@ jobs:
             set -euo pipefail
             cd /opt/postishai
 
-            git fetch origin tag "$IMAGE_TAG"
+            git fetch --force origin tag "$IMAGE_TAG"
             git checkout "$IMAGE_TAG"
 
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
