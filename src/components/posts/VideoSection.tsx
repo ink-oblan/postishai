@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { POLLING } from "@/lib/polling-config";
 
 interface Props {
   post: {
@@ -57,10 +58,10 @@ export function VideoSection({ post }: Props) {
         clearInterval(interval);
         clearInterval(timer);
       }
-    }, 5000);
+    }, POLLING.STATUS);
 
     setElapsed(getElapsedSeconds(generationStartedAt));
-    timer = setInterval(() => setElapsed(getElapsedSeconds(generationStartedAt)), 1000);
+    timer = setInterval(() => setElapsed(getElapsedSeconds(generationStartedAt)), POLLING.UI_TIMER);
 
     return () => {
       clearInterval(interval);
