@@ -2,11 +2,11 @@
 
 import { AlertCircle, Loader2, Play, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { POLLING } from "@/lib/polling-config";
+import { addEventListener } from "@/lib/sse-client";
 
 interface Props {
   post: {
@@ -28,46 +28,36 @@ function getElapsedSeconds(startedAt: string | null): number {
 export function VideoSection({ post }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(post.status);
-  const [generationStartedAt, setGenerationStartedAt] = useState(post.generationStartedAt);
   const [generating, setGenerating] = useState(false);
   const [elapsed, setElapsed] = useState(() => getElapsedSeconds(post.generationStartedAt));
 
-  const pollStatus = useCallback(async () => {
-    const res = await fetch(`/api/posts/${post.id}/status`);
-    const data = (await res.json()) as {
-      status: string;
-      generationStartedAt: string | null;
-    };
-    setStatus(data.status);
-    setGenerationStartedAt(data.generationStartedAt);
-    if (data.status === "COMPLETED" || data.status === "FAILED") {
-      router.refresh();
-    }
-    return data;
-  }, [post.id, router]);
-
-  // Poll while GENERATING
+  // Listen for SSE updates or poll if SSE is unavailable
   useEffect(() => {
     if (status !== "GENERATING") return;
-    let interval: ReturnType<typeof setInterval>;
+
     let timer: ReturnType<typeof setInterval>;
 
-    interval = setInterval(async () => {
-      const next = await pollStatus();
-      if (next.status === "COMPLETED" || next.status === "FAILED") {
-        clearInterval(interval);
-        clearInterval(timer);
+    // Listen for SSE post status updates
+    const unsubscribeSse = addEventListener("post-status-update", (payload: unknown) => {
+      const update = payload as { postId: string; status: string };
+      if (update.postId === post.id) {
+        setStatus(update.status);
+        if (update.status === "COMPLETED" || update.status === "FAILED") {
+          clearInterval(timer);
+          router.refresh();
+        }
       }
-    }, POLLING.STATUS);
+    });
 
-    setElapsed(getElapsedSeconds(generationStartedAt));
-    timer = setInterval(() => setElapsed(getElapsedSeconds(generationStartedAt)), POLLING.UI_TIMER);
+    // Update elapsed time every second for smooth UI
+    setElapsed(getElapsedSeconds(post.generationStartedAt));
+    timer = setInterval(() => setElapsed(getElapsedSeconds(post.generationStartedAt)), 1000);
 
     return () => {
-      clearInterval(interval);
+      unsubscribeSse();
       clearInterval(timer);
     };
-  }, [status, pollStatus, generationStartedAt]);
+  }, [status, post.id, post.generationStartedAt, router]);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -77,10 +67,9 @@ export function VideoSection({ post }: Props) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to start generation");
       }
-      const data = (await res.json()) as { status: string; generationStartedAt: string | null };
+      const data = (await res.json()) as { status: string };
       setStatus(data.status);
-      setGenerationStartedAt(data.generationStartedAt);
-      setElapsed(getElapsedSeconds(data.generationStartedAt));
+      setElapsed(getElapsedSeconds(post.generationStartedAt));
       toast.success("Video generation started!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start");
