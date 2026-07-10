@@ -4,8 +4,8 @@ import type { Variants } from "framer-motion";
 import { motion } from "framer-motion";
 import { Briefcase, Check, Clock, Megaphone, Rocket } from "lucide-react";
 import Image from "next/image";
-import { BrandLogo } from "@/components/brand-logo";
 import { EmailSignupForm } from "@/components/email-signup-form";
+import { LandingFooter } from "@/components/layout/landing-footer";
 import { GithubIcon } from "@/components/ui/github-icon";
 
 const scrollReveal = {
@@ -67,7 +67,7 @@ export default function LandingPage() {
       </motion.nav>
 
       {/* Hero Section */}
-      <section className="relative flex min-h-screen items-center overflow-hidden bg-background px-6">
+      <section className="relative flex min-h-screen items-center overflow-hidden bg-background px-6 pt-20">
         <div className="absolute inset-0 overflow-hidden">
           <div
             className="absolute top-0 right-0 h-96 w-96 rounded-full bg-orange-100/40 opacity-40 blur-3xl"
@@ -174,7 +174,7 @@ export default function LandingPage() {
                 Icon: Briefcase,
                 label: "Small & Medium Businesses",
                 title: "Consistent presence on every channel",
-                desc: "Stay active on Instagram, TikTok, and LinkedIn without a dedicated team. Simplify your content workflow and cut production costs.",
+                desc: "Stay active on Instagram, TikTok, and YouTube without a dedicated team. Simplify your content workflow and cut production costs.",
                 iconBg: "bg-blue-100",
                 iconColor: "text-blue-500",
                 labelColor: "text-blue-500",
@@ -345,7 +345,7 @@ export default function LandingPage() {
                 },
                 {
                   title: "Carousel",
-                  desc: "Multi-slide carousel posts for Instagram and LinkedIn",
+                  desc: "Multi-slide carousel posts for Instagram and TikTok",
                 },
                 {
                   title: "Branding-aware AI",
@@ -418,59 +418,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-950 px-6 py-12 text-gray-400">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-12 grid gap-12 md:grid-cols-4">
-            <div>
-              <div className="mb-4">
-                <BrandLogo className="text-lg text-white" />
-              </div>
-              <p className="text-sm">AI-powered content creation.</p>
-            </div>
-            <div>
-              <h4 className="mb-4 font-semibold text-white">Company</h4>
-              <ul className="space-y-2 text-sm">
-                {["About", "Blog", "Careers"].map((link) => (
-                  <li key={link}>
-                    <button
-                      type="button"
-                      className="transition hover:text-white"
-                      onClick={() => {}}
-                    >
-                      {link}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center justify-between border-gray-800 border-t pt-8 text-sm sm:flex-row">
-            <p>&copy; 2026 Postishai. All rights reserved.</p>
-            <div className="mt-4 flex gap-6 sm:mt-0">
-              <a
-                href="https://github.com/ink-oblan/postishai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 transition hover:text-white"
-              >
-                <GithubIcon className="h-4 w-4" />
-                Source available
-              </a>
-              <button type="button" className="transition hover:text-white" onClick={() => {}}>
-                Privacy
-              </button>
-              <button type="button" className="transition hover:text-white" onClick={() => {}}>
-                Terms
-              </button>
-              <button type="button" className="transition hover:text-white" onClick={() => {}}>
-                Contact
-              </button>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }
