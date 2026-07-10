@@ -1,3 +1,4 @@
+import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { archiveFile, readFile, writeFile } from "@/lib/storage";
 import {
@@ -83,7 +84,7 @@ export const avatarVariationGenerateJob: JobDefinition<
     return { imagePath };
   },
   async onSuccess(db, payload, result) {
-    await db.avatarVariation.update({
+    const variation = await db.avatarVariation.update({
       where: { id: payload.variationId },
       data: {
         imagePath: result.imagePath,
@@ -92,15 +93,31 @@ export const avatarVariationGenerateJob: JobDefinition<
         heygenAssetId: null,
         heygenAssetUrl: null,
       },
+      include: { avatar: true },
     });
+    if (variation.avatar.userId) {
+      broadcastAvatarStatusUpdate(variation.avatar.userId, variation.avatarId, "COMPLETED").catch(
+        (err) => {
+          console.error("Failed to broadcast avatar variation status update:", err);
+        },
+      );
+    }
   },
   async onFailure(db, payload, error) {
-    await db.avatarVariation
+    const variation = await db.avatarVariation
       .update({
         where: { id: payload.variationId },
         data: { status: "FAILED", errorMessage: error },
+        include: { avatar: true },
       })
-      .catch(() => {});
+      .catch(() => null);
+    if (variation?.avatar.userId) {
+      broadcastAvatarStatusUpdate(variation.avatar.userId, variation.avatarId, "FAILED").catch(
+        (err) => {
+          console.error("Failed to broadcast avatar variation status update:", err);
+        },
+      );
+    }
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";
