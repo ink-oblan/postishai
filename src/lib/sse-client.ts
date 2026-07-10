@@ -1,7 +1,7 @@
 // Global SSE connection + BroadcastChannel for tab sync
 
 type EventHandler = (data: unknown) => void;
-type EventType = "init" | "stats-refresh" | "post-status-update";
+type EventType = "init" | "stats-refresh" | "post-status-update" | "avatar-status-update";
 
 const DEBUG = typeof window !== "undefined" && process.env.NODE_ENV === "development";
 
@@ -77,7 +77,12 @@ function connect() {
     };
   };
 
-  const eventTypes: EventType[] = ["init", "stats-refresh", "post-status-update"];
+  const eventTypes: EventType[] = [
+    "init",
+    "stats-refresh",
+    "post-status-update",
+    "avatar-status-update",
+  ];
   for (const eventType of eventTypes) {
     source.addEventListener(eventType, handleEvent(eventType));
   }

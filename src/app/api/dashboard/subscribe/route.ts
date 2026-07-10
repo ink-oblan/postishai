@@ -49,6 +49,23 @@ export async function broadcastPostStatusUpdate(userId: string, postId: string, 
   });
 }
 
+export async function broadcastAvatarStatusUpdate(
+  userId: string,
+  avatarId: string,
+  status: string,
+) {
+  // Fetch fresh dashboard data to include in the update
+  const freshData = await fetchDashboardData(userId);
+  console.log(
+    `[broadcast] Sending avatar-status-update for avatarId=${avatarId}, status=${status}`,
+  );
+  sendEventToUser(userId, "avatar-status-update", {
+    avatarId,
+    status,
+    stats: freshData,
+  });
+}
+
 export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId }) {
   // Create SSE response
   let clientConnection: ClientConnection | null = null;

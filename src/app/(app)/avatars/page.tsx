@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
-import { AvatarGrid } from "@/components/avatars/AvatarGrid";
+import { AvatarListClient } from "@/components/avatars/AvatarListClient";
 import { requireSession } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 
@@ -29,7 +29,7 @@ export default async function AvatarsPage() {
           New Avatar
         </Link>
       </div>
-      <AvatarGrid avatars={avatars} />
+      <AvatarListClient initialAvatars={avatars} />
     </div>
   );
 }
