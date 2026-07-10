@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { archiveFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
@@ -67,7 +68,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     return { imagePath };
   },
   async onSuccess(db, payload, result) {
-    await db.avatar.update({
+    const avatar = await db.avatar.update({
       where: { id: payload.avatarId },
       data: {
         imagePath: result.imagePath,
@@ -75,9 +76,14 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
         errorMessage: null,
       },
     });
+    if (avatar.userId) {
+      broadcastAvatarStatusUpdate(avatar.userId, payload.avatarId, "COMPLETED").catch((err) => {
+        console.error("Failed to broadcast avatar status update:", err);
+      });
+    }
   },
   async onFailure(db, payload, error) {
-    await db.avatar
+    const avatar = await db.avatar
       .update({
         where: { id: payload.avatarId },
         data: {
@@ -85,7 +91,12 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
           errorMessage: error,
         },
       })
-      .catch(() => {});
+      .catch(() => null);
+    if (avatar?.userId) {
+      broadcastAvatarStatusUpdate(avatar.userId, payload.avatarId, "FAILED").catch((err) => {
+        console.error("Failed to broadcast avatar status update:", err);
+      });
+    }
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";
