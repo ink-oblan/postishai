@@ -2,6 +2,7 @@
 
 import type { Post, PostStatus } from "@prisma/client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { POLLING } from "@/lib/polling-config";
 import { addEventListener } from "@/lib/sse-client";
 import { PostsContent } from "./PostsContent";
 
@@ -95,7 +96,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
             if (!pollIntervalRef.current) {
               pollIntervalRef.current = setInterval(() => {
                 fetchPosts(true);
-              }, 2000);
+              }, POLLING.STATUS);
             }
           });
         }

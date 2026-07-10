@@ -3,11 +3,12 @@ import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:f
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { runFfmpeg } from "@/lib/ffmpeg";
 import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
+import { POLLING } from "@/lib/polling-config";
 import { readFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition, PostGeneratePayload } from "@/workers/types";
 
-const HEYGEN_POLL_INTERVAL_MS = 5000;
+const HEYGEN_POLL_INTERVAL_MS = POLLING.HEYGEN_STATUS;
 const HEYGEN_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
 type PostGenerateResult = {

@@ -23,6 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
 import type { PlatformMetadata } from "@/lib/metadata/types";
+import { POLLING } from "@/lib/polling-config";
 
 interface LLMModel {
   id: string;
@@ -180,7 +181,7 @@ export function PostEditPanel({
       } catch {
         // ignore transient errors
       }
-    }, 5000);
+    }, POLLING.METADATA);
 
     return () => clearInterval(interval);
   }, [savedMetadataStatus, post.id, router]);

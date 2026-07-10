@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { generateAvatarVariationLabel } from "@/lib/avatar-variation-label";
+import { POLLING } from "@/lib/polling-config";
 import { cn } from "@/lib/utils";
 
 interface AvatarVariation {
@@ -120,7 +121,7 @@ export function AvatarVariationsPanel({
       } catch {
         // ignore transient errors
       }
-    }, 5000);
+    }, POLLING.AVATAR_VARIATIONS);
 
     return () => {
       clearInterval(interval);

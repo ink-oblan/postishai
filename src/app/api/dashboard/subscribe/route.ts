@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { fetchDashboardData } from "@/lib/dashboard-utils";
 import { prisma } from "@/lib/db";
+import { POLLING } from "@/lib/polling-config";
 
 interface ClientConnection {
   controller: ReadableStreamController<Uint8Array>;
@@ -98,7 +99,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
 
       let heartbeat: NodeJS.Timeout;
 
-      // Refresh stats every 5 seconds to catch updates from other processes
+      // Refresh stats periodically to catch updates from other processes
       const statsRefresh = setInterval(async () => {
         try {
           const updated = await prisma.post.groupBy({
@@ -127,7 +128,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
         } catch (err) {
           console.error("Failed to refresh stats:", err);
         }
-      }, 5000);
+      }, POLLING.SSE_STATS);
 
       heartbeat = setInterval(() => {
         try {

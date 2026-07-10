@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { POLLING } from "@/lib/polling-config";
 
 interface Props {
   avatarId: string;
@@ -20,7 +21,7 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
   useEffect(() => {
     if (status !== "GENERATING") return;
 
-    const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
+    const timer = setInterval(() => setElapsed((s) => s + 1), POLLING.UI_TIMER);
 
     const poll = setInterval(async () => {
       try {
@@ -36,7 +37,7 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
       } catch {
         // ignore transient errors
       }
-    }, 3000);
+    }, POLLING.STATUS);
 
     return () => {
       clearInterval(poll);

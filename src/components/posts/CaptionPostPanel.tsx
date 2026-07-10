@@ -7,6 +7,7 @@ import { startTransition, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { POLLING } from "@/lib/polling-config";
 
 interface MediaItem {
   id: string;
@@ -77,7 +78,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
       } catch (err) {
         console.error("Failed to poll caption:", err);
       }
-    }, 2000);
+    }, POLLING.STATUS);
 
     // Timeout after 5 minutes
     const timeout = setTimeout(
