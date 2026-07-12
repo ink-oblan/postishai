@@ -165,9 +165,16 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     });
     if (post.userId) {
       const userId = post.userId;
-      await broadcastWithContext("post-generate-success", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
-      );
+      try {
+        await broadcastWithContext("post-generate-success", () =>
+          broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
+        );
+      } catch (broadcastErr) {
+        console.error(
+          `[post-generate-success] Broadcast failed for postId=${payload.postId}:`,
+          broadcastErr,
+        );
+      }
     }
   },
   async onFailure(db, payload, error) {
@@ -188,9 +195,16 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
       });
     if (post?.userId) {
       const userId = post.userId;
-      await broadcastWithContext("post-generate-failure", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
-      );
+      try {
+        await broadcastWithContext("post-generate-failure", () =>
+          broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
+        );
+      } catch (broadcastErr) {
+        console.error(
+          `[post-generate-failure] Broadcast failed for postId=${payload.postId}:`,
+          broadcastErr,
+        );
+      }
     }
   },
   classifyError(error) {

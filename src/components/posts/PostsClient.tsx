@@ -104,16 +104,16 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         update.status === "FAILED" ||
         update.status === SSE_STATUS.ARCHIVED;
 
-      if (isValidStatus) {
-        setPostStatuses((prev) => {
-          const next = new Map(prev);
-          next.set(update.postId, update.status as PostStatus);
-          return next;
-        });
-      } else {
-        console.warn(`[PostsList] Ignoring unknown post status: ${update.status}`);
+      if (!isValidStatus) {
+        console.error(`[PostsList] Received unknown post status: ${update.status} for postId=${update.postId}`);
         return;
       }
+
+      setPostStatuses((prev) => {
+        const next = new Map(prev);
+        next.set(update.postId, update.status as PostStatus);
+        return next;
+      });
 
       if (update.status === "GENERATING") {
         if (!pollIntervalRef.current) {

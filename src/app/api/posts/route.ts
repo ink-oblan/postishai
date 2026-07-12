@@ -74,9 +74,15 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
   console.log(
     `[POST /api/posts] Broadcasting post creation: postId=${post.id}, status=${post.status}`,
   );
-  await broadcastWithContext("post-create", () =>
-    broadcastPostStatusUpdate(userId, post.id, post.status),
-  );
+  try {
+    await broadcastWithContext("post-create", () =>
+      broadcastPostStatusUpdate(userId, post.id, post.status),
+    );
+  } catch (broadcastErr) {
+    console.error("[POST /api/posts] Broadcast failed:", broadcastErr);
+    // Don't fail the request - post was created successfully in DB
+    // Clients will learn about it via polling or next SSE reconnect
+  }
 
   return NextResponse.json(post, { status: 201 });
 });

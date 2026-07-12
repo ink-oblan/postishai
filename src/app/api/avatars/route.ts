@@ -76,9 +76,14 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
       return next;
     });
 
-    await broadcastWithContext("avatar-upload", () =>
-      broadcastAvatarStatusUpdate(userId, created.id, "COMPLETED"),
-    );
+    try {
+      await broadcastWithContext("avatar-upload", () =>
+        broadcastAvatarStatusUpdate(userId, created.id, "COMPLETED"),
+      );
+    } catch (broadcastErr) {
+      console.error("[POST /api/avatars] Broadcast failed:", broadcastErr);
+      // Don't fail - avatar was created successfully
+    }
     return NextResponse.json(created, { status: 201 });
   } else {
     // AI generation: render prompt, enqueue job, return immediately
@@ -119,9 +124,14 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
       return createdAvatar;
     });
 
-    await broadcastWithContext("avatar-create", () =>
-      broadcastAvatarStatusUpdate(userId, avatar.id, "GENERATING"),
-    );
+    try {
+      await broadcastWithContext("avatar-create", () =>
+        broadcastAvatarStatusUpdate(userId, avatar.id, "GENERATING"),
+      );
+    } catch (broadcastErr) {
+      console.error("[POST /api/avatars] Generate broadcast failed:", broadcastErr);
+      // Don't fail - avatar was created and job enqueued successfully
+    }
     return NextResponse.json(avatar, { status: 202 });
   }
 });
