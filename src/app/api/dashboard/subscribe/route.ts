@@ -9,6 +9,11 @@ interface ClientConnection {
   heartbeat: NodeJS.Timeout;
 }
 
+// SSE status values (Prisma PostStatus + synthetic statuses for lifecycle events)
+export const SSE_STATUS = {
+  ARCHIVED: "ARCHIVED",
+} as const;
+
 // In-memory store of connected clients per user
 // In production, use Redis or similar for multi-instance deployments
 const userSubscribers = new Map<string, Set<ClientConnection>>();

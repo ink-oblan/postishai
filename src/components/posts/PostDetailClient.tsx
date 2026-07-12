@@ -17,9 +17,9 @@ export function PostDetailClient({ postId, initialStatus }: PostDetailClientProp
     const handleUpdate = (payload: unknown) => {
       const update = payload as { postId: string; status: string };
       if (update.postId === postId) {
-        setStatus(update.status);
+        setStatus(update.status as string);
         // If post is archived (deleted), redirect back to posts list
-        if ((update.status as string) === "ARCHIVED") {
+        if (update.status === "ARCHIVED") {
           router.push("/posts");
         }
       }

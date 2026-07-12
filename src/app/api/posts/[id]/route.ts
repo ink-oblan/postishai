@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
+import { broadcastPostStatusUpdate, SSE_STATUS } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
@@ -99,23 +99,24 @@ export const PATCH = withAuth(async function PATCH(
   };
 
   if (archive) {
-    if (post.type === "CAPTION") {
+    // Archive the post and broadcast to all tabs
+    const archiveAndBroadcast = async () => {
       await prisma.post.update({ where: { id }, data: { archivedAt: new Date() } });
-      // Broadcast deletion to all tabs and connections
-      broadcastPostStatusUpdate(userId, id, "ARCHIVED").catch((err) => {
+      // Ensure broadcast completes before returning response
+      await broadcastPostStatusUpdate(userId, id, SSE_STATUS.ARCHIVED).catch((err) => {
         console.error("[post-archive] Failed to broadcast:", err);
       });
+    };
+
+    if (post.type === "CAPTION") {
+      await archiveAndBroadcast();
       return new NextResponse(null, { status: 204 });
     }
     if (post.status !== "DRAFT") {
       return NextResponse.json({ error: "Only DRAFT posts can be archived" }, { status: 409 });
     }
     if (post.videoPath) await archiveFile(post.videoPath).catch(() => null);
-    await prisma.post.update({ where: { id }, data: { archivedAt: new Date() } });
-    // Broadcast deletion to all tabs and connections
-    broadcastPostStatusUpdate(userId, id, "ARCHIVED").catch((err) => {
-      console.error("[post-archive] Failed to broadcast:", err);
-    });
+    await archiveAndBroadcast();
     return new NextResponse(null, { status: 204 });
   }
 
