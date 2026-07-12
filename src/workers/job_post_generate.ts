@@ -154,16 +154,24 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     throw new Error(`HeyGen polling timed out after ${HEYGEN_POLL_TIMEOUT_MS / 1000}s`);
   },
   async onSuccess(db, payload, result) {
-    const post = await db.post.update({
-      where: { id: payload.postId },
-      data: {
-        status: "COMPLETED",
-        videoPath: result.videoPath,
-        heygenVideoUrl: result.heygenVideoUrl,
-        errorMessage: null,
-      },
-    });
-    if (post.userId) {
+    const post = await db.post
+      .update({
+        where: { id: payload.postId },
+        data: {
+          status: "COMPLETED",
+          videoPath: result.videoPath,
+          heygenVideoUrl: result.heygenVideoUrl,
+          errorMessage: null,
+        },
+      })
+      .catch((dbErr) => {
+        console.error(
+          `[post-generate-success] DB update failed for postId=${payload.postId}:`,
+          dbErr,
+        );
+        return null;
+      });
+    if (post?.userId) {
       const userId = post.userId;
       try {
         await broadcastWithContext("post-generate-success", () =>

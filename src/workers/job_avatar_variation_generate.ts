@@ -85,18 +85,26 @@ export const avatarVariationGenerateJob: JobDefinition<
     return { imagePath };
   },
   async onSuccess(db, payload, result) {
-    const variation = await db.avatarVariation.update({
-      where: { id: payload.variationId },
-      data: {
-        imagePath: result.imagePath,
-        status: "COMPLETED",
-        errorMessage: null,
-        heygenAssetId: null,
-        heygenAssetUrl: null,
-      },
-      include: { avatar: true },
-    });
-    if (variation.avatar?.userId) {
+    const variation = await db.avatarVariation
+      .update({
+        where: { id: payload.variationId },
+        data: {
+          imagePath: result.imagePath,
+          status: "COMPLETED",
+          errorMessage: null,
+          heygenAssetId: null,
+          heygenAssetUrl: null,
+        },
+        include: { avatar: true },
+      })
+      .catch((dbErr) => {
+        console.error(
+          `[avatar-variation-generate-success] DB update failed for variationId=${payload.variationId}:`,
+          dbErr,
+        );
+        return null;
+      });
+    if (variation?.avatar?.userId) {
       const userId = variation.avatar.userId;
       try {
         await broadcastWithContext("avatar-variation-generate-success", () =>
