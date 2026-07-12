@@ -96,7 +96,7 @@ export const avatarVariationGenerateJob: JobDefinition<
       },
       include: { avatar: true },
     });
-    if (variation.avatar.userId) {
+    if (variation.avatar?.userId) {
       const userId = variation.avatar.userId;
       await broadcastWithContext("avatar-variation-generate-success", () =>
         broadcastAvatarStatusUpdate(userId, variation.avatarId, "COMPLETED"),

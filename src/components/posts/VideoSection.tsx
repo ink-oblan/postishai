@@ -67,7 +67,10 @@ export function VideoSection({ post }: Props) {
 
     // Update elapsed time every second for smooth UI
     setElapsed(getElapsedSeconds(post.generationStartedAt));
-    elapsedTimer = setInterval(() => setElapsed(getElapsedSeconds(post.generationStartedAt)), 1000);
+    elapsedTimer = setInterval(
+      () => setElapsed(getElapsedSeconds(post.generationStartedAt)),
+      POLLING.UI_TIMER,
+    );
 
     // Fallback polling in case SSE doesn't work
     pollTimerRef.current = setInterval(async () => {

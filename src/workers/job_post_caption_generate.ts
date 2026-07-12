@@ -256,11 +256,6 @@ export const postCaptionGenerateJob: JobDefinition<
     };
   },
   async onSuccess(db, payload, result) {
-    // In mock mode, add delay to ensure caption is ready before broadcast
-    if (isMockEnabled()) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
     const post = await db.post.update({
       where: { id: payload.postId },
       data: {

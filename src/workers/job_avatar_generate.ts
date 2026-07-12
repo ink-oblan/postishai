@@ -82,11 +82,6 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     return { imagePath };
   },
   async onSuccess(db, payload, result) {
-    // In mock mode, add delay to ensure file is fully written before broadcast
-    if (isMockEnabled()) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
     const avatar = await db.avatar.update({
       where: { id: payload.avatarId },
       data: {
