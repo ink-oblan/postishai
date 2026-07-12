@@ -105,7 +105,9 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         update.status === SSE_STATUS.ARCHIVED;
 
       if (!isValidStatus) {
-        console.error(`[PostsList] Received unknown post status: ${update.status} for postId=${update.postId}`);
+        console.error(
+          `[PostsList] Received unknown post status: ${update.status} for postId=${update.postId}`,
+        );
         return;
       }
 

@@ -75,7 +75,10 @@ export const PATCH = withAuth(async function PATCH(
         broadcastAvatarStatusUpdate(userId, id, SSE_STATUS.ARCHIVED),
       );
     } catch (broadcastErr) {
-      console.error(`[PATCH /api/avatars/:id] Archive broadcast failed for avatarId=${id}:`, broadcastErr);
+      console.error(
+        `[PATCH /api/avatars/:id] Archive broadcast failed for avatarId=${id}:`,
+        broadcastErr,
+      );
     }
     return new NextResponse(null, { status: 204 });
   }
@@ -167,7 +170,10 @@ export const PATCH = withAuth(async function PATCH(
           broadcastAvatarStatusUpdate(userId, id, "GENERATING"),
         );
       } catch (broadcastErr) {
-        console.error(`[PATCH /api/avatars/:id] Regenerate broadcast failed for avatarId=${id}:`, broadcastErr);
+        console.error(
+          `[PATCH /api/avatars/:id] Regenerate broadcast failed for avatarId=${id}:`,
+          broadcastErr,
+        );
       }
       return NextResponse.json(refreshed);
     }
@@ -183,7 +189,10 @@ export const PATCH = withAuth(async function PATCH(
         broadcastAvatarStatusUpdate(userId, id, updated.status),
       );
     } catch (broadcastErr) {
-      console.error(`[PATCH /api/avatars/:id] Update broadcast failed for avatarId=${id}:`, broadcastErr);
+      console.error(
+        `[PATCH /api/avatars/:id] Update broadcast failed for avatarId=${id}:`,
+        broadcastErr,
+      );
     }
     return NextResponse.json(updated);
   } catch (err) {
