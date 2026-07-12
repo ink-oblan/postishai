@@ -1,10 +1,11 @@
 import sharp from "sharp";
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { broadcastWithFallback } from "@/lib/broadcast-fallback";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
 import { generateMockAvatarImage } from "@/lib/mock-generators";
 import { archiveFile, writeFile } from "@/lib/storage";
+import { safeDbUpdate } from "@/workers/db-utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition } from "@/workers/types";
 
@@ -82,64 +83,44 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     return { imagePath };
   },
   async onSuccess(db, payload, result) {
-    const avatar = await db.avatar
-      .update({
-        where: { id: payload.avatarId },
-        data: {
-          imagePath: result.imagePath,
-          status: "COMPLETED",
-          errorMessage: null,
-        },
-      })
-      .catch((dbErr) => {
-        console.error(
-          `[avatar-generate-success] DB update failed for avatarId=${payload.avatarId}:`,
-          dbErr,
-        );
-        return null;
-      });
+    const avatar = await safeDbUpdate(
+      () =>
+        db.avatar.update({
+          where: { id: payload.avatarId },
+          data: {
+            imagePath: result.imagePath,
+            status: "COMPLETED",
+            errorMessage: null,
+          },
+        }),
+      "avatar-generate-success",
+      payload.avatarId,
+    );
     if (avatar?.userId) {
       const userId = avatar.userId;
-      try {
-        await broadcastWithContext("avatar-generate-success", () =>
-          broadcastAvatarStatusUpdate(userId, payload.avatarId, "COMPLETED"),
-        );
-      } catch (broadcastErr) {
-        console.error(
-          `[avatar-generate-success] Broadcast failed for avatarId=${payload.avatarId}:`,
-          broadcastErr,
-        );
-      }
+      await broadcastWithFallback("avatar-generate-success", "avatar-status-update", () =>
+        broadcastAvatarStatusUpdate(userId, payload.avatarId, "COMPLETED"),
+      );
     }
   },
   async onFailure(db, payload, error) {
-    const avatar = await db.avatar
-      .update({
-        where: { id: payload.avatarId },
-        data: {
-          status: "FAILED",
-          errorMessage: error,
-        },
-      })
-      .catch((dbErr) => {
-        console.error(
-          `[avatar-generate-failure] DB update failed for avatarId=${payload.avatarId}:`,
-          dbErr,
-        );
-        return null;
-      });
+    const avatar = await safeDbUpdate(
+      () =>
+        db.avatar.update({
+          where: { id: payload.avatarId },
+          data: {
+            status: "FAILED",
+            errorMessage: error,
+          },
+        }),
+      "avatar-generate-failure",
+      payload.avatarId,
+    );
     if (avatar?.userId) {
       const userId = avatar.userId;
-      try {
-        await broadcastWithContext("avatar-generate-failure", () =>
-          broadcastAvatarStatusUpdate(userId, payload.avatarId, "FAILED"),
-        );
-      } catch (broadcastErr) {
-        console.error(
-          `[avatar-generate-failure] Broadcast failed for avatarId=${payload.avatarId}:`,
-          broadcastErr,
-        );
-      }
+      await broadcastWithFallback("avatar-generate-failure", "avatar-status-update", () =>
+        broadcastAvatarStatusUpdate(userId, payload.avatarId, "FAILED"),
+      );
     }
   },
   classifyError(error) {

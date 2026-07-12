@@ -1,13 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { broadcastWithFallback } from "@/lib/broadcast-fallback";
 import { runFfmpeg } from "@/lib/ffmpeg";
 import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
 import { generateMockVideo } from "@/lib/mock-generators";
 import { POLLING } from "@/lib/polling-config";
 import { readFile, writeFile } from "@/lib/storage";
+import { safeDbUpdate } from "@/workers/db-utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition, PostGeneratePayload } from "@/workers/types";
 
@@ -154,65 +155,45 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     throw new Error(`HeyGen polling timed out after ${HEYGEN_POLL_TIMEOUT_MS / 1000}s`);
   },
   async onSuccess(db, payload, result) {
-    const post = await db.post
-      .update({
-        where: { id: payload.postId },
-        data: {
-          status: "COMPLETED",
-          videoPath: result.videoPath,
-          heygenVideoUrl: result.heygenVideoUrl,
-          errorMessage: null,
-        },
-      })
-      .catch((dbErr) => {
-        console.error(
-          `[post-generate-success] DB update failed for postId=${payload.postId}:`,
-          dbErr,
-        );
-        return null;
-      });
+    const post = await safeDbUpdate(
+      () =>
+        db.post.update({
+          where: { id: payload.postId },
+          data: {
+            status: "COMPLETED",
+            videoPath: result.videoPath,
+            heygenVideoUrl: result.heygenVideoUrl,
+            errorMessage: null,
+          },
+        }),
+      "post-generate-success",
+      payload.postId,
+    );
     if (post?.userId) {
       const userId = post.userId;
-      try {
-        await broadcastWithContext("post-generate-success", () =>
-          broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
-        );
-      } catch (broadcastErr) {
-        console.error(
-          `[post-generate-success] Broadcast failed for postId=${payload.postId}:`,
-          broadcastErr,
-        );
-      }
+      await broadcastWithFallback("post-generate-success", "post-status-update", () =>
+        broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
+      );
     }
   },
   async onFailure(db, payload, error) {
-    const post = await db.post
-      .update({
-        where: { id: payload.postId },
-        data: {
-          status: "FAILED",
-          errorMessage: error,
-        },
-      })
-      .catch((dbErr) => {
-        console.error(
-          `[post-generate-failure] DB update failed for postId=${payload.postId}:`,
-          dbErr,
-        );
-        return null;
-      });
+    const post = await safeDbUpdate(
+      () =>
+        db.post.update({
+          where: { id: payload.postId },
+          data: {
+            status: "FAILED",
+            errorMessage: error,
+          },
+        }),
+      "post-generate-failure",
+      payload.postId,
+    );
     if (post?.userId) {
       const userId = post.userId;
-      try {
-        await broadcastWithContext("post-generate-failure", () =>
-          broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
-        );
-      } catch (broadcastErr) {
-        console.error(
-          `[post-generate-failure] Broadcast failed for postId=${payload.postId}:`,
-          broadcastErr,
-        );
-      }
+      await broadcastWithFallback("post-generate-failure", "post-status-update", () =>
+        broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
+      );
     }
   },
   classifyError(error) {

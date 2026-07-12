@@ -1,7 +1,8 @@
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { broadcastWithFallback } from "@/lib/broadcast-fallback";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { archiveFile, readFile, writeFile } from "@/lib/storage";
+import { safeDbUpdate } from "@/workers/db-utils";
 import {
   isRetryableError,
   parseObjectPayload,
@@ -85,67 +86,45 @@ export const avatarVariationGenerateJob: JobDefinition<
     return { imagePath };
   },
   async onSuccess(db, payload, result) {
-    const variation = await db.avatarVariation
-      .update({
-        where: { id: payload.variationId },
-        data: {
-          imagePath: result.imagePath,
-          status: "COMPLETED",
-          errorMessage: null,
-          heygenAssetId: null,
-          heygenAssetUrl: null,
-        },
-        include: { avatar: true },
-      })
-      .catch((dbErr) => {
-        console.error(
-          `[avatar-variation-generate-success] DB update failed for variationId=${payload.variationId}:`,
-          dbErr,
-        );
-        return null;
-      });
+    const variation = await safeDbUpdate(
+      () =>
+        db.avatarVariation.update({
+          where: { id: payload.variationId },
+          data: {
+            imagePath: result.imagePath,
+            status: "COMPLETED",
+            errorMessage: null,
+            heygenAssetId: null,
+            heygenAssetUrl: null,
+          },
+          include: { avatar: true },
+        }),
+      "avatar-variation-generate-success",
+      payload.variationId,
+    );
     if (variation?.avatar?.userId) {
       const userId = variation.avatar.userId;
-      try {
-        await broadcastWithContext("avatar-variation-generate-success", () =>
-          broadcastAvatarStatusUpdate(userId, variation.avatarId, "COMPLETED"),
-        );
-      } catch (broadcastErr) {
-        console.error(
-          `[avatar-variation-generate-success] Broadcast failed for variationId=${payload.variationId}:`,
-          broadcastErr,
-        );
-        // Log but don't crash - DB update succeeded, clients will learn via polling
-      }
+      await broadcastWithFallback("avatar-variation-generate-success", "avatar-status-update", () =>
+        broadcastAvatarStatusUpdate(userId, variation.avatarId, "COMPLETED"),
+      );
     }
   },
   async onFailure(db, payload, error) {
-    const variation = await db.avatarVariation
-      .update({
-        where: { id: payload.variationId },
-        data: { status: "FAILED", errorMessage: error },
-        include: { avatar: true },
-      })
-      .catch((dbErr) => {
-        console.error(
-          `[avatar-variation-generate-failure] DB update failed for variationId=${payload.variationId}:`,
-          dbErr,
-        );
-        return null;
-      });
+    const variation = await safeDbUpdate(
+      () =>
+        db.avatarVariation.update({
+          where: { id: payload.variationId },
+          data: { status: "FAILED", errorMessage: error },
+          include: { avatar: true },
+        }),
+      "avatar-variation-generate-failure",
+      payload.variationId,
+    );
     if (variation?.avatar?.userId) {
       const userId = variation.avatar.userId;
-      try {
-        await broadcastWithContext("avatar-variation-generate-failure", () =>
-          broadcastAvatarStatusUpdate(userId, variation.avatarId, "FAILED"),
-        );
-      } catch (broadcastErr) {
-        console.error(
-          `[avatar-variation-generate-failure] Broadcast failed for variationId=${payload.variationId}:`,
-          broadcastErr,
-        );
-        // Log but don't crash - DB update succeeded
-      }
+      await broadcastWithFallback("avatar-variation-generate-failure", "avatar-status-update", () =>
+        broadcastAvatarStatusUpdate(userId, variation.avatarId, "FAILED"),
+      );
     }
   },
   classifyError(error) {

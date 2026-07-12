@@ -84,9 +84,14 @@ export function VideoSection({ post }: Props) {
   useEffect(() => {
     if (status !== "GENERATING") return;
 
+    const abortController = new AbortController();
+
     pollTimerRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/posts/${post.id}`, { credentials: "include" });
+        const res = await fetch(`/api/posts/${post.id}`, {
+          credentials: "include",
+          signal: abortController.signal,
+        });
         if (!res.ok) return;
         const updatedPost = await res.json();
         // Compare against actual data from server, not stale state
@@ -99,11 +104,13 @@ export function VideoSection({ post }: Props) {
           window.location.reload();
         }
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         console.error("[VideoSection] Poll error:", err);
       }
     }, POLLING.SSE_FALLBACK);
 
     return () => {
+      abortController.abort();
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
         pollTimerRef.current = null;

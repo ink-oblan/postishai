@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { broadcastWithFallback } from "@/lib/broadcast-fallback";
 import { runFfmpeg, runFfprobe } from "@/lib/ffmpeg";
 import { convertToJpeg } from "@/lib/image-convert";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
@@ -11,6 +11,7 @@ import { generateMockCaption } from "@/lib/mock-generators";
 import { renderPromptTemplate } from "@/lib/prompts";
 import { readFile as readFileStorage } from "@/lib/storage";
 import { PLATFORM_FULL_NAMES } from "@/lib/utils";
+import { safeDbUpdate } from "@/workers/db-utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition, PostCaptionGeneratePayload } from "@/workers/types";
 
@@ -256,65 +257,45 @@ export const postCaptionGenerateJob: JobDefinition<
     };
   },
   async onSuccess(db, payload, result) {
-    const post = await db.post
-      .update({
-        where: { id: payload.postId },
-        data: {
-          status: "COMPLETED",
-          caption: result.caption,
-          errorMessage: null,
-          updatedAt: new Date(),
-        },
-      })
-      .catch((dbErr) => {
-        console.error(
-          `[post-caption-generate-success] DB update failed for postId=${payload.postId}:`,
-          dbErr,
-        );
-        return null;
-      });
+    const post = await safeDbUpdate(
+      () =>
+        db.post.update({
+          where: { id: payload.postId },
+          data: {
+            status: "COMPLETED",
+            caption: result.caption,
+            errorMessage: null,
+            updatedAt: new Date(),
+          },
+        }),
+      "post-caption-generate-success",
+      payload.postId,
+    );
     if (post?.userId) {
       const userId = post.userId;
-      try {
-        await broadcastWithContext("post-caption-generate-success", () =>
-          broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
-        );
-      } catch (broadcastErr) {
-        console.error(
-          `[post-caption-generate-success] Broadcast failed for postId=${payload.postId}:`,
-          broadcastErr,
-        );
-      }
+      await broadcastWithFallback("post-caption-generate-success", "post-status-update", () =>
+        broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
+      );
     }
   },
   async onFailure(db, payload, error) {
-    const post = await db.post
-      .update({
-        where: { id: payload.postId },
-        data: {
-          status: "FAILED",
-          errorMessage: error,
-        },
-      })
-      .catch((dbErr) => {
-        console.error(
-          `[post-caption-generate-failure] DB update failed for postId=${payload.postId}:`,
-          dbErr,
-        );
-        return null;
-      });
+    const post = await safeDbUpdate(
+      () =>
+        db.post.update({
+          where: { id: payload.postId },
+          data: {
+            status: "FAILED",
+            errorMessage: error,
+          },
+        }),
+      "post-caption-generate-failure",
+      payload.postId,
+    );
     if (post?.userId) {
       const userId = post.userId;
-      try {
-        await broadcastWithContext("post-caption-generate-failure", () =>
-          broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
-        );
-      } catch (broadcastErr) {
-        console.error(
-          `[post-caption-generate-failure] Broadcast failed for postId=${payload.postId}:`,
-          broadcastErr,
-        );
-      }
+      await broadcastWithFallback("post-caption-generate-failure", "post-status-update", () =>
+        broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
+      );
     }
   },
   classifyError(error) {
