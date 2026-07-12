@@ -105,9 +105,16 @@ export const PATCH = withAuth(async function PATCH(
       await prisma.post.update({ where: { id }, data: { archivedAt: new Date() } });
       // Ensure broadcast completes before returning response
       // Log but don't fail the response - archived state is persisted in DB
-      await broadcastWithContext("post-archive", () =>
-        broadcastPostStatusUpdate(userId, id, SSE_STATUS.ARCHIVED),
-      );
+      try {
+        await broadcastWithContext("post-archive", () =>
+          broadcastPostStatusUpdate(userId, id, SSE_STATUS.ARCHIVED),
+        );
+      } catch (broadcastErr) {
+        console.error(
+          `[PATCH /api/posts/:id] Archive broadcast failed for postId=${id}:`,
+          broadcastErr,
+        );
+      }
     };
 
     if (post.type === "CAPTION") {

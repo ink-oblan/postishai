@@ -92,9 +92,16 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     });
     if (avatar.userId) {
       const userId = avatar.userId;
-      await broadcastWithContext("avatar-generate-success", () =>
-        broadcastAvatarStatusUpdate(userId, payload.avatarId, "COMPLETED"),
-      );
+      try {
+        await broadcastWithContext("avatar-generate-success", () =>
+          broadcastAvatarStatusUpdate(userId, payload.avatarId, "COMPLETED"),
+        );
+      } catch (broadcastErr) {
+        console.error(
+          `[avatar-generate-success] Broadcast failed for avatarId=${payload.avatarId}:`,
+          broadcastErr,
+        );
+      }
     }
   },
   async onFailure(db, payload, error) {
@@ -115,9 +122,16 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
       });
     if (avatar?.userId) {
       const userId = avatar.userId;
-      await broadcastWithContext("avatar-generate-failure", () =>
-        broadcastAvatarStatusUpdate(userId, payload.avatarId, "FAILED"),
-      );
+      try {
+        await broadcastWithContext("avatar-generate-failure", () =>
+          broadcastAvatarStatusUpdate(userId, payload.avatarId, "FAILED"),
+        );
+      } catch (broadcastErr) {
+        console.error(
+          `[avatar-generate-failure] Broadcast failed for avatarId=${payload.avatarId}:`,
+          broadcastErr,
+        );
+      }
     }
   },
   classifyError(error) {
