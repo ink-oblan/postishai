@@ -33,4 +33,7 @@ export const POLLING = {
 
   /** UI timer updates (elapsed time display) */
   UI_TIMER: 1000, // 1 second for smooth elapsed time display
+
+  /** Fallback polling when SSE might not work reliably */
+  SSE_FALLBACK: 5000, // 5 seconds as backup if SSE doesn't deliver updates
 } as const;

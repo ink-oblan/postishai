@@ -1,10 +1,12 @@
 "use client";
 
 import { AlertCircle, Loader2, Play, Video } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { POLLING } from "@/lib/polling-config";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
 
 interface Props {
@@ -25,45 +27,77 @@ function getElapsedSeconds(startedAt: string | null): number {
 }
 
 export function VideoSection({ post }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState(post.status);
   const [generating, setGenerating] = useState(false);
   const [elapsed, setElapsed] = useState(() => getElapsedSeconds(post.generationStartedAt));
 
-  // Listen for SSE updates
+  // Listen for SSE updates or poll if SSE is unavailable
   useEffect(() => {
-    const handleStatusUpdate = (payload: unknown) => {
+    if (status !== "GENERATING") return;
+
+    let elapsedTimer: ReturnType<typeof setInterval>;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    // Listen for SSE post status updates
+    const unsubscribeSse = addEventListener("post-status-update", (payload: unknown) => {
       const update = payload as { postId: string; status: string };
       if (update.postId === post.id) {
         setStatus(update.status);
         if (update.status === "COMPLETED" || update.status === "FAILED") {
-          // Add small delay then do hard reload to ensure data is ready
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          if (pollTimer) clearInterval(pollTimer);
+          clearInterval(elapsedTimer);
+          router.refresh();
         }
       }
-    };
+    });
 
-    // Listen for SSE post status updates from this tab
-    const unsubscribeSse = addEventListener("post-status-update", handleStatusUpdate);
-    // Listen for post status updates from other tabs
-    const unsubscribeTab = onTabMessage("post-status-update", handleStatusUpdate);
+    // Also listen to other tab messages
+    const unsubscribeTab = onTabMessage("post-status-update", (payload: unknown) => {
+      const update = payload as { postId: string; status: string };
+      if (update.postId === post.id) {
+        setStatus(update.status);
+        if (update.status === "COMPLETED" || update.status === "FAILED") {
+          if (pollTimer) clearInterval(pollTimer);
+          clearInterval(elapsedTimer);
+          router.refresh();
+        }
+      }
+    });
+
+    // Update elapsed time every second for smooth UI
+    setElapsed(getElapsedSeconds(post.generationStartedAt));
+    elapsedTimer = setInterval(() => setElapsed(getElapsedSeconds(post.generationStartedAt)), 1000);
+
+    // Fallback polling in case SSE doesn't work
+    pollTimer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/posts/${post.id}`, { credentials: "include" });
+        if (!res.ok) return;
+        const updatedPost = await res.json();
+        if (
+          updatedPost.status !== status &&
+          (updatedPost.status === "COMPLETED" || updatedPost.status === "FAILED")
+        ) {
+          setStatus(updatedPost.status);
+          if (pollTimer) {
+            clearInterval(pollTimer);
+          }
+          clearInterval(elapsedTimer);
+          router.refresh();
+        }
+      } catch (err) {
+        console.error("[VideoSection] Poll error:", err);
+      }
+    }, POLLING.SSE_FALLBACK);
 
     return () => {
       unsubscribeSse();
       unsubscribeTab();
+      clearInterval(elapsedTimer);
+      if (pollTimer) clearInterval(pollTimer);
     };
-  }, [post.id]);
-
-  // Update elapsed time every second when generating
-  useEffect(() => {
-    if (status !== "GENERATING") return;
-
-    setElapsed(getElapsedSeconds(post.generationStartedAt));
-    const timer = setInterval(() => setElapsed(getElapsedSeconds(post.generationStartedAt)), 1000);
-
-    return () => clearInterval(timer);
-  }, [status, post.generationStartedAt]);
+  }, [status, post.id, post.generationStartedAt, router]);
 
   async function handleGenerate() {
     setGenerating(true);

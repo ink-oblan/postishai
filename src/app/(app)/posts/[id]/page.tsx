@@ -33,7 +33,7 @@ export default async function PostDetailPage({
   if (post.type === "CAPTION") {
     return (
       <div className="space-y-6 px-6 py-8 sm:px-10">
-        <PostDetailClient postId={post.id} initialStatus={post.status} />
+        <PostDetailClient postId={post.id} />
         <div className="flex items-center gap-3">
           <Link
             href="/posts"
@@ -77,7 +77,7 @@ export default async function PostDetailPage({
 
   return (
     <div className="space-y-6 px-6 py-8 sm:px-10">
-      <PostDetailClient postId={post.id} initialStatus={post.status} />
+      <PostDetailClient postId={post.id} />
       <div className="flex items-center gap-3">
         <Link
           href="/posts"
