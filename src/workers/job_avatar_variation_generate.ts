@@ -98,9 +98,17 @@ export const avatarVariationGenerateJob: JobDefinition<
     });
     if (variation.avatar?.userId) {
       const userId = variation.avatar.userId;
-      await broadcastWithContext("avatar-variation-generate-success", () =>
-        broadcastAvatarStatusUpdate(userId, variation.avatarId, "COMPLETED"),
-      );
+      try {
+        await broadcastWithContext("avatar-variation-generate-success", () =>
+          broadcastAvatarStatusUpdate(userId, variation.avatarId, "COMPLETED"),
+        );
+      } catch (broadcastErr) {
+        console.error(
+          `[avatar-variation-generate-success] Broadcast failed for variationId=${payload.variationId}:`,
+          broadcastErr,
+        );
+        // Log but don't crash - DB update succeeded, clients will learn via polling
+      }
     }
   },
   async onFailure(db, payload, error) {
@@ -119,9 +127,17 @@ export const avatarVariationGenerateJob: JobDefinition<
       });
     if (variation?.avatar?.userId) {
       const userId = variation.avatar.userId;
-      await broadcastWithContext("avatar-variation-generate-failure", () =>
-        broadcastAvatarStatusUpdate(userId, variation.avatarId, "FAILED"),
-      );
+      try {
+        await broadcastWithContext("avatar-variation-generate-failure", () =>
+          broadcastAvatarStatusUpdate(userId, variation.avatarId, "FAILED"),
+        );
+      } catch (broadcastErr) {
+        console.error(
+          `[avatar-variation-generate-failure] Broadcast failed for variationId=${payload.variationId}:`,
+          broadcastErr,
+        );
+        // Log but don't crash - DB update succeeded
+      }
     }
   },
   classifyError(error) {

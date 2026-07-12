@@ -65,7 +65,7 @@ export function VideoSection({ post }: Props) {
       unsubscribeSse();
       unsubscribeTab();
     };
-  }, [post.id]);
+  }, [post.id, status]);
 
   // Elapsed time display timer
   useEffect(() => {
@@ -109,7 +109,7 @@ export function VideoSection({ post }: Props) {
         pollTimerRef.current = null;
       }
     };
-  }, [post.id]);
+  }, [post.id, status]);
 
   async function handleGenerate() {
     setGenerating(true);
