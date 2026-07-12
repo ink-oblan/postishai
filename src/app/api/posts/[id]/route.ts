@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
@@ -100,6 +101,10 @@ export const PATCH = withAuth(async function PATCH(
   if (archive) {
     if (post.type === "CAPTION") {
       await prisma.post.update({ where: { id }, data: { archivedAt: new Date() } });
+      // Broadcast deletion to all tabs and connections
+      broadcastPostStatusUpdate(userId, id, "ARCHIVED").catch((err) => {
+        console.error("[post-archive] Failed to broadcast:", err);
+      });
       return new NextResponse(null, { status: 204 });
     }
     if (post.status !== "DRAFT") {
@@ -107,6 +112,10 @@ export const PATCH = withAuth(async function PATCH(
     }
     if (post.videoPath) await archiveFile(post.videoPath).catch(() => null);
     await prisma.post.update({ where: { id }, data: { archivedAt: new Date() } });
+    // Broadcast deletion to all tabs and connections
+    broadcastPostStatusUpdate(userId, id, "ARCHIVED").catch((err) => {
+      console.error("[post-archive] Failed to broadcast:", err);
+    });
     return new NextResponse(null, { status: 204 });
   }
 

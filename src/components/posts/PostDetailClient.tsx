@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { addEventListener } from "@/lib/sse-client";
 
@@ -9,6 +10,7 @@ interface PostDetailClientProps {
 }
 
 export function PostDetailClient({ postId, initialStatus }: PostDetailClientProps) {
+  const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
 
   useEffect(() => {
@@ -16,6 +18,10 @@ export function PostDetailClient({ postId, initialStatus }: PostDetailClientProp
       const update = payload as { postId: string; status: string };
       if (update.postId === postId) {
         setStatus(update.status);
+        // If post is archived (deleted), redirect back to posts list
+        if ((update.status as string) === "ARCHIVED") {
+          router.push("/posts");
+        }
       }
     };
 
@@ -24,7 +30,7 @@ export function PostDetailClient({ postId, initialStatus }: PostDetailClientProp
     return () => {
       unsubscribe();
     };
-  }, [postId]);
+  }, [postId, router]);
 
   useEffect(() => {
     if (status !== initialStatus && (status === "COMPLETED" || status === "FAILED")) {
