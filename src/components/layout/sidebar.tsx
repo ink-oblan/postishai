@@ -104,6 +104,8 @@ function Logo({ onClick }: { onClick?: () => void }) {
           width={32}
           height={32}
           className="h-full w-full object-contain"
+          loading="eager"
+          priority
         />
       </div>
       <span className="font-bold text-[21px] tracking-tight">PostishAI</span>

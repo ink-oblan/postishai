@@ -3,7 +3,7 @@
 import type { Post, PostStatus } from "@prisma/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { POLLING } from "@/lib/polling-config";
-import { addEventListener } from "@/lib/sse-client";
+import { addEventListener, onTabMessage } from "@/lib/sse-client";
 import { PostsContent } from "./PostsContent";
 
 interface PostsClientProps {
@@ -119,12 +119,16 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
       scheduleFullRefresh();
     };
 
-    const unsubscribeSse = addEventListener("post-status-update", handleUpdate);
-    const unsubscribeStats = addEventListener("stats-refresh", handleStatsRefresh);
+    const unsubscribePostSse = addEventListener("post-status-update", handleUpdate);
+    const unsubscribeStatsSse = addEventListener("stats-refresh", handleStatsRefresh);
+    const unsubscribePostTab = onTabMessage("post-status-update", handleUpdate);
+    const unsubscribeStatsTab = onTabMessage("stats-refresh", handleStatsRefresh);
 
     return () => {
-      unsubscribeSse();
-      unsubscribeStats();
+      unsubscribePostSse();
+      unsubscribeStatsSse();
+      unsubscribePostTab();
+      unsubscribeStatsTab();
       if (fullRefreshTimeout) clearTimeout(fullRefreshTimeout);
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { addEventListener } from "@/lib/sse-client";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { addEventListener, onTabMessage } from "@/lib/sse-client";
 import { AvatarGrid } from "./AvatarGrid";
 
 interface AvatarWithCount {
@@ -11,6 +12,7 @@ interface AvatarWithCount {
   imagePath: string;
   imageModel: string | null;
   createdAt: Date;
+  updatedAt?: Date;
   _count: { posts: number };
 }
 
@@ -19,9 +21,23 @@ interface AvatarListClientProps {
 }
 
 export function AvatarListClient({ initialAvatars }: AvatarListClientProps) {
-  const [avatarStatuses, setAvatarStatuses] = useState<Map<string, string>>(
-    new Map(initialAvatars.map((a) => [a.id, a.status])),
-  );
+  const router = useRouter();
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [pendingAvatarIds, setPendingAvatarIds] = useState<Set<string>>(new Set());
+
+  // Clear pending when initialAvatars updates (server refresh completed)
+  useEffect(() => {
+    const serverAvatarIds = new Set(initialAvatars.map((a) => a.id));
+    setPendingAvatarIds((prev) => {
+      const next = new Set(prev);
+      for (const id of prev) {
+        if (serverAvatarIds.has(id)) {
+          next.delete(id);
+        }
+      }
+      return next;
+    });
+  }, [initialAvatars]);
 
   useEffect(() => {
     const handleUpdate = (payload: unknown) => {
@@ -30,29 +46,68 @@ export function AvatarListClient({ initialAvatars }: AvatarListClientProps) {
         console.log(`[AvatarList] Update: ${update.avatarId} = ${update.status}`);
       }
 
-      setAvatarStatuses((prev) => {
-        const next = new Map(prev);
-        next.set(update.avatarId, update.status);
-        return next;
+      // Track new avatars
+      setPendingAvatarIds((prev) => {
+        const isNew = !initialAvatars.some((a) => a.id === update.avatarId);
+        if (isNew) {
+          return new Set(prev).add(update.avatarId);
+        }
+        return prev;
       });
 
-      if (update.status === "COMPLETED" || update.status === "FAILED") {
-        // Reload page to show updated avatar
-        window.location.reload();
+      // Refresh when avatar completes, fails, is deleted, or starts regenerating
+      if (
+        update.status === "COMPLETED" ||
+        update.status === "FAILED" ||
+        update.status === "ARCHIVED" ||
+        update.status === "GENERATING"
+      ) {
+        if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = setTimeout(() => {
+          router.refresh();
+        }, 500);
       }
     };
 
-    const unsubscribe = addEventListener("avatar-status-update", handleUpdate);
+    // Listen to avatar updates from this tab's SSE
+    const unsubscribeAvatarSse = addEventListener("avatar-status-update", handleUpdate);
+    // Listen to avatar updates from other tabs
+    const unsubscribeAvatarTab = onTabMessage("avatar-status-update", handleUpdate);
 
     return () => {
-      unsubscribe();
+      unsubscribeAvatarSse();
+      unsubscribeAvatarTab();
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
     };
-  }, []);
+  }, [router, initialAvatars]);
 
-  const avatarsWithLiveStatus = initialAvatars.map((avatar) => ({
-    ...avatar,
-    status: avatarStatuses.get(avatar.id) || avatar.status,
-  }));
+  // Build list: real avatars + mock for pending (not yet in server list)
+  const avatarsList = useMemo(() => {
+    const serverAvatarIds = new Set(initialAvatars.map((a) => a.id));
+    const list: AvatarWithCount[] = [];
 
-  return <AvatarGrid avatars={avatarsWithLiveStatus} />;
+    // Add pending avatars as mocks (only if not already in server list)
+    for (const avatarId of pendingAvatarIds) {
+      if (!serverAvatarIds.has(avatarId)) {
+        const now = new Date();
+        list.push({
+          id: avatarId,
+          name: "New Avatar",
+          status: "GENERATING",
+          imagePath: "",
+          imageModel: null,
+          createdAt: now,
+          updatedAt: now,
+          _count: { posts: 0 },
+        });
+      }
+    }
+
+    // Add real avatars
+    list.push(...initialAvatars);
+
+    return list;
+  }, [initialAvatars, pendingAvatarIds]);
+
+  return <AvatarGrid avatars={avatarsList} />;
 }

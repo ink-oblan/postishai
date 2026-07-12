@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { DashboardData } from "@/lib/dashboard-utils";
-import { addEventListener } from "@/lib/sse-client";
+import { addEventListener, onTabMessage } from "@/lib/sse-client";
 import { DashboardContent } from "./DashboardContent";
 
 function createDebounce<T>(callback: (value: T) => void, delay: number) {
@@ -34,11 +34,21 @@ export function DashboardClient({ initialData }: Props) {
     const unsubscribeInit = addEventListener("init", handleUpdate);
     const unsubscribeStatsRefresh = addEventListener("stats-refresh", handleUpdate);
     const unsubscribePostUpdate = addEventListener("post-status-update", handleUpdate);
+    const unsubscribeAvatarUpdate = addEventListener("avatar-status-update", handleUpdate);
+    const unsubscribeTabInit = onTabMessage("init", handleUpdate);
+    const unsubscribeTabStatsRefresh = onTabMessage("stats-refresh", handleUpdate);
+    const unsubscribeTabPostUpdate = onTabMessage("post-status-update", handleUpdate);
+    const unsubscribeTabAvatarUpdate = onTabMessage("avatar-status-update", handleUpdate);
 
     return () => {
       unsubscribeInit();
       unsubscribeStatsRefresh();
       unsubscribePostUpdate();
+      unsubscribeAvatarUpdate();
+      unsubscribeTabInit();
+      unsubscribeTabStatsRefresh();
+      unsubscribeTabPostUpdate();
+      unsubscribeTabAvatarUpdate();
     };
   }, [debouncedSetData]);
 
