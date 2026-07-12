@@ -16,7 +16,7 @@ interface PostsClientProps {
 
 export function PostsClient({ initialPosts }: PostsClientProps) {
   const [posts, setPosts] = useState(initialPosts);
-  const [postStatuses, setPostStatuses] = useState<Map<string, PostStatus>>(
+  const [postStatuses, setPostStatuses] = useState<Map<string, PostStatus | "ARCHIVED">>(
     new Map(initialPosts.map((p) => [p.id, p.status])),
   );
 
@@ -77,7 +77,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
     };
 
     const handleUpdate = (payload: unknown) => {
-      const update = payload as { postId: string; status: PostStatus };
+      const update = payload as { postId: string; status: PostStatus | "ARCHIVED" };
       if (process.env.NODE_ENV === "development")
         console.log(`[PostsList] Update: ${update.postId} = ${update.status}`);
 
@@ -109,17 +109,11 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         pollIntervalRef.current = null;
         // Schedule a full refresh to get updated statuses
         scheduleFullRefresh();
-      } else if ((update.status as string) === "ARCHIVED") {
+      } else if (update.status === "ARCHIVED") {
         if (process.env.NODE_ENV === "development")
           console.log("[PostsList] Post archived, refreshing list");
-        // Remove deleted post from list
-        setPosts((prev) => prev.filter((p) => p.id !== update.postId));
-        // Update statuses
-        setPostStatuses((prev) => {
-          const next = new Map(prev);
-          next.delete(update.postId);
-          return next;
-        });
+        // Schedule full refresh to ensure consistency (archive may cascade delete related records)
+        scheduleFullRefresh();
       }
     };
 
@@ -150,7 +144,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
 
   const postsWithLiveStatus = posts.map((post) => ({
     ...post,
-    status: postStatuses.get(post.id) || post.status,
+    status: (postStatuses.get(post.id) || post.status) as PostStatus,
   }));
 
   return <PostsContent posts={postsWithLiveStatus} />;
