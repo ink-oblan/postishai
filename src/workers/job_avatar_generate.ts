@@ -111,7 +111,13 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
           errorMessage: error,
         },
       })
-      .catch(() => null);
+      .catch((dbErr) => {
+        console.error(
+          `[avatar-generate-failure] DB update failed for avatarId=${payload.avatarId}:`,
+          dbErr,
+        );
+        return null;
+      });
     if (avatar?.userId) {
       const userId = avatar.userId;
       await broadcastWithContext("avatar-generate-failure", () =>
