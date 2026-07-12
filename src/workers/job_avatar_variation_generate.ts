@@ -1,4 +1,5 @@
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { archiveFile, readFile, writeFile } from "@/lib/storage";
 import {
@@ -96,10 +97,9 @@ export const avatarVariationGenerateJob: JobDefinition<
       include: { avatar: true },
     });
     if (variation.avatar.userId) {
-      broadcastAvatarStatusUpdate(variation.avatar.userId, variation.avatarId, "COMPLETED").catch(
-        (err) => {
-          console.error("Failed to broadcast avatar variation status update:", err);
-        },
+      const userId = variation.avatar.userId;
+      await broadcastWithContext("avatar-variation-generate-success", () =>
+        broadcastAvatarStatusUpdate(userId, variation.avatarId, "COMPLETED"),
       );
     }
   },
@@ -112,10 +112,9 @@ export const avatarVariationGenerateJob: JobDefinition<
       })
       .catch(() => null);
     if (variation?.avatar.userId) {
-      broadcastAvatarStatusUpdate(variation.avatar.userId, variation.avatarId, "FAILED").catch(
-        (err) => {
-          console.error("Failed to broadcast avatar variation status update:", err);
-        },
+      const userId = variation.avatar.userId;
+      await broadcastWithContext("avatar-variation-generate-failure", () =>
+        broadcastAvatarStatusUpdate(userId, variation.avatarId, "FAILED"),
       );
     }
   },

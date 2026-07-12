@@ -111,7 +111,10 @@ export function PostsContent({ posts }: PostsContentProps) {
                           {statusCfg.label}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-muted-foreground text-sm">
+                      <td
+                        className="px-5 py-4 text-muted-foreground text-sm"
+                        suppressHydrationWarning
+                      >
                         {formatDistanceToNow(post.createdAt)}
                       </td>
                       <td className="px-5 py-4 text-right">
@@ -159,7 +162,9 @@ export function PostsContent({ posts }: PostsContentProps) {
                     <Badge variant="outline" className="font-semibold text-xs">
                       {PLATFORM_LABELS[post.platform]}
                     </Badge>
-                    <span className="ml-auto">{formatDistanceToNow(post.createdAt)}</span>
+                    <span className="ml-auto" suppressHydrationWarning>
+                      {formatDistanceToNow(post.createdAt)}
+                    </span>
                     <DeletePostButton postId={post.id} />
                   </div>
                 </Link>

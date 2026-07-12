@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { prisma } from "@/lib/db";
 import { decodeAndConvertImageBase64 } from "@/lib/image-convert";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
@@ -75,7 +76,9 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
       return next;
     });
 
-    await broadcastAvatarStatusUpdate(userId, created.id, "COMPLETED");
+    await broadcastWithContext("avatar-upload", () =>
+      broadcastAvatarStatusUpdate(userId, created.id, "COMPLETED"),
+    );
     return NextResponse.json(created, { status: 201 });
   } else {
     // AI generation: render prompt, enqueue job, return immediately
@@ -116,7 +119,9 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
       return createdAvatar;
     });
 
-    await broadcastAvatarStatusUpdate(userId, avatar.id, "GENERATING");
+    await broadcastWithContext("avatar-create", () =>
+      broadcastAvatarStatusUpdate(userId, avatar.id, "GENERATING"),
+    );
     return NextResponse.json(avatar, { status: 202 });
   }
 });

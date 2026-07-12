@@ -2,6 +2,7 @@ import type { Platform } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { validateCaptionMedia } from "@/lib/caption-media-validation";
 import { prisma } from "@/lib/db";
 import { convertToJpeg } from "@/lib/image-convert";
@@ -109,9 +110,9 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
     await enqueuePostCaptionGenerateJob({ postId: post.id });
 
     // Broadcast post creation and generation start to connected clients (don't wait)
-    broadcastPostStatusUpdate(userId, post.id, "GENERATING").catch((err) => {
-      console.error("Failed to broadcast generation start:", err);
-    });
+    await broadcastWithContext("post-caption-generate-start", () =>
+      broadcastPostStatusUpdate(userId, post.id, "GENERATING"),
+    );
 
     return NextResponse.json({
       postId: post.id,

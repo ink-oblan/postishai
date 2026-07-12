@@ -95,14 +95,13 @@ export function VideoSection({ post }: Props) {
 
   if (status === "GENERATING") {
     return (
-      <Card>
-        <CardContent
-          className="flex flex-col items-center justify-center gap-3 py-12"
-          suppressHydrationWarning
-        >
+      <Card suppressHydrationWarning>
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="font-medium text-sm">Generating video...</p>
-          <p className="text-muted-foreground text-xs">{elapsed}s elapsed</p>
+          <p className="text-muted-foreground text-xs" suppressHydrationWarning>
+            {elapsed}s elapsed
+          </p>
           <p className="text-muted-foreground text-xs">This usually takes 30–120 seconds</p>
         </CardContent>
       </Card>
@@ -160,6 +159,7 @@ function VideoPlayer({ src }: { src: string }) {
       playsInline
       className="w-full"
       style={{ height: "auto", display: "block" }}
+      suppressHydrationWarning
     >
       <track kind="captions" />
     </video>

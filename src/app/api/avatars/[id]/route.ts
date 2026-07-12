@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
+import { broadcastAvatarStatusUpdate, SSE_STATUS } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { prisma } from "@/lib/db";
 import { decodeAndConvertImageBase64 } from "@/lib/image-convert";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
@@ -69,9 +70,9 @@ export const PATCH = withAuth(async function PATCH(
     );
     await prisma.avatar.update({ where: { id }, data: { archivedAt: new Date() } });
     // Broadcast avatar deletion to all connected clients
-    broadcastAvatarStatusUpdate(userId, id, "ARCHIVED").catch((err) => {
-      console.error("[broadcast] Failed to send avatar-status-update:", err);
-    });
+    await broadcastWithContext("avatar-archive", () =>
+      broadcastAvatarStatusUpdate(userId, id, SSE_STATUS.ARCHIVED),
+    );
     return new NextResponse(null, { status: 204 });
   }
 
@@ -157,9 +158,9 @@ export const PATCH = withAuth(async function PATCH(
         return tx.avatar.findUnique({ where: { id } });
       });
       // Broadcast avatar regeneration to all connected clients
-      broadcastAvatarStatusUpdate(userId, id, "GENERATING").catch((err) => {
-        console.error("[broadcast] Failed to send avatar-status-update:", err);
-      });
+      await broadcastWithContext("avatar-regenerate", () =>
+        broadcastAvatarStatusUpdate(userId, id, "GENERATING"),
+      );
       return NextResponse.json(refreshed);
     }
   } else if (prompt) {
@@ -169,9 +170,9 @@ export const PATCH = withAuth(async function PATCH(
   try {
     const updated = await prisma.avatar.update({ where: { id }, data: updateData });
     // Broadcast avatar update to all connected clients
-    broadcastAvatarStatusUpdate(userId, id, updated.status).catch((err) => {
-      console.error("[broadcast] Failed to send avatar-status-update:", err);
-    });
+    await broadcastWithContext("avatar-update", () =>
+      broadcastAvatarStatusUpdate(userId, id, updated.status),
+    );
     return NextResponse.json(updated);
   } catch (err) {
     console.error("[PATCH avatar] update failed:", err);

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
+import { SSE_STATUS } from "@/lib/sse-constants";
 import { AvatarGrid } from "./AvatarGrid";
 
 interface AvatarWithCount {
@@ -59,7 +60,7 @@ export function AvatarListClient({ initialAvatars }: AvatarListClientProps) {
       if (
         update.status === "COMPLETED" ||
         update.status === "FAILED" ||
-        update.status === "ARCHIVED" ||
+        update.status === SSE_STATUS.ARCHIVED ||
         update.status === "GENERATING"
       ) {
         if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);

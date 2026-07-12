@@ -3,7 +3,7 @@
 type EventHandler = (data: unknown) => void;
 type EventType = "init" | "stats-refresh" | "post-status-update" | "avatar-status-update";
 
-const DEBUG = typeof window !== "undefined" && process.env.NODE_ENV === "development";
+const DEBUG = process.env.NODE_ENV === "development";
 
 let eventSource: EventSource | null = null;
 let channel: BroadcastChannel | null = null;
