@@ -96,11 +96,24 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         return;
       }
 
-      setPostStatuses((prev) => {
-        const next = new Map(prev);
-        next.set(update.postId, update.status as PostStatus);
-        return next;
-      });
+      // Validate that status is a known value (either Prisma PostStatus or synthetic ARCHIVED)
+      const isValidStatus =
+        update.status === "DRAFT" ||
+        update.status === "GENERATING" ||
+        update.status === "COMPLETED" ||
+        update.status === "FAILED" ||
+        update.status === SSE_STATUS.ARCHIVED;
+
+      if (isValidStatus) {
+        setPostStatuses((prev) => {
+          const next = new Map(prev);
+          next.set(update.postId, update.status as PostStatus);
+          return next;
+        });
+      } else {
+        console.warn(`[PostsList] Ignoring unknown post status: ${update.status}`);
+        return;
+      }
 
       if (update.status === "GENERATING") {
         if (!pollIntervalRef.current) {

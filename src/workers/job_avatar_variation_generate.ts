@@ -117,7 +117,7 @@ export const avatarVariationGenerateJob: JobDefinition<
         );
         return null;
       });
-    if (variation?.avatar.userId) {
+    if (variation?.avatar?.userId) {
       const userId = variation.avatar.userId;
       await broadcastWithContext("avatar-variation-generate-failure", () =>
         broadcastAvatarStatusUpdate(userId, variation.avatarId, "FAILED"),

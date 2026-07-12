@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertCircle, Loader2, Play, Video } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,67 +26,77 @@ function getElapsedSeconds(startedAt: string | null): number {
 }
 
 export function VideoSection({ post }: Props) {
-  const router = useRouter();
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [status, setStatus] = useState(post.status);
   const [generating, setGenerating] = useState(false);
   const [elapsed, setElapsed] = useState(() => getElapsedSeconds(post.generationStartedAt));
 
-  // Listen for SSE updates or poll if SSE is unavailable
+  // Handle SSE updates and cross-tab messages
   useEffect(() => {
     if (status !== "GENERATING") return;
 
-    let elapsedTimer: ReturnType<typeof setInterval>;
+    const handleStatusUpdate = (newStatus: string) => {
+      if (newStatus === "COMPLETED" || newStatus === "FAILED") {
+        // Cancel all timers before reload to prevent memory leak
+        if (pollTimerRef.current) {
+          clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+        }
+        setStatus(newStatus);
+        window.location.reload();
+      }
+    };
 
-    // Listen for SSE post status updates
     const unsubscribeSse = addEventListener("post-status-update", (payload: unknown) => {
       const update = payload as { postId: string; status: string };
       if (update.postId === post.id) {
-        setStatus(update.status);
-        if (update.status === "COMPLETED" || update.status === "FAILED") {
-          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-          clearInterval(elapsedTimer);
-          window.location.reload();
-        }
+        handleStatusUpdate(update.status);
       }
     });
 
-    // Also listen to other tab messages
     const unsubscribeTab = onTabMessage("post-status-update", (payload: unknown) => {
       const update = payload as { postId: string; status: string };
       if (update.postId === post.id) {
-        setStatus(update.status);
-        if (update.status === "COMPLETED" || update.status === "FAILED") {
-          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-          clearInterval(elapsedTimer);
-          window.location.reload();
-        }
+        handleStatusUpdate(update.status);
       }
     });
 
-    // Update elapsed time every second for smooth UI
+    return () => {
+      unsubscribeSse();
+      unsubscribeTab();
+    };
+  }, [post.id]);
+
+  // Elapsed time display timer
+  useEffect(() => {
+    if (status !== "GENERATING") return;
+
     setElapsed(getElapsedSeconds(post.generationStartedAt));
-    elapsedTimer = setInterval(
+    const elapsedTimer = setInterval(
       () => setElapsed(getElapsedSeconds(post.generationStartedAt)),
       POLLING.UI_TIMER,
     );
 
-    // Fallback polling in case SSE doesn't work
+    return () => clearInterval(elapsedTimer);
+  }, [status, post.generationStartedAt]);
+
+  // Fallback polling: only active if SSE fails
+  useEffect(() => {
+    if (status !== "GENERATING") return;
+
     pollTimerRef.current = setInterval(async () => {
       try {
         const res = await fetch(`/api/posts/${post.id}`, { credentials: "include" });
         if (!res.ok) return;
         const updatedPost = await res.json();
-        if (
-          updatedPost.status !== status &&
-          (updatedPost.status === "COMPLETED" || updatedPost.status === "FAILED")
-        ) {
-          setStatus(updatedPost.status);
+        // Compare against actual data from server, not stale state
+        if (updatedPost.status === "COMPLETED" || updatedPost.status === "FAILED") {
           if (pollTimerRef.current) {
             clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
           }
-          clearInterval(elapsedTimer);
-          router.refresh();
+          setStatus(updatedPost.status);
+          window.location.reload();
         }
       } catch (err) {
         console.error("[VideoSection] Poll error:", err);
@@ -95,12 +104,12 @@ export function VideoSection({ post }: Props) {
     }, POLLING.SSE_FALLBACK);
 
     return () => {
-      unsubscribeSse();
-      unsubscribeTab();
-      clearInterval(elapsedTimer);
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
     };
-  }, [status, post.id, post.generationStartedAt, router]);
+  }, [post.id]);
 
   async function handleGenerate() {
     setGenerating(true);
