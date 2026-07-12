@@ -1,9 +1,13 @@
 import sharp from "sharp";
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { getImageAdapter } from "@/lib/image-models/registry";
+import { generatePlaceholderAvatar } from "@/lib/mock-avatar-image";
 import { archiveFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition } from "@/workers/types";
+
+const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_AVATAR_GENERATION === "true";
+const MOCK_GENERATION_TIME_MS = 10000; // 10 seconds for testing
 
 type AvatarGenerateResult = {
   imagePath: string;
@@ -44,14 +48,25 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     const { avatarId, prompt, imageModel } = payload;
     ctx.log(`[avatar.generate] start avatarId=${avatarId} model=${imageModel}`);
 
-    const adapter = getImageAdapter(imageModel);
-    const result = await adapter.generate({ prompt, aspectRatio: "9:16" });
+    let buffer: Buffer;
 
-    // Always save avatars as JPG.
-    let buffer: Buffer = Buffer.from(result.base64, "base64");
-    if (result.mimeType !== "image/jpeg") {
-      buffer = (await sharp(buffer).jpeg({ quality: 90 }).toBuffer()) as Buffer;
+    if (MOCK_MODE) {
+      // Mock mode: simulate generation with a placeholder image
+      ctx.log(`[avatar.generate] MOCK MODE: waiting ${MOCK_GENERATION_TIME_MS}ms`);
+      await new Promise((resolve) => setTimeout(resolve, MOCK_GENERATION_TIME_MS));
+      buffer = await generatePlaceholderAvatar(avatarId);
+      ctx.log(`[avatar.generate] MOCK MODE: generated placeholder`);
+    } else {
+      // Real generation
+      const adapter = getImageAdapter(imageModel);
+      const result = await adapter.generate({ prompt, aspectRatio: "9:16" });
+
+      buffer = Buffer.from(result.base64, "base64");
+      if (result.mimeType !== "image/jpeg") {
+        buffer = (await sharp(buffer).jpeg({ quality: 90 }).toBuffer()) as Buffer;
+      }
     }
+
     const imagePath = `avatars/${avatarId}.jpg`;
 
     const avatar = await ctx.db.avatar.findUnique({ where: { id: avatarId } });
