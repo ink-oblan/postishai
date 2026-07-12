@@ -82,15 +82,23 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     return { imagePath };
   },
   async onSuccess(db, payload, result) {
-    const avatar = await db.avatar.update({
-      where: { id: payload.avatarId },
-      data: {
-        imagePath: result.imagePath,
-        status: "COMPLETED",
-        errorMessage: null,
-      },
-    });
-    if (avatar.userId) {
+    const avatar = await db.avatar
+      .update({
+        where: { id: payload.avatarId },
+        data: {
+          imagePath: result.imagePath,
+          status: "COMPLETED",
+          errorMessage: null,
+        },
+      })
+      .catch((dbErr) => {
+        console.error(
+          `[avatar-generate-success] DB update failed for avatarId=${payload.avatarId}:`,
+          dbErr,
+        );
+        return null;
+      });
+    if (avatar?.userId) {
       const userId = avatar.userId;
       try {
         await broadcastWithContext("avatar-generate-success", () =>

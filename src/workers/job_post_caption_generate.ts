@@ -256,16 +256,24 @@ export const postCaptionGenerateJob: JobDefinition<
     };
   },
   async onSuccess(db, payload, result) {
-    const post = await db.post.update({
-      where: { id: payload.postId },
-      data: {
-        status: "COMPLETED",
-        caption: result.caption,
-        errorMessage: null,
-        updatedAt: new Date(),
-      },
-    });
-    if (post.userId) {
+    const post = await db.post
+      .update({
+        where: { id: payload.postId },
+        data: {
+          status: "COMPLETED",
+          caption: result.caption,
+          errorMessage: null,
+          updatedAt: new Date(),
+        },
+      })
+      .catch((dbErr) => {
+        console.error(
+          `[post-caption-generate-success] DB update failed for postId=${payload.postId}:`,
+          dbErr,
+        );
+        return null;
+      });
+    if (post?.userId) {
       const userId = post.userId;
       try {
         await broadcastWithContext("post-caption-generate-success", () =>
