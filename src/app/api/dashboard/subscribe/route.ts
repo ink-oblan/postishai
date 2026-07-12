@@ -7,6 +7,7 @@ import { POLLING } from "@/lib/polling-config";
 interface ClientConnection {
   controller: ReadableStreamController<Uint8Array>;
   heartbeat: NodeJS.Timeout;
+  statsRefresh: NodeJS.Timeout;
 }
 
 // Re-export for convenience
@@ -101,9 +102,10 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
       let lastGeneratingCount = byStatus.GENERATING ?? 0;
 
       let heartbeat: NodeJS.Timeout;
+      let statsRefresh: NodeJS.Timeout;
 
       // Refresh stats periodically to catch updates from other processes
-      const statsRefresh = setInterval(async () => {
+      statsRefresh = setInterval(async () => {
         try {
           // Always fetch full dashboard data; it includes groupBy internally
           const freshData = await fetchDashboardData(userId);
@@ -136,7 +138,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
         }
       }, 10000);
 
-      clientConnection = { controller, heartbeat };
+      clientConnection = { controller, heartbeat, statsRefresh };
       userSubscribers.get(userId)?.add(clientConnection);
     },
     cancel() {
@@ -145,6 +147,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
         const subscribers = userSubscribers.get(userId);
         if (subscribers) {
           clearInterval(clientConnection.heartbeat);
+          clearInterval(clientConnection.statsRefresh);
           subscribers.delete(clientConnection);
           console.log(
             `[subscribe] Client disconnected for userId=${userId}, ${subscribers.size} subscriber(s) remaining`,

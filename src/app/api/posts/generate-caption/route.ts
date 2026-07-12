@@ -109,10 +109,18 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
     // Enqueue caption generation job
     await enqueuePostCaptionGenerateJob({ postId: post.id });
 
-    // Broadcast post creation and generation start to connected clients (don't wait)
-    await broadcastWithContext("post-caption-generate-start", () =>
-      broadcastPostStatusUpdate(userId, post.id, "GENERATING"),
-    );
+    // Broadcast post creation and generation start to connected clients
+    try {
+      await broadcastWithContext("post-caption-generate-start", () =>
+        broadcastPostStatusUpdate(userId, post.id, "GENERATING"),
+      );
+    } catch (broadcastErr) {
+      console.error(
+        `[POST /api/posts/generate-caption] Broadcast failed for postId=${post.id}:`,
+        broadcastErr,
+      );
+      // Don't fail request - post and job were created successfully
+    }
 
     return NextResponse.json({
       postId: post.id,
