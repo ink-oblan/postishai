@@ -1,6 +1,6 @@
 {
   "name": "postishai",
-  "version": "0.0.23",
+  "version": "0.0.0",
   "private": false,
   "scripts": {
     "dev": "docker compose up --build",

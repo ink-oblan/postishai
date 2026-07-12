@@ -85,11 +85,9 @@ npx prisma generate
 - **Deployments are triggered by semver release tags** matching `v<major>.<minor>.<patch>` (e.g. `v0.1.0`, `v1.2.3`). Pushing a tag triggers the GitHub Actions deploy workflow; pushing to `main` alone does not deploy.
 - To release: merge all PRs to `main`, then on the `main` branch run:
   ```bash
-  npm version 0.1.0
+  git tag v0.1.0
   git push && git push --tags
   ```
-  `npm version` bumps `package.json`/`package-lock.json`, commits, and creates the `v0.1.0` tag in one step. The subsequent push sends both the commit and the tag to origin.
-- **Never create release tags directly with `git tag`.** Release tags must be created by `npm version` so the package version bump commit and semver tag stay in sync.
 - Docker images are tagged with `latest`, the semver tag (e.g. `v0.1.0`), and the commit SHA.
 
 # Commit message conventions
