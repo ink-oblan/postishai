@@ -154,11 +154,6 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     throw new Error(`HeyGen polling timed out after ${HEYGEN_POLL_TIMEOUT_MS / 1000}s`);
   },
   async onSuccess(db, payload, result) {
-    // In mock mode, add delay to ensure file is fully written before broadcast
-    if (isMockEnabled()) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
     const post = await db.post.update({
       where: { id: payload.postId },
       data: {
