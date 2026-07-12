@@ -16,7 +16,7 @@ interface PostsClientProps {
 
 export function PostsClient({ initialPosts }: PostsClientProps) {
   const [posts, setPosts] = useState(initialPosts);
-  const [postStatuses, setPostStatuses] = useState<Map<string, PostStatus | "ARCHIVED">>(
+  const [postStatuses, setPostStatuses] = useState<Map<string, PostStatus>>(
     new Map(initialPosts.map((p) => [p.id, p.status])),
   );
 
@@ -77,13 +77,27 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
     };
 
     const handleUpdate = (payload: unknown) => {
-      const update = payload as { postId: string; status: PostStatus | "ARCHIVED" };
+      const update = payload as { postId: string; status: string };
       if (process.env.NODE_ENV === "development")
         console.log(`[PostsList] Update: ${update.postId} = ${update.status}`);
 
+      // Handle ARCHIVED separately - remove immediately to avoid UI flicker
+      if (update.status === "ARCHIVED") {
+        if (process.env.NODE_ENV === "development")
+          console.log("[PostsList] Post archived, removing from list");
+        // Remove archived post immediately
+        setPosts((prev) => prev.filter((p) => p.id !== update.postId));
+        setPostStatuses((prev) => {
+          const next = new Map(prev);
+          next.delete(update.postId);
+          return next;
+        });
+        return;
+      }
+
       setPostStatuses((prev) => {
         const next = new Map(prev);
-        next.set(update.postId, update.status);
+        next.set(update.postId, update.status as PostStatus);
         return next;
       });
 
@@ -108,11 +122,6 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
         // Schedule a full refresh to get updated statuses
-        scheduleFullRefresh();
-      } else if (update.status === "ARCHIVED") {
-        if (process.env.NODE_ENV === "development")
-          console.log("[PostsList] Post archived, refreshing list");
-        // Schedule full refresh to ensure consistency (archive may cascade delete related records)
         scheduleFullRefresh();
       }
     };
@@ -144,7 +153,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
 
   const postsWithLiveStatus = posts.map((post) => ({
     ...post,
-    status: (postStatuses.get(post.id) || post.status) as PostStatus,
+    status: postStatuses.get(post.id) || post.status,
   }));
 
   return <PostsContent posts={postsWithLiveStatus} />;

@@ -103,8 +103,10 @@ export const PATCH = withAuth(async function PATCH(
     const archiveAndBroadcast = async () => {
       await prisma.post.update({ where: { id }, data: { archivedAt: new Date() } });
       // Ensure broadcast completes before returning response
+      // Log but don't fail the response - archived state is persisted in DB
       await broadcastPostStatusUpdate(userId, id, SSE_STATUS.ARCHIVED).catch((err) => {
-        console.error("[post-archive] Failed to broadcast:", err);
+        console.error("[post-archive] Failed to broadcast deletion to clients:", err);
+        // On next client reconnect, they'll fetch fresh list and see it's gone
       });
     };
 
