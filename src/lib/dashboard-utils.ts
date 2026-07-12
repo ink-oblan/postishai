@@ -18,6 +18,7 @@ export interface DashboardData {
 
 export async function fetchDashboardData(userId: string): Promise<DashboardData> {
   const activeWhere = { archivedAt: null, userId };
+  console.log(`[dashboard] Fetching dashboard data for userId=${userId}`);
 
   const [avatarCount, postCount, recentPosts, statusCounts] = await Promise.all([
     prisma.avatar.count({ where: activeWhere }),

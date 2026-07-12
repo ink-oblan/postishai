@@ -18,7 +18,11 @@ function initChannel() {
   channel = new BroadcastChannel("app-updates");
 
   channel.onmessage = (event) => {
-    const { type, data } = event.data;
+    const { type, data, _fromSse } = event.data;
+    // If this message came from our own SSE connection, ignore it
+    // (it's already been handled by addEventListener)
+    if (_fromSse) return;
+
     const handlers = tabHandlers.get(type);
     if (handlers) {
       for (const handler of handlers) {
@@ -63,10 +67,10 @@ function connect() {
           }
         }
 
-        // Broadcast to other tabs
+        // Broadcast to all tabs (including this one via BroadcastChannel)
         if (channel) {
           try {
-            channel.postMessage({ type: eventType, data });
+            channel.postMessage({ type: eventType, data, _fromSse: true });
           } catch (broadcastErr) {
             console.error(`[SSE] Failed to broadcast ${eventType}:`, broadcastErr);
           }

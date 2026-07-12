@@ -1,7 +1,8 @@
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatDistanceToNow } from "@/lib/utils";
+import { AvatarStatusPoller } from "./AvatarStatusPoller";
 
 interface AvatarWithCount {
   id: string;
@@ -10,6 +11,7 @@ interface AvatarWithCount {
   imagePath: string;
   imageModel: string | null;
   createdAt: Date;
+  updatedAt?: Date;
   _count: { posts: number };
 }
 
@@ -52,17 +54,18 @@ export function AvatarGrid({ avatars }: { avatars: AvatarWithCount[] }) {
           <div className="overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200 hover:border-primary/30 hover:shadow-md">
             <div className="relative aspect-[9/16] bg-muted">
               {avatar.status === "GENERATING" ? (
-                <div className="flex h-full flex-col items-center justify-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  <p className="text-muted-foreground text-xs">Generating…</p>
-                </div>
+                <AvatarStatusPoller
+                  avatarId={avatar.id}
+                  initialStatus={avatar.status}
+                  generatedAt={avatar.updatedAt?.toISOString() || new Date().toISOString()}
+                />
               ) : avatar.status === "FAILED" ? (
                 <div className="flex h-full flex-col items-center justify-center gap-1 px-3 text-center">
                   <p className="font-medium text-destructive text-xs">Failed</p>
                 </div>
               ) : (
                 <Image
-                  src={`/api/avatars/${avatar.id}/image`}
+                  src={`/api/avatars/${avatar.id}/image?t=${new Date(avatar.updatedAt || avatar.createdAt).getTime()}`}
                   alt={avatar.name}
                   fill
                   className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
@@ -78,7 +81,7 @@ export function AvatarGrid({ avatars }: { avatars: AvatarWithCount[] }) {
                 <p className="text-muted-foreground text-xs">
                   {avatar._count.posts} post{avatar._count.posts !== 1 ? "s" : ""}
                 </p>
-                <p className="text-muted-foreground text-xs">
+                <p className="text-muted-foreground text-xs" suppressHydrationWarning>
                   {formatDistanceToNow(avatar.createdAt)}
                 </p>
               </div>

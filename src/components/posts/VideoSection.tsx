@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { addEventListener } from "@/lib/sse-client";
+import { addEventListener, onTabMessage } from "@/lib/sse-client";
 
 interface Props {
   post: {
@@ -37,8 +37,7 @@ export function VideoSection({ post }: Props) {
 
     let timer: ReturnType<typeof setInterval>;
 
-    // Listen for SSE post status updates
-    const unsubscribeSse = addEventListener("post-status-update", (payload: unknown) => {
+    const handleStatusUpdate = (payload: unknown) => {
       const update = payload as { postId: string; status: string };
       if (update.postId === post.id) {
         setStatus(update.status);
@@ -47,7 +46,12 @@ export function VideoSection({ post }: Props) {
           router.refresh();
         }
       }
-    });
+    };
+
+    // Listen for SSE post status updates from this tab
+    const unsubscribeSse = addEventListener("post-status-update", handleStatusUpdate);
+    // Listen for post status updates from other tabs
+    const unsubscribeTab = onTabMessage("post-status-update", handleStatusUpdate);
 
     // Update elapsed time every second for smooth UI
     setElapsed(getElapsedSeconds(post.generationStartedAt));
@@ -55,6 +59,7 @@ export function VideoSection({ post }: Props) {
 
     return () => {
       unsubscribeSse();
+      unsubscribeTab();
       clearInterval(timer);
     };
   }, [status, post.id, post.generationStartedAt, router]);
