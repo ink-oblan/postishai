@@ -16,9 +16,17 @@ export function PostDetailClient({ postId }: PostDetailClientProps) {
     const handleUpdate = (payload: unknown) => {
       const update = payload as { postId: string; status: string };
       if (update.postId === postId) {
-        // If post is archived (deleted), redirect back to posts list
         if (update.status === SSE_STATUS.ARCHIVED) {
           router.push("/posts");
+        } else if (
+          update.status !== "DRAFT" &&
+          update.status !== "GENERATING" &&
+          update.status !== "COMPLETED" &&
+          update.status !== "FAILED"
+        ) {
+          console.error(
+            `[PostDetailClient] Received unknown post status: ${update.status} for postId=${postId}`,
+          );
         }
       }
     };
