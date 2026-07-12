@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { LandingFooter } from "@/components/layout/landing-footer";
-import { GithubIcon } from "@/components/ui/github-icon";
+import { LegalPageHeader } from "@/components/layout/legal-page-header";
 
 export const metadata: Metadata = {
   title: "Terms of Service — PostishAI",
@@ -12,29 +10,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-orange-100 border-b bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-6 sm:py-4">
-          <Link href="/">
-            <Image
-              src="/static/full-logo.svg"
-              alt="PostishAI"
-              width={188}
-              height={63}
-              className="h-9 w-auto"
-            />
-          </Link>
-          <a
-            href="https://github.com/ink-oblan/postishai"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-muted-foreground text-sm transition hover:text-foreground"
-          >
-            <GithubIcon className="h-5 w-5" />
-            <span className="hidden sm:inline">Source available</span>
-          </a>
-        </div>
-      </nav>
+      <LegalPageHeader />
 
       {/* Content */}
       <main className="mx-auto max-w-3xl px-6 py-16 sm:py-24">
