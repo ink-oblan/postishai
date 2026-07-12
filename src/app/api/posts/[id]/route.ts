@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { broadcastPostStatusUpdate, SSE_STATUS } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { PlatformMetadata } from "@/lib/metadata/types";
@@ -104,10 +105,9 @@ export const PATCH = withAuth(async function PATCH(
       await prisma.post.update({ where: { id }, data: { archivedAt: new Date() } });
       // Ensure broadcast completes before returning response
       // Log but don't fail the response - archived state is persisted in DB
-      await broadcastPostStatusUpdate(userId, id, SSE_STATUS.ARCHIVED).catch((err) => {
-        console.error("[post-archive] Failed to broadcast deletion to clients:", err);
-        // On next client reconnect, they'll fetch fresh list and see it's gone
-      });
+      await broadcastWithContext("post-archive", () =>
+        broadcastPostStatusUpdate(userId, id, SSE_STATUS.ARCHIVED),
+      );
     };
 
     if (post.type === "CAPTION") {

@@ -4,6 +4,7 @@ import type { Post, PostStatus } from "@prisma/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { POLLING } from "@/lib/polling-config";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
+import { SSE_STATUS } from "@/lib/sse-constants";
 import { PostsContent } from "./PostsContent";
 
 interface PostsClientProps {
@@ -82,7 +83,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         console.log(`[PostsList] Update: ${update.postId} = ${update.status}`);
 
       // Handle ARCHIVED separately - remove immediately to avoid UI flicker
-      if (update.status === "ARCHIVED") {
+      if (update.status === SSE_STATUS.ARCHIVED) {
         if (process.env.NODE_ENV === "development")
           console.log("[PostsList] Post archived, removing from list");
         // Remove archived post immediately

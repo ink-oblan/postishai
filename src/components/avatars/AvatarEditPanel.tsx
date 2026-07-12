@@ -374,7 +374,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
         </div>
       </div>
 
-      <p className="text-muted-foreground text-xs">
+      <p className="text-muted-foreground text-xs" suppressHydrationWarning>
         Created {formatDistanceToNow(new Date(avatar.createdAt))}
       </p>
     </>

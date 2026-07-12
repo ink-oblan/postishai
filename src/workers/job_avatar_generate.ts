@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
 import { generateMockAvatarImage } from "@/lib/mock-generators";
@@ -95,9 +96,10 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
       },
     });
     if (avatar.userId) {
-      broadcastAvatarStatusUpdate(avatar.userId, payload.avatarId, "COMPLETED").catch((err) => {
-        console.error("Failed to broadcast avatar status update:", err);
-      });
+      const userId = avatar.userId;
+      await broadcastWithContext("avatar-generate-success", () =>
+        broadcastAvatarStatusUpdate(userId, payload.avatarId, "COMPLETED"),
+      );
     }
   },
   async onFailure(db, payload, error) {
@@ -111,9 +113,10 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
       })
       .catch(() => null);
     if (avatar?.userId) {
-      broadcastAvatarStatusUpdate(avatar.userId, payload.avatarId, "FAILED").catch((err) => {
-        console.error("Failed to broadcast avatar status update:", err);
-      });
+      const userId = avatar.userId;
+      await broadcastWithContext("avatar-generate-failure", () =>
+        broadcastAvatarStatusUpdate(userId, payload.avatarId, "FAILED"),
+      );
     }
   },
   classifyError(error) {

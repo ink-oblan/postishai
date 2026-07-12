@@ -593,7 +593,7 @@ export function PostEditPanel({
           )}
         </div>
 
-        <div>
+        <div suppressHydrationWarning>
           <PropLabel>Created</PropLabel>
           <PropValue>{post.createdAtLabel}</PropValue>
         </div>

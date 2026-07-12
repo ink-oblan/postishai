@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { runFfmpeg, runFfprobe } from "@/lib/ffmpeg";
 import { convertToJpeg } from "@/lib/image-convert";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
@@ -270,9 +271,10 @@ export const postCaptionGenerateJob: JobDefinition<
       },
     });
     if (post.userId) {
-      broadcastPostStatusUpdate(post.userId, payload.postId, "COMPLETED").catch((err) => {
-        console.error("Failed to broadcast completion:", err);
-      });
+      const userId = post.userId;
+      await broadcastWithContext("post-caption-generate-success", () =>
+        broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
+      );
     }
   },
   async onFailure(db, payload, error) {
@@ -286,9 +288,10 @@ export const postCaptionGenerateJob: JobDefinition<
       })
       .catch(() => null);
     if (post?.userId) {
-      broadcastPostStatusUpdate(post.userId, payload.postId, "FAILED").catch((err) => {
-        console.error("Failed to broadcast failure:", err);
-      });
+      const userId = post.userId;
+      await broadcastWithContext("post-caption-generate-failure", () =>
+        broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
+      );
     }
   },
   classifyError(error) {

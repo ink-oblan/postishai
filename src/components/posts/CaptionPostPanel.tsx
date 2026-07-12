@@ -182,7 +182,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
           <PropValue>{post.platformLabel}</PropValue>
         </div>
 
-        <div>
+        <div suppressHydrationWarning>
           <PropLabel>Created</PropLabel>
           <PropValue>{post.createdAtLabel}</PropValue>
         </div>
