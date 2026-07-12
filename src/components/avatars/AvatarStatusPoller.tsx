@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { POLLING } from "@/lib/polling-config";
+import { addEventListener, onTabMessage } from "@/lib/sse-client";
 
 interface Props {
   avatarId: string;
@@ -23,6 +24,23 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
 
     const timer = setInterval(() => setElapsed((s) => s + 1), POLLING.UI_TIMER);
 
+    const handleUpdate = (payload: unknown) => {
+      const update = payload as { avatarId: string; status: string };
+      if (update.avatarId === avatarId) {
+        setStatus(update.status);
+        if (update.status !== "GENERATING") {
+          clearInterval(timer);
+          router.refresh();
+        }
+      }
+    };
+
+    // Listen for SSE avatar status updates from this tab
+    const unsubscribeSse = addEventListener("avatar-status-update", handleUpdate);
+    // Listen for avatar status updates from other tabs
+    const unsubscribeTab = onTabMessage("avatar-status-update", handleUpdate);
+
+    // Fallback polling in case SSE is unavailable
     const poll = setInterval(async () => {
       try {
         const res = await fetch(`/api/avatars/${avatarId}`);
@@ -40,6 +58,8 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
     }, POLLING.STATUS);
 
     return () => {
+      unsubscribeSse();
+      unsubscribeTab();
       clearInterval(poll);
       clearInterval(timer);
     };

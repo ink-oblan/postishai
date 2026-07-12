@@ -1,5 +1,6 @@
 import type { Platform } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
+import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { DEFAULT_LLM_MODEL_ID, getLLMAdapter } from "@/lib/llm-models/registry";
@@ -67,6 +68,14 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
   });
 
   await enqueuePostMetadataJob({ postId: post.id });
+
+  // Broadcast post creation to all connected clients
+  console.log(
+    `[POST /api/posts] Broadcasting post creation: postId=${post.id}, status=${post.status}`,
+  );
+  broadcastPostStatusUpdate(userId, post.id, post.status).catch((err) => {
+    console.error("[broadcast] Failed to send post-status-update:", err);
+  });
 
   return NextResponse.json(post, { status: 201 });
 });

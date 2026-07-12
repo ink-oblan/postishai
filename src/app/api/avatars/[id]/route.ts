@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
 import { prisma } from "@/lib/db";
@@ -67,6 +68,10 @@ export const PATCH = withAuth(async function PATCH(
       ),
     );
     await prisma.avatar.update({ where: { id }, data: { archivedAt: new Date() } });
+    // Broadcast avatar deletion to all connected clients
+    broadcastAvatarStatusUpdate(userId, id, "ARCHIVED").catch((err) => {
+      console.error("[broadcast] Failed to send avatar-status-update:", err);
+    });
     return new NextResponse(null, { status: 204 });
   }
 
@@ -151,6 +156,10 @@ export const PATCH = withAuth(async function PATCH(
 
         return tx.avatar.findUnique({ where: { id } });
       });
+      // Broadcast avatar regeneration to all connected clients
+      broadcastAvatarStatusUpdate(userId, id, "GENERATING").catch((err) => {
+        console.error("[broadcast] Failed to send avatar-status-update:", err);
+      });
       return NextResponse.json(refreshed);
     }
   } else if (prompt) {
@@ -159,6 +168,10 @@ export const PATCH = withAuth(async function PATCH(
 
   try {
     const updated = await prisma.avatar.update({ where: { id }, data: updateData });
+    // Broadcast avatar update to all connected clients
+    broadcastAvatarStatusUpdate(userId, id, updated.status).catch((err) => {
+      console.error("[broadcast] Failed to send avatar-status-update:", err);
+    });
     return NextResponse.json(updated);
   } catch (err) {
     console.error("[PATCH avatar] update failed:", err);
