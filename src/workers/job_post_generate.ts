@@ -184,7 +184,13 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
           errorMessage: error,
         },
       })
-      .catch(() => null);
+      .catch((dbErr) => {
+        console.error(
+          `[post-generate-failure] DB update failed for postId=${payload.postId}:`,
+          dbErr,
+        );
+        return null;
+      });
     if (post?.userId) {
       const userId = post.userId;
       await broadcastWithContext("post-generate-failure", () =>

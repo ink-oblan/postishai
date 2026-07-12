@@ -2,7 +2,7 @@
 
 import { AlertCircle, Loader2, Play, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +28,7 @@ function getElapsedSeconds(startedAt: string | null): number {
 
 export function VideoSection({ post }: Props) {
   const router = useRouter();
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [status, setStatus] = useState(post.status);
   const [generating, setGenerating] = useState(false);
   const [elapsed, setElapsed] = useState(() => getElapsedSeconds(post.generationStartedAt));
@@ -37,7 +38,6 @@ export function VideoSection({ post }: Props) {
     if (status !== "GENERATING") return;
 
     let elapsedTimer: ReturnType<typeof setInterval>;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
 
     // Listen for SSE post status updates
     const unsubscribeSse = addEventListener("post-status-update", (payload: unknown) => {
@@ -45,9 +45,9 @@ export function VideoSection({ post }: Props) {
       if (update.postId === post.id) {
         setStatus(update.status);
         if (update.status === "COMPLETED" || update.status === "FAILED") {
-          if (pollTimer) clearInterval(pollTimer);
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
           clearInterval(elapsedTimer);
-          router.refresh();
+          window.location.reload();
         }
       }
     });
@@ -58,9 +58,9 @@ export function VideoSection({ post }: Props) {
       if (update.postId === post.id) {
         setStatus(update.status);
         if (update.status === "COMPLETED" || update.status === "FAILED") {
-          if (pollTimer) clearInterval(pollTimer);
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
           clearInterval(elapsedTimer);
-          router.refresh();
+          window.location.reload();
         }
       }
     });
@@ -70,7 +70,7 @@ export function VideoSection({ post }: Props) {
     elapsedTimer = setInterval(() => setElapsed(getElapsedSeconds(post.generationStartedAt)), 1000);
 
     // Fallback polling in case SSE doesn't work
-    pollTimer = setInterval(async () => {
+    pollTimerRef.current = setInterval(async () => {
       try {
         const res = await fetch(`/api/posts/${post.id}`, { credentials: "include" });
         if (!res.ok) return;
@@ -80,8 +80,8 @@ export function VideoSection({ post }: Props) {
           (updatedPost.status === "COMPLETED" || updatedPost.status === "FAILED")
         ) {
           setStatus(updatedPost.status);
-          if (pollTimer) {
-            clearInterval(pollTimer);
+          if (pollTimerRef.current) {
+            clearInterval(pollTimerRef.current);
           }
           clearInterval(elapsedTimer);
           router.refresh();
@@ -95,7 +95,7 @@ export function VideoSection({ post }: Props) {
       unsubscribeSse();
       unsubscribeTab();
       clearInterval(elapsedTimer);
-      if (pollTimer) clearInterval(pollTimer);
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
   }, [status, post.id, post.generationStartedAt, router]);
 

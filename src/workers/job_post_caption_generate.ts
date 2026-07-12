@@ -286,7 +286,13 @@ export const postCaptionGenerateJob: JobDefinition<
           errorMessage: error,
         },
       })
-      .catch(() => null);
+      .catch((dbErr) => {
+        console.error(
+          `[post-caption-generate-failure] DB update failed for postId=${payload.postId}:`,
+          dbErr,
+        );
+        return null;
+      });
     if (post?.userId) {
       const userId = post.userId;
       await broadcastWithContext("post-caption-generate-failure", () =>

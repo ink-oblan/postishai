@@ -110,7 +110,13 @@ export const avatarVariationGenerateJob: JobDefinition<
         data: { status: "FAILED", errorMessage: error },
         include: { avatar: true },
       })
-      .catch(() => null);
+      .catch((dbErr) => {
+        console.error(
+          `[avatar-variation-generate-failure] DB update failed for variationId=${payload.variationId}:`,
+          dbErr,
+        );
+        return null;
+      });
     if (variation?.avatar.userId) {
       const userId = variation.avatar.userId;
       await broadcastWithContext("avatar-variation-generate-failure", () =>
