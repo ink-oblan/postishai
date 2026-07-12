@@ -3,6 +3,8 @@ import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:f
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { runFfmpeg } from "@/lib/ffmpeg";
 import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
+import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
+import { generateMockVideo } from "@/lib/mock-generators";
 import { POLLING } from "@/lib/polling-config";
 import { readFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
@@ -50,6 +52,22 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
   async run(ctx, payload) {
     ctx.log(`[post.generate] start postId=${payload.postId}`);
 
+    if (isMockEnabled()) {
+      // Mock mode: simulate video generation
+      ctx.log(`[post.generate] MOCK MODE: waiting ${MOCK_TIMINGS.POST_VIDEO}ms`);
+      await new Promise((resolve) => setTimeout(resolve, MOCK_TIMINGS.POST_VIDEO));
+      const buffer = await generateMockVideo();
+      const videoPath = `videos/${payload.postId}.mp4`;
+      await writeFile(videoPath, buffer);
+      ctx.log(`[post.generate] MOCK MODE: generated placeholder video`);
+
+      return {
+        videoPath,
+        heygenVideoUrl: `mock://video/${payload.postId}`,
+      };
+    }
+
+    // Real generation with HeyGen
     const post = await ctx.db.post.findUnique({
       where: { id: payload.postId },
       include: { avatar: true, avatarVariation: true },
@@ -135,6 +153,11 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     throw new Error(`HeyGen polling timed out after ${HEYGEN_POLL_TIMEOUT_MS / 1000}s`);
   },
   async onSuccess(db, payload, result) {
+    // In mock mode, add delay to ensure file is fully written before broadcast
+    if (isMockEnabled()) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
     const post = await db.post.update({
       where: { id: payload.postId },
       data: {

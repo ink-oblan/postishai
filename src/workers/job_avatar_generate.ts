@@ -1,13 +1,11 @@
 import sharp from "sharp";
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { getImageAdapter } from "@/lib/image-models/registry";
-import { generatePlaceholderAvatar } from "@/lib/mock-avatar-image";
+import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
+import { generateMockAvatarImage } from "@/lib/mock-generators";
 import { archiveFile, writeFile } from "@/lib/storage";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition } from "@/workers/types";
-
-const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_AVATAR_GENERATION === "true";
-const MOCK_GENERATION_TIME_MS = 10000; // 10 seconds for testing
 
 type AvatarGenerateResult = {
   imagePath: string;
@@ -50,11 +48,11 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
 
     let buffer: Buffer;
 
-    if (MOCK_MODE) {
+    if (isMockEnabled()) {
       // Mock mode: simulate generation with a placeholder image
-      ctx.log(`[avatar.generate] MOCK MODE: waiting ${MOCK_GENERATION_TIME_MS}ms`);
-      await new Promise((resolve) => setTimeout(resolve, MOCK_GENERATION_TIME_MS));
-      buffer = await generatePlaceholderAvatar(avatarId);
+      ctx.log(`[avatar.generate] MOCK MODE: waiting ${MOCK_TIMINGS.AVATAR_IMAGE}ms`);
+      await new Promise((resolve) => setTimeout(resolve, MOCK_TIMINGS.AVATAR_IMAGE));
+      buffer = await generateMockAvatarImage(avatarId);
       ctx.log(`[avatar.generate] MOCK MODE: generated placeholder`);
     } else {
       // Real generation
@@ -83,6 +81,11 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     return { imagePath };
   },
   async onSuccess(db, payload, result) {
+    // In mock mode, add delay to ensure file is fully written before broadcast
+    if (isMockEnabled()) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
     const avatar = await db.avatar.update({
       where: { id: payload.avatarId },
       data: {

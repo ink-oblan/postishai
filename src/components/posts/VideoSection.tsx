@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertCircle, Loader2, Play, Video } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,24 +25,21 @@ function getElapsedSeconds(startedAt: string | null): number {
 }
 
 export function VideoSection({ post }: Props) {
-  const router = useRouter();
   const [status, setStatus] = useState(post.status);
   const [generating, setGenerating] = useState(false);
   const [elapsed, setElapsed] = useState(() => getElapsedSeconds(post.generationStartedAt));
 
-  // Listen for SSE updates or poll if SSE is unavailable
+  // Listen for SSE updates
   useEffect(() => {
-    if (status !== "GENERATING") return;
-
-    let timer: ReturnType<typeof setInterval>;
-
     const handleStatusUpdate = (payload: unknown) => {
       const update = payload as { postId: string; status: string };
       if (update.postId === post.id) {
         setStatus(update.status);
         if (update.status === "COMPLETED" || update.status === "FAILED") {
-          clearInterval(timer);
-          router.refresh();
+          // Add small delay then do hard reload to ensure data is ready
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
         }
       }
     };
@@ -53,16 +49,21 @@ export function VideoSection({ post }: Props) {
     // Listen for post status updates from other tabs
     const unsubscribeTab = onTabMessage("post-status-update", handleStatusUpdate);
 
-    // Update elapsed time every second for smooth UI
-    setElapsed(getElapsedSeconds(post.generationStartedAt));
-    timer = setInterval(() => setElapsed(getElapsedSeconds(post.generationStartedAt)), 1000);
-
     return () => {
       unsubscribeSse();
       unsubscribeTab();
-      clearInterval(timer);
     };
-  }, [status, post.id, post.generationStartedAt, router]);
+  }, [post.id]);
+
+  // Update elapsed time every second when generating
+  useEffect(() => {
+    if (status !== "GENERATING") return;
+
+    setElapsed(getElapsedSeconds(post.generationStartedAt));
+    const timer = setInterval(() => setElapsed(getElapsedSeconds(post.generationStartedAt)), 1000);
+
+    return () => clearInterval(timer);
+  }, [status, post.generationStartedAt]);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -72,9 +73,9 @@ export function VideoSection({ post }: Props) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to start generation");
       }
-      const data = (await res.json()) as { status: string };
+      const data = (await res.json()) as { status: string; generationStartedAt: string };
       setStatus(data.status);
-      setElapsed(getElapsedSeconds(post.generationStartedAt));
+      setElapsed(getElapsedSeconds(data.generationStartedAt));
       toast.success("Video generation started!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start");
@@ -95,7 +96,10 @@ export function VideoSection({ post }: Props) {
   if (status === "GENERATING") {
     return (
       <Card>
-        <CardContent className="flex flex-col items-center justify-center gap-3 py-12">
+        <CardContent
+          className="flex flex-col items-center justify-center gap-3 py-12"
+          suppressHydrationWarning
+        >
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="font-medium text-sm">Generating video...</p>
           <p className="text-muted-foreground text-xs">{elapsed}s elapsed</p>

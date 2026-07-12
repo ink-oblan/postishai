@@ -5,6 +5,8 @@ import { runFfmpeg, runFfprobe } from "@/lib/ffmpeg";
 import { convertToJpeg } from "@/lib/image-convert";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { LLMModelAdapter } from "@/lib/llm-models/types";
+import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
+import { generateMockCaption } from "@/lib/mock-generators";
 import { renderPromptTemplate } from "@/lib/prompts";
 import { readFile as readFileStorage } from "@/lib/storage";
 import { PLATFORM_FULL_NAMES } from "@/lib/utils";
@@ -182,6 +184,19 @@ export const postCaptionGenerateJob: JobDefinition<
   async run(ctx, payload) {
     ctx.log(`[post.caption.generate] start postId=${payload.postId}`);
 
+    if (isMockEnabled()) {
+      // Mock mode: simulate caption generation
+      ctx.log(`[post.caption.generate] MOCK MODE: waiting ${MOCK_TIMINGS.POST_CAPTION}ms`);
+      await new Promise((resolve) => setTimeout(resolve, MOCK_TIMINGS.POST_CAPTION));
+      const caption = await generateMockCaption("image", payload.postId);
+      ctx.log(`[post.caption.generate] MOCK MODE: generated mock caption`);
+
+      return {
+        caption,
+      };
+    }
+
+    // Real caption generation
     const post = await ctx.db.post.findUnique({
       where: { id: payload.postId },
       include: { media: { orderBy: { order: "asc" } } },
@@ -240,6 +255,11 @@ export const postCaptionGenerateJob: JobDefinition<
     };
   },
   async onSuccess(db, payload, result) {
+    // In mock mode, add delay to ensure caption is ready before broadcast
+    if (isMockEnabled()) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
     const post = await db.post.update({
       where: { id: payload.postId },
       data: {
