@@ -109,6 +109,17 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         pollIntervalRef.current = null;
         // Schedule a full refresh to get updated statuses
         scheduleFullRefresh();
+      } else if ((update.status as string) === "ARCHIVED") {
+        if (process.env.NODE_ENV === "development")
+          console.log("[PostsList] Post archived, refreshing list");
+        // Remove deleted post from list
+        setPosts((prev) => prev.filter((p) => p.id !== update.postId));
+        // Update statuses
+        setPostStatuses((prev) => {
+          const next = new Map(prev);
+          next.delete(update.postId);
+          return next;
+        });
       }
     };
 
