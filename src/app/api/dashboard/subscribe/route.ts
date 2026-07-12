@@ -105,19 +105,13 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
       // Refresh stats periodically to catch updates from other processes
       const statsRefresh = setInterval(async () => {
         try {
-          const updated = await prisma.post.groupBy({
-            by: ["status"],
-            where: { userId, archivedAt: null },
-            _count: true,
-          });
+          // Always fetch full dashboard data; it includes groupBy internally
+          const freshData = await fetchDashboardData(userId);
+          const updatedGeneratingCount = freshData.generatingCount;
 
-          const updatedByStatus = Object.fromEntries(updated.map((s) => [s.status, s._count]));
-          const updatedGeneratingCount = updatedByStatus.GENERATING ?? 0;
-
-          // Send stats-refresh if any count changed
+          // Send stats-refresh if generating count changed
           if (updatedGeneratingCount !== lastGeneratingCount) {
             lastGeneratingCount = updatedGeneratingCount;
-            const freshData = await fetchDashboardData(userId);
             const statsData = `event: stats-refresh\ndata: ${JSON.stringify({ stats: freshData })}\n\n`;
             try {
               controller.enqueue(encoder.encode(statsData));

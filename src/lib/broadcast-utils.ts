@@ -13,6 +13,7 @@ export async function broadcastWithContext(
     await broadcastFn();
   } catch (err) {
     console.error(`[${context}] Failed to broadcast:`, err);
-    // Clients will reconnect on next heartbeat
+    // Log but don't swallow: let caller know broadcast failed so they can handle it
+    throw err;
   }
 }
