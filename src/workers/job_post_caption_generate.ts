@@ -267,9 +267,16 @@ export const postCaptionGenerateJob: JobDefinition<
     });
     if (post.userId) {
       const userId = post.userId;
-      await broadcastWithContext("post-caption-generate-success", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
-      );
+      try {
+        await broadcastWithContext("post-caption-generate-success", () =>
+          broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
+        );
+      } catch (broadcastErr) {
+        console.error(
+          `[post-caption-generate-success] Broadcast failed for postId=${payload.postId}:`,
+          broadcastErr,
+        );
+      }
     }
   },
   async onFailure(db, payload, error) {
@@ -290,9 +297,16 @@ export const postCaptionGenerateJob: JobDefinition<
       });
     if (post?.userId) {
       const userId = post.userId;
-      await broadcastWithContext("post-caption-generate-failure", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
-      );
+      try {
+        await broadcastWithContext("post-caption-generate-failure", () =>
+          broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
+        );
+      } catch (broadcastErr) {
+        console.error(
+          `[post-caption-generate-failure] Broadcast failed for postId=${payload.postId}:`,
+          broadcastErr,
+        );
+      }
     }
   },
   classifyError(error) {

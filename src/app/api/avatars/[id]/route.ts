@@ -70,9 +70,13 @@ export const PATCH = withAuth(async function PATCH(
     );
     await prisma.avatar.update({ where: { id }, data: { archivedAt: new Date() } });
     // Broadcast avatar deletion to all connected clients
-    await broadcastWithContext("avatar-archive", () =>
-      broadcastAvatarStatusUpdate(userId, id, SSE_STATUS.ARCHIVED),
-    );
+    try {
+      await broadcastWithContext("avatar-archive", () =>
+        broadcastAvatarStatusUpdate(userId, id, SSE_STATUS.ARCHIVED),
+      );
+    } catch (broadcastErr) {
+      console.error(`[PATCH /api/avatars/:id] Archive broadcast failed for avatarId=${id}:`, broadcastErr);
+    }
     return new NextResponse(null, { status: 204 });
   }
 
@@ -158,9 +162,13 @@ export const PATCH = withAuth(async function PATCH(
         return tx.avatar.findUnique({ where: { id } });
       });
       // Broadcast avatar regeneration to all connected clients
-      await broadcastWithContext("avatar-regenerate", () =>
-        broadcastAvatarStatusUpdate(userId, id, "GENERATING"),
-      );
+      try {
+        await broadcastWithContext("avatar-regenerate", () =>
+          broadcastAvatarStatusUpdate(userId, id, "GENERATING"),
+        );
+      } catch (broadcastErr) {
+        console.error(`[PATCH /api/avatars/:id] Regenerate broadcast failed for avatarId=${id}:`, broadcastErr);
+      }
       return NextResponse.json(refreshed);
     }
   } else if (prompt) {
@@ -170,9 +178,13 @@ export const PATCH = withAuth(async function PATCH(
   try {
     const updated = await prisma.avatar.update({ where: { id }, data: updateData });
     // Broadcast avatar update to all connected clients
-    await broadcastWithContext("avatar-update", () =>
-      broadcastAvatarStatusUpdate(userId, id, updated.status),
-    );
+    try {
+      await broadcastWithContext("avatar-update", () =>
+        broadcastAvatarStatusUpdate(userId, id, updated.status),
+      );
+    } catch (broadcastErr) {
+      console.error(`[PATCH /api/avatars/:id] Update broadcast failed for avatarId=${id}:`, broadcastErr);
+    }
     return NextResponse.json(updated);
   } catch (err) {
     console.error("[PATCH avatar] update failed:", err);
