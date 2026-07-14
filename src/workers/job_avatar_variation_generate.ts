@@ -1,5 +1,5 @@
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithFallback } from "@/lib/broadcast-fallback";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { archiveFile, readFile, writeFile } from "@/lib/storage";
 import { safeDbUpdate } from "@/workers/db-utils";
@@ -104,9 +104,9 @@ export const avatarVariationGenerateJob: JobDefinition<
     );
     if (variation?.avatar?.userId) {
       const userId = variation.avatar.userId;
-      await broadcastWithFallback("avatar-variation-generate-success", "avatar-status-update", () =>
+      await broadcastWithContext("avatar-status-update", () =>
         broadcastAvatarStatusUpdate(userId, variation.avatarId, "COMPLETED"),
-      );
+      ).catch(() => {});
     }
   },
   async onFailure(db, payload, error) {
@@ -122,9 +122,9 @@ export const avatarVariationGenerateJob: JobDefinition<
     );
     if (variation?.avatar?.userId) {
       const userId = variation.avatar.userId;
-      await broadcastWithFallback("avatar-variation-generate-failure", "avatar-status-update", () =>
+      await broadcastWithContext("avatar-status-update", () =>
         broadcastAvatarStatusUpdate(userId, variation.avatarId, "FAILED"),
-      );
+      ).catch(() => {});
     }
   },
   classifyError(error) {
