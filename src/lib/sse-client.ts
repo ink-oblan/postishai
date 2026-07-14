@@ -12,16 +12,20 @@ const MAX_RECONNECT_DELAY = 30000; // Cap at 30 seconds
 const sseHandlers = new Map<string, Set<EventHandler>>();
 const tabHandlers = new Map<string, Set<EventHandler>>();
 
+// Generate unique ID for this tab to prevent duplicate handling of SSE events
+const tabId =
+  typeof window !== "undefined" ? `tab-${Date.now()}-${Math.random().toString(36).slice(2)}` : "";
+
 function initChannel() {
   if (channel) return;
 
   channel = new BroadcastChannel("app-updates");
 
   channel.onmessage = (event) => {
-    const { type, data, _fromSse } = event.data;
+    const { type, data, _fromTabId } = event.data;
     // If this message came from our own SSE connection, ignore it
     // (it's already been handled by addEventListener)
-    if (_fromSse) return;
+    if (_fromTabId === tabId) return;
 
     const handlers = tabHandlers.get(type);
     if (handlers) {
@@ -70,7 +74,7 @@ function connect() {
         // Broadcast to all tabs (including this one via BroadcastChannel)
         if (channel) {
           try {
-            channel.postMessage({ type: eventType, data, _fromSse: true });
+            channel.postMessage({ type: eventType, data, _fromTabId: tabId });
           } catch (broadcastErr) {
             console.error(`[SSE] Failed to broadcast ${eventType}:`, broadcastErr);
           }
