@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithFallback } from "@/lib/broadcast-fallback";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { runFfmpeg } from "@/lib/ffmpeg";
 import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
@@ -171,9 +171,9 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     );
     if (post?.userId) {
       const userId = post.userId;
-      await broadcastWithFallback("post-generate-success", "post-status-update", () =>
+      await broadcastWithContext("post-status-update", () =>
         broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
-      );
+      ).catch(() => {});
     }
   },
   async onFailure(db, payload, error) {
@@ -191,9 +191,9 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     );
     if (post?.userId) {
       const userId = post.userId;
-      await broadcastWithFallback("post-generate-failure", "post-status-update", () =>
+      await broadcastWithContext("post-status-update", () =>
         broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
-      );
+      ).catch(() => {});
     }
   },
   classifyError(error) {

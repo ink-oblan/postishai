@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithFallback } from "@/lib/broadcast-fallback";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { runFfmpeg, runFfprobe } from "@/lib/ffmpeg";
 import { convertToJpeg } from "@/lib/image-convert";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
@@ -273,9 +273,9 @@ export const postCaptionGenerateJob: JobDefinition<
     );
     if (post?.userId) {
       const userId = post.userId;
-      await broadcastWithFallback("post-caption-generate-success", "post-status-update", () =>
+      await broadcastWithContext("post-status-update", () =>
         broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
-      );
+      ).catch(() => {});
     }
   },
   async onFailure(db, payload, error) {
@@ -293,9 +293,9 @@ export const postCaptionGenerateJob: JobDefinition<
     );
     if (post?.userId) {
       const userId = post.userId;
-      await broadcastWithFallback("post-caption-generate-failure", "post-status-update", () =>
+      await broadcastWithContext("post-status-update", () =>
         broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
-      );
+      ).catch(() => {});
     }
   },
   classifyError(error) {

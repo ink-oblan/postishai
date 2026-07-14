@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithFallback } from "@/lib/broadcast-fallback";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
 import { generateMockAvatarImage } from "@/lib/mock-generators";
@@ -98,9 +98,9 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     );
     if (avatar?.userId) {
       const userId = avatar.userId;
-      await broadcastWithFallback("avatar-generate-success", "avatar-status-update", () =>
+      await broadcastWithContext("avatar-status-update", () =>
         broadcastAvatarStatusUpdate(userId, payload.avatarId, "COMPLETED"),
-      );
+      ).catch(() => {});
     }
   },
   async onFailure(db, payload, error) {
@@ -118,9 +118,9 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     );
     if (avatar?.userId) {
       const userId = avatar.userId;
-      await broadcastWithFallback("avatar-generate-failure", "avatar-status-update", () =>
+      await broadcastWithContext("avatar-status-update", () =>
         broadcastAvatarStatusUpdate(userId, payload.avatarId, "FAILED"),
-      );
+      ).catch(() => {});
     }
   },
   classifyError(error) {
