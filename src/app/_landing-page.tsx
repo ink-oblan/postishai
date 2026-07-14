@@ -51,7 +51,6 @@ export default function LandingPage() {
             width={188}
             height={63}
             className="h-9 w-auto sm:h-9"
-            loading="eager"
             priority
           />
           <div className="flex shrink-0 items-center gap-3 sm:gap-8">
