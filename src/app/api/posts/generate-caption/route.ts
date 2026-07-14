@@ -7,6 +7,7 @@ import { validateCaptionMedia } from "@/lib/caption-media-validation";
 import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { convertToJpeg } from "@/lib/image-convert";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { writeFile } from "@/lib/storage";
 import { enqueuePostCaptionGenerateJob } from "@/lib/worker/jobs";
 
@@ -50,7 +51,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
           platform: (platform as Platform) || "INSTAGRAM",
           caption: null,
           details: details?.trim() || null,
-          status: "DRAFT",
+          status: CONTENT_STATUS.DRAFT,
           userId,
           llmModelId,
         },
@@ -111,7 +112,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
     // Broadcast post creation and generation start to connected clients
     try {
       await broadcastWithContext("post-caption-generate-start", () =>
-        broadcastPostStatusUpdate(userId, post.id, "GENERATING"),
+        broadcastPostStatusUpdate(userId, post.id, CONTENT_STATUS.GENERATING),
       );
     } catch (broadcastErr) {
       console.error(
@@ -128,7 +129,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
         title: post.title,
         platform: post.platform,
         caption: post.caption,
-        status: "GENERATING",
+        status: CONTENT_STATUS.GENERATING,
         media: await prisma.postMedia.findMany({
           where: { postId: post.id },
           orderBy: { order: "asc" },

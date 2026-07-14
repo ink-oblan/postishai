@@ -4,7 +4,7 @@ import type { Post, PostStatus } from "@prisma/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { POLLING } from "@/lib/polling-config";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
-import { SSE_STATUS } from "@/lib/sse-constants";
+import { CONTENT_STATUS, SSE_STATUS } from "@/lib/sse-constants";
 import { PostsContent } from "./PostsContent";
 
 interface PostsClientProps {
@@ -42,7 +42,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         });
 
         // Check if any are still generating
-        const hasGenerating = updated.some((p: Post) => p.status === "GENERATING");
+        const hasGenerating = updated.some((p: Post) => p.status === CONTENT_STATUS.GENERATING);
         if (!hasGenerating && pollIntervalRef.current) {
           if (process.env.NODE_ENV === "development")
             console.log("[PostsList] Stopping poll - all posts completed");
@@ -98,10 +98,10 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
 
       // Validate that status is a known value (either Prisma PostStatus or synthetic ARCHIVED)
       const isValidStatus =
-        update.status === "DRAFT" ||
-        update.status === "GENERATING" ||
-        update.status === "COMPLETED" ||
-        update.status === "FAILED" ||
+        update.status === CONTENT_STATUS.DRAFT ||
+        update.status === CONTENT_STATUS.GENERATING ||
+        update.status === CONTENT_STATUS.COMPLETED ||
+        update.status === CONTENT_STATUS.FAILED ||
         update.status === SSE_STATUS.ARCHIVED;
 
       if (!isValidStatus) {
@@ -117,7 +117,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         return next;
       });
 
-      if (update.status === "GENERATING") {
+      if (update.status === CONTENT_STATUS.GENERATING) {
         if (!pollIntervalRef.current) {
           if (process.env.NODE_ENV === "development")
             console.log("[PostsList] Starting poll for generating posts");
@@ -131,7 +131,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
           });
         }
       } else if (
-        (update.status === "COMPLETED" || update.status === "FAILED") &&
+        (update.status === CONTENT_STATUS.COMPLETED || update.status === CONTENT_STATUS.FAILED) &&
         pollIntervalRef.current
       ) {
         if (process.env.NODE_ENV === "development") console.log("[PostsList] Stopping poll");

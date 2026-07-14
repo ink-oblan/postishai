@@ -5,6 +5,7 @@ import { withAuth } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { metadataToText } from "@/lib/metadata/generator";
 import type { PlatformMetadata } from "@/lib/metadata/types";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { readFile } from "@/lib/storage";
 
 export const GET = withAuth(async function GET(
@@ -16,7 +17,7 @@ export const GET = withAuth(async function GET(
 
   const post = await prisma.post.findFirst({ where: { id, userId } });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (post.status !== "COMPLETED" || !post.videoPath) {
+  if (post.status !== CONTENT_STATUS.COMPLETED || !post.videoPath) {
     return NextResponse.json({ error: "Video not ready" }, { status: 409 });
   }
 

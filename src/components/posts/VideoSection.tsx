@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { POLLING } from "@/lib/polling-config";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 
 interface Props {
   post: {
@@ -33,10 +34,10 @@ export function VideoSection({ post }: Props) {
 
   // Handle SSE updates and cross-tab messages
   useEffect(() => {
-    if (status !== "GENERATING") return;
+    if (status !== CONTENT_STATUS.GENERATING) return;
 
     const handleStatusUpdate = (newStatus: string) => {
-      if (newStatus === "COMPLETED" || newStatus === "FAILED") {
+      if (newStatus === CONTENT_STATUS.COMPLETED || newStatus === CONTENT_STATUS.FAILED) {
         // Cancel all timers before reload to prevent memory leak
         if (pollTimerRef.current) {
           clearInterval(pollTimerRef.current);
@@ -69,7 +70,7 @@ export function VideoSection({ post }: Props) {
 
   // Elapsed time display timer
   useEffect(() => {
-    if (status !== "GENERATING") return;
+    if (status !== CONTENT_STATUS.GENERATING) return;
 
     setElapsed(getElapsedSeconds(post.generationStartedAt));
     const elapsedTimer = setInterval(
@@ -82,7 +83,7 @@ export function VideoSection({ post }: Props) {
 
   // Fallback polling: only active if SSE fails
   useEffect(() => {
-    if (status !== "GENERATING") return;
+    if (status !== CONTENT_STATUS.GENERATING) return;
 
     const abortController = new AbortController();
 
@@ -95,7 +96,10 @@ export function VideoSection({ post }: Props) {
         if (!res.ok) return;
         const updatedPost = await res.json();
         // Compare against actual data from server, not stale state
-        if (updatedPost.status === "COMPLETED" || updatedPost.status === "FAILED") {
+        if (
+          updatedPost.status === CONTENT_STATUS.COMPLETED ||
+          updatedPost.status === CONTENT_STATUS.FAILED
+        ) {
           if (pollTimerRef.current) {
             clearInterval(pollTimerRef.current);
             pollTimerRef.current = null;
@@ -137,7 +141,7 @@ export function VideoSection({ post }: Props) {
     }
   }
 
-  if (status === "COMPLETED" && post.videoPath) {
+  if (status === CONTENT_STATUS.COMPLETED && post.videoPath) {
     const filename = post.videoPath.split("/").pop() as string;
     return (
       <Card className="overflow-hidden">
@@ -146,7 +150,7 @@ export function VideoSection({ post }: Props) {
     );
   }
 
-  if (status === "GENERATING") {
+  if (status === CONTENT_STATUS.GENERATING) {
     return (
       <Card suppressHydrationWarning>
         <CardContent className="flex flex-col items-center justify-center gap-3 py-12">
@@ -161,7 +165,7 @@ export function VideoSection({ post }: Props) {
     );
   }
 
-  if (status === "FAILED") {
+  if (status === CONTENT_STATUS.FAILED) {
     return (
       <Card className="border-destructive/30">
         <CardContent className="flex flex-col items-center justify-center gap-3 py-10">

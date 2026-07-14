@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { POLLING } from "@/lib/polling-config";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 
 interface Props {
   avatarId: string;
@@ -20,7 +21,7 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
   );
 
   useEffect(() => {
-    if (status !== "GENERATING") return;
+    if (status !== CONTENT_STATUS.GENERATING) return;
 
     const timer = setInterval(() => setElapsed((s) => s + 1), POLLING.UI_TIMER);
 
@@ -28,7 +29,7 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
       const update = payload as { avatarId: string; status: string };
       if (update.avatarId === avatarId) {
         setStatus(update.status);
-        if (update.status !== "GENERATING") {
+        if (update.status !== CONTENT_STATUS.GENERATING) {
           clearInterval(timer);
           router.refresh();
         }
@@ -47,7 +48,7 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
         if (!res.ok) return;
         const data = await res.json();
         setStatus(data.status);
-        if (data.status !== "GENERATING") {
+        if (data.status !== CONTENT_STATUS.GENERATING) {
           clearInterval(poll);
           clearInterval(timer);
           router.refresh();
@@ -65,7 +66,7 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
     };
   }, [avatarId, status, router]);
 
-  if (status === "GENERATING") {
+  if (status === CONTENT_STATUS.GENERATING) {
     return (
       <div className="flex aspect-[9/16] flex-col items-center justify-center gap-3 rounded-xl bg-muted">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -77,7 +78,7 @@ export function AvatarStatusPoller({ avatarId, initialStatus, generatedAt }: Pro
     );
   }
 
-  if (status === "FAILED") {
+  if (status === CONTENT_STATUS.FAILED) {
     return (
       <div className="flex aspect-[9/16] flex-col items-center justify-center gap-2 rounded-xl bg-destructive/10">
         <p className="font-medium text-destructive text-sm">Generation failed</p>

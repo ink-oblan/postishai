@@ -10,6 +10,7 @@ import type { LLMModelAdapter } from "@/lib/llm-models/types";
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
 import { generateMockCaption } from "@/lib/mock-generators";
 import { renderPromptTemplate } from "@/lib/prompts";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { readFile as readFileStorage } from "@/lib/storage";
 import { PLATFORM_FULL_NAMES } from "@/lib/utils";
 import { safeDbUpdate } from "@/workers/db-utils";
@@ -169,7 +170,7 @@ export const postCaptionGenerateJob: JobDefinition<
     await db.post.update({
       where: { id: payload.postId },
       data: {
-        status: "GENERATING",
+        status: CONTENT_STATUS.GENERATING,
         errorMessage: null,
       },
     });
@@ -179,7 +180,7 @@ export const postCaptionGenerateJob: JobDefinition<
     await db.post.update({
       where: { id: payload.postId },
       data: {
-        status: "GENERATING",
+        status: CONTENT_STATUS.GENERATING,
         errorMessage: null,
       },
     });
@@ -263,7 +264,7 @@ export const postCaptionGenerateJob: JobDefinition<
         db.post.update({
           where: { id: payload.postId },
           data: {
-            status: "COMPLETED",
+            status: CONTENT_STATUS.COMPLETED,
             caption: result.caption,
             errorMessage: null,
             updatedAt: new Date(),
@@ -275,7 +276,7 @@ export const postCaptionGenerateJob: JobDefinition<
     if (post?.userId) {
       const userId = post.userId;
       await broadcastWithContext("post-status-update", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
+        broadcastPostStatusUpdate(userId, payload.postId, CONTENT_STATUS.COMPLETED),
       ).catch(() => {});
     }
   },
@@ -285,7 +286,7 @@ export const postCaptionGenerateJob: JobDefinition<
         db.post.update({
           where: { id: payload.postId },
           data: {
-            status: "FAILED",
+            status: CONTENT_STATUS.FAILED,
             errorMessage: error,
           },
         }),
@@ -295,7 +296,7 @@ export const postCaptionGenerateJob: JobDefinition<
     if (post?.userId) {
       const userId = post.userId;
       await broadcastWithContext("post-status-update", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
+        broadcastPostStatusUpdate(userId, payload.postId, CONTENT_STATUS.FAILED),
       ).catch(() => {});
     }
   },

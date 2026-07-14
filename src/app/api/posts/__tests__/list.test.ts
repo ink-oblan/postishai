@@ -20,8 +20,8 @@ describe("/api/posts/list", () => {
 
   it("filters posts by status when query param provided", () => {
     /**
-     * When ?status=GENERATING is provided:
-     * - Should query with where: { status: "GENERATING", ... }
+     * When ?status=CONTENT_STATUS.GENERATING is provided:
+     * - Should query with where: { status: CONTENT_STATUS.GENERATING, ... }
      * - Returns only posts with GENERATING status
      * - Smaller payload for polling optimization
      */

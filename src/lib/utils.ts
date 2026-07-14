@@ -30,18 +30,23 @@ export const PLATFORM_FULL_NAMES: Record<string, string> = {
   YOUTUBE_SHORTS: "YouTube Shorts",
 };
 
+import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/sse-constants";
+
 export const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  DRAFT: { label: "Draft", className: "bg-muted text-muted-foreground" },
-  GENERATING: {
-    label: "Generating",
+  [CONTENT_STATUS.DRAFT]: {
+    label: STATUS_LABELS[CONTENT_STATUS.DRAFT],
+    className: "bg-muted text-muted-foreground",
+  },
+  [CONTENT_STATUS.GENERATING]: {
+    label: STATUS_LABELS[CONTENT_STATUS.GENERATING],
     className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   },
-  COMPLETED: {
-    label: "Completed",
+  [CONTENT_STATUS.COMPLETED]: {
+    label: STATUS_LABELS[CONTENT_STATUS.COMPLETED],
     className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   },
-  FAILED: {
-    label: "Failed",
+  [CONTENT_STATUS.FAILED]: {
+    label: STATUS_LABELS[CONTENT_STATUS.FAILED],
     className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
   },
 };

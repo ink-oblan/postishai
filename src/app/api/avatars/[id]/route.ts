@@ -6,6 +6,7 @@ import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { prisma } from "@/lib/db";
 import { decodeAndConvertImageBase64 } from "@/lib/image-convert";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { archiveFile, writeFile } from "@/lib/storage";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 
@@ -102,7 +103,7 @@ export const PATCH = withAuth(async function PATCH(
 
       updateData.imagePath = relativePath;
       updateData.imageModel = null;
-      updateData.status = "COMPLETED";
+      updateData.status = CONTENT_STATUS.COMPLETED;
       updateData.heygenAssetId = null;
       updateData.heygenAssetUrl = null;
       if (prompt) updateData.prompt = prompt;
@@ -136,7 +137,7 @@ export const PATCH = withAuth(async function PATCH(
       if (!usedPrompt)
         return NextResponse.json({ error: "prompt required for regeneration" }, { status: 400 });
 
-      updateData.status = "GENERATING";
+      updateData.status = CONTENT_STATUS.GENERATING;
       updateData.imageModel = usedModel;
       updateData.heygenAssetId = null;
       updateData.heygenAssetUrl = null;
@@ -167,7 +168,7 @@ export const PATCH = withAuth(async function PATCH(
       // Broadcast avatar regeneration to all connected clients
       try {
         await broadcastWithContext("avatar-regenerate", () =>
-          broadcastAvatarStatusUpdate(userId, id, "GENERATING"),
+          broadcastAvatarStatusUpdate(userId, id, CONTENT_STATUS.GENERATING),
         );
       } catch (broadcastErr) {
         console.error(

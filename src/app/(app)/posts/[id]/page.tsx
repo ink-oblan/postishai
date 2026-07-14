@@ -10,6 +10,7 @@ import { listVoices } from "@/lib/heygen/client";
 import { getLLMModelInfo } from "@/lib/llm-models/registry";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { isPostEditable } from "@/lib/posts";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { formatDistanceToNow, PLATFORM_LABELS, STATUS_CONFIG } from "@/lib/utils";
 
 export default async function PostDetailPage({
@@ -123,7 +124,8 @@ export default async function PostDetailPage({
               voiceName: voice?.name ?? null,
               createdAtLabel: formatDistanceToNow(post.createdAt),
               status: post.status,
-              downloadUrl: post.status === "COMPLETED" ? `/api/posts/${post.id}/download` : null,
+              downloadUrl:
+                post.status === CONTENT_STATUS.COMPLETED ? `/api/posts/${post.id}/download` : null,
               metadata,
               metadataStatus: post.metadataStatus,
               metadataErrorMessage: post.metadataErrorMessage,

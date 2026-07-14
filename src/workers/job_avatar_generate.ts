@@ -4,6 +4,7 @@ import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
 import { generateMockAvatarImage } from "@/lib/mock-generators";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { archiveFile, writeFile } from "@/lib/storage";
 import { safeDbUpdate } from "@/workers/db-utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
@@ -30,7 +31,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     await db.avatar.update({
       where: { id: payload.avatarId },
       data: {
-        status: "GENERATING",
+        status: CONTENT_STATUS.GENERATING,
         errorMessage: null,
       },
     });
@@ -39,7 +40,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     await db.avatar.update({
       where: { id: payload.avatarId },
       data: {
-        status: "GENERATING",
+        status: CONTENT_STATUS.GENERATING,
         errorMessage: null,
       },
     });
@@ -89,7 +90,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
           where: { id: payload.avatarId },
           data: {
             imagePath: result.imagePath,
-            status: "COMPLETED",
+            status: CONTENT_STATUS.COMPLETED,
             errorMessage: null,
           },
         }),
@@ -99,7 +100,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     if (avatar?.userId) {
       const userId = avatar.userId;
       await broadcastWithContext("avatar-status-update", () =>
-        broadcastAvatarStatusUpdate(userId, payload.avatarId, "COMPLETED"),
+        broadcastAvatarStatusUpdate(userId, payload.avatarId, CONTENT_STATUS.COMPLETED),
       ).catch(() => {});
     }
   },
@@ -109,7 +110,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
         db.avatar.update({
           where: { id: payload.avatarId },
           data: {
-            status: "FAILED",
+            status: CONTENT_STATUS.FAILED,
             errorMessage: error,
           },
         }),
@@ -119,7 +120,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     if (avatar?.userId) {
       const userId = avatar.userId;
       await broadcastWithContext("avatar-status-update", () =>
-        broadcastAvatarStatusUpdate(userId, payload.avatarId, "FAILED"),
+        broadcastAvatarStatusUpdate(userId, payload.avatarId, CONTENT_STATUS.FAILED),
       ).catch(() => {});
     }
   },

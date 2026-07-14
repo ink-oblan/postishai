@@ -4,6 +4,7 @@ import { generateAvatarVariationLabel } from "@/lib/avatar-variation-label";
 import { renderAvatarVariationPrompt } from "@/lib/avatar-variation-prompt";
 import { prisma } from "@/lib/db";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 
 export const GET = withAuth(async function GET(
@@ -61,7 +62,7 @@ export const POST = withAuth(async function POST(
           id: trimmedSourceVariationId,
           avatarId: id,
           archivedAt: null,
-          status: "COMPLETED",
+          status: CONTENT_STATUS.COMPLETED,
         },
       })
     : null;
@@ -75,7 +76,7 @@ export const POST = withAuth(async function POST(
           id: trimmedReplaceVariationId,
           avatarId: id,
           archivedAt: null,
-          status: "COMPLETED",
+          status: CONTENT_STATUS.COMPLETED,
         },
       })
     : null;

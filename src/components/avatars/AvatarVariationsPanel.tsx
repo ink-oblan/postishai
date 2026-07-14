@@ -30,6 +30,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { generateAvatarVariationLabel } from "@/lib/avatar-variation-label";
 import { POLLING } from "@/lib/polling-config";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { cn } from "@/lib/utils";
 
 interface AvatarVariation {
@@ -95,7 +96,7 @@ export function AvatarVariationsPanel({
   // Poll while any variation is generating
   useEffect(() => {
     const isGenerating = variations.some(
-      (v) => v.status === "GENERATING" || v.status === "PENDING",
+      (v) => v.status === CONTENT_STATUS.GENERATING || v.status === "PENDING",
     );
     if (!isGenerating) {
       pollingRef.current = false;
@@ -111,7 +112,7 @@ export function AvatarVariationsPanel({
         const data = (await res.json()) as AvatarVariation[];
         setVariations(data);
         const stillGenerating = data.some(
-          (v) => v.status === "GENERATING" || v.status === "PENDING",
+          (v) => v.status === CONTENT_STATUS.GENERATING || v.status === "PENDING",
         );
         if (!stillGenerating) {
           clearInterval(interval);
@@ -191,7 +192,7 @@ export function AvatarVariationsPanel({
   const generatedLabel = generateAvatarVariationLabel(activeValues);
   const canGenerate = !!(activeValues.clothes || activeValues.background || activeValues.pose);
   const selectedVariation = variations.find((v) => v.id === selectedVariationId) ?? null;
-  const canUseSelectedVariation = selectedVariation?.status === "COMPLETED";
+  const canUseSelectedVariation = selectedVariation?.status === CONTENT_STATUS.COMPLETED;
   const optionMeta: Record<
     VariationScope,
     { icon: typeof Shirt; iconClassName: string; title: string; description: string }
@@ -453,7 +454,8 @@ export function AvatarVariationsPanel({
                 <div className="flex gap-3 overflow-x-auto pb-2">
                   {variations.map((variation) => {
                     const isSelected = selectedVariationId === variation.id;
-                    const isClickable = variation.status === "COMPLETED" && !!onVariationClick;
+                    const isClickable =
+                      variation.status === CONTENT_STATUS.COMPLETED && !!onVariationClick;
                     return (
                       <div key={variation.id} className="w-24 flex-none">
                         {/* biome-ignore lint/a11y/noStaticElementInteractions: contains nested buttons, can't be a <button> */}
@@ -464,7 +466,7 @@ export function AvatarVariationsPanel({
                           } ${isClickable ? "cursor-pointer" : ""}`}
                           onClick={() => isClickable && onVariationClick(variation)}
                         >
-                          {variation.status === "COMPLETED" && variation.imagePath ? (
+                          {variation.status === CONTENT_STATUS.COMPLETED && variation.imagePath ? (
                             <Image
                               src={`/api/avatars/${avatarId}/variations/${variation.id}/image?t=${new Date(variation.updatedAt).getTime()}`}
                               alt={variation.label}
@@ -472,7 +474,7 @@ export function AvatarVariationsPanel({
                               className={`object-cover transition-[filter] duration-200 ${isSelected ? "blur-[2px] brightness-90" : ""}`}
                               unoptimized
                             />
-                          ) : variation.status === "FAILED" ? (
+                          ) : variation.status === CONTENT_STATUS.FAILED ? (
                             <div className="flex h-full flex-col items-center justify-center gap-1 px-2">
                               <AlertCircle className="h-5 w-5 text-destructive" />
                               <p className="text-center text-[0.65rem] text-destructive leading-tight">
@@ -485,7 +487,7 @@ export function AvatarVariationsPanel({
                             </div>
                           )}
                           <div className="absolute top-1 right-1 flex flex-col gap-1">
-                            {variation.status === "FAILED" && (
+                            {variation.status === CONTENT_STATUS.FAILED && (
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -499,7 +501,7 @@ export function AvatarVariationsPanel({
                               </button>
                             )}
                             {variation.status !== "PENDING" &&
-                              variation.status !== "GENERATING" && (
+                              variation.status !== CONTENT_STATUS.GENERATING && (
                                 <button
                                   type="button"
                                   onClick={(e) => {

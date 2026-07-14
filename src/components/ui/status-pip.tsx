@@ -1,8 +1,16 @@
+import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/sse-constants";
+
 export const STATUS_PIP_CONFIG: Record<string, { dot: string; label: string }> = {
-  DRAFT: { dot: "bg-muted-foreground/40", label: "Draft" },
-  GENERATING: { dot: "bg-yellow-400 animate-pulse", label: "Generating" },
-  COMPLETED: { dot: "bg-primary", label: "Done" },
-  FAILED: { dot: "bg-destructive", label: "Failed" },
+  [CONTENT_STATUS.DRAFT]: {
+    dot: "bg-muted-foreground/40",
+    label: STATUS_LABELS[CONTENT_STATUS.DRAFT],
+  },
+  [CONTENT_STATUS.GENERATING]: {
+    dot: "bg-yellow-400 animate-pulse",
+    label: STATUS_LABELS[CONTENT_STATUS.GENERATING],
+  },
+  [CONTENT_STATUS.COMPLETED]: { dot: "bg-primary", label: "Done" },
+  [CONTENT_STATUS.FAILED]: { dot: "bg-destructive", label: STATUS_LABELS[CONTENT_STATUS.FAILED] },
 };
 
 export function StatusPip({ status }: { status: string }) {

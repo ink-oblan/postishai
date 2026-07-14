@@ -7,6 +7,7 @@ import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
 import { generateMockVideo } from "@/lib/mock-generators";
 import { POLLING } from "@/lib/polling-config";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { readFile, writeFile } from "@/lib/storage";
 import { safeDbUpdate } from "@/workers/db-utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
@@ -35,7 +36,7 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     await db.post.update({
       where: { id: payload.postId },
       data: {
-        status: "GENERATING",
+        status: CONTENT_STATUS.GENERATING,
         errorMessage: null,
         generationStartedAt: new Date(),
       },
@@ -45,7 +46,7 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     await db.post.update({
       where: { id: payload.postId },
       data: {
-        status: "GENERATING",
+        status: CONTENT_STATUS.GENERATING,
         errorMessage: null,
         generationStartedAt: new Date(),
       },
@@ -90,7 +91,8 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
         data: { errorMessage: null },
       });
     } else {
-      const variation = post.avatarVariation?.status === "COMPLETED" ? post.avatarVariation : null;
+      const variation =
+        post.avatarVariation?.status === CONTENT_STATUS.COMPLETED ? post.avatarVariation : null;
       let heygenAssetId = variation ? variation.heygenAssetId : post.avatar.heygenAssetId;
 
       if (!heygenAssetId) {
@@ -160,7 +162,7 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
         db.post.update({
           where: { id: payload.postId },
           data: {
-            status: "COMPLETED",
+            status: CONTENT_STATUS.COMPLETED,
             videoPath: result.videoPath,
             heygenVideoUrl: result.heygenVideoUrl,
             errorMessage: null,
@@ -172,7 +174,7 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     if (post?.userId) {
       const userId = post.userId;
       await broadcastWithContext("post-status-update", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
+        broadcastPostStatusUpdate(userId, payload.postId, CONTENT_STATUS.COMPLETED),
       ).catch(() => {});
     }
   },
@@ -182,7 +184,7 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
         db.post.update({
           where: { id: payload.postId },
           data: {
-            status: "FAILED",
+            status: CONTENT_STATUS.FAILED,
             errorMessage: error,
           },
         }),
@@ -192,7 +194,7 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     if (post?.userId) {
       const userId = post.userId;
       await broadcastWithContext("post-status-update", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
+        broadcastPostStatusUpdate(userId, payload.postId, CONTENT_STATUS.FAILED),
       ).catch(() => {});
     }
   },

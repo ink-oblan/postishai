@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
-import { SSE_STATUS } from "@/lib/sse-constants";
+import { CONTENT_STATUS, SSE_STATUS } from "@/lib/sse-constants";
 import { AvatarGrid } from "./AvatarGrid";
 
 interface AvatarWithCount {
@@ -58,10 +58,10 @@ export function AvatarListClient({ initialAvatars }: AvatarListClientProps) {
 
       // Refresh when avatar completes, fails, is deleted, or starts regenerating
       if (
-        update.status === "COMPLETED" ||
-        update.status === "FAILED" ||
+        update.status === CONTENT_STATUS.COMPLETED ||
+        update.status === CONTENT_STATUS.FAILED ||
         update.status === SSE_STATUS.ARCHIVED ||
-        update.status === "GENERATING"
+        update.status === CONTENT_STATUS.GENERATING
       ) {
         if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
         refreshTimeoutRef.current = setTimeout(() => {
@@ -94,7 +94,7 @@ export function AvatarListClient({ initialAvatars }: AvatarListClientProps) {
         list.push({
           id: avatarId,
           name: "New Avatar",
-          status: "GENERATING",
+          status: CONTENT_STATUS.GENERATING,
           imagePath: "",
           imageModel: null,
           createdAt: now,

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PlatformChip } from "@/components/ui/platform-chip";
 import { StatusPip } from "@/components/ui/status-pip";
 import type { DashboardData } from "@/lib/dashboard-utils";
+import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/sse-constants";
 
 export function DashboardContent({ data }: { data: DashboardData }) {
   const { avatarCount, postCount, completedCount, generatingCount, completionRate, recentPosts } =
@@ -45,7 +46,7 @@ export function DashboardContent({ data }: { data: DashboardData }) {
             },
             {
               value: completedCount,
-              label: "Completed",
+              label: STATUS_LABELS[CONTENT_STATUS.COMPLETED],
               sub: "Ready to publish",
               accent: true,
             },

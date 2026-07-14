@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { isPostEditable } from "@/lib/posts";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { archiveFile } from "@/lib/storage";
 import { enqueuePostMetadataJob } from "@/lib/worker/jobs";
 
@@ -121,7 +122,7 @@ export const PATCH = withAuth(async function PATCH(
       await archiveAndBroadcast();
       return new NextResponse(null, { status: 204 });
     }
-    if (post.status !== "DRAFT") {
+    if (post.status !== CONTENT_STATUS.DRAFT) {
       return NextResponse.json({ error: "Only DRAFT posts can be archived" }, { status: 409 });
     }
     if (post.videoPath) await archiveFile(post.videoPath).catch(() => null);
@@ -207,7 +208,7 @@ export const PATCH = withAuth(async function PATCH(
       avatarVariationId: resolvedVariationId,
       ...(shouldRegenerateMetadata
         ? {
-            status: "DRAFT",
+            status: CONTENT_STATUS.DRAFT,
             generationStartedAt: null,
             metadata: null,
             metadataStatus: "IDLE",
@@ -219,7 +220,7 @@ export const PATCH = withAuth(async function PATCH(
         : nextMetadata
           ? {
               metadata: JSON.stringify(nextMetadata),
-              metadataStatus: "COMPLETED",
+              metadataStatus: CONTENT_STATUS.COMPLETED,
               metadataErrorMessage: null,
               metadataUpdatedAt: new Date(),
             }
