@@ -63,9 +63,7 @@ export async function broadcastAvatarStatusUpdate(
 ) {
   // Fetch fresh dashboard data to include in the update
   const freshData = await fetchDashboardData(userId);
-  console.log(
-    `[broadcast] Sending avatar-status-update for avatarId=${avatarId}, status=${status}`,
-  );
+  debugLog(`[broadcast] Sending avatar-status-update for avatarId=${avatarId}, status=${status}`);
   sendEventToUser(userId, "avatar-status-update", {
     avatarId,
     status,
@@ -153,7 +151,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
           clearInterval(clientConnection.heartbeat);
           clearInterval(clientConnection.statsRefresh);
           subscribers.delete(clientConnection);
-          console.log(
+          debugLog(
             `[subscribe] Client disconnected for userId=${userId}, ${subscribers.size} subscriber(s) remaining`,
           );
         }
