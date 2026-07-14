@@ -4,6 +4,7 @@ import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { prisma } from "@/lib/db";
+import { debugLog } from "@/lib/debug";
 import { DEFAULT_LLM_MODEL_ID, getLLMAdapter } from "@/lib/llm-models/registry";
 import { enqueuePostMetadataJob } from "@/lib/worker/jobs";
 
@@ -71,7 +72,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
   await enqueuePostMetadataJob({ postId: post.id });
 
   // Broadcast post creation to all connected clients
-  console.log(
+  debugLog(
     `[POST /api/posts] Broadcasting post creation: postId=${post.id}, status=${post.status}`,
   );
   try {
