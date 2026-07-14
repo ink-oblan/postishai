@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth/dal";
 import { fetchDashboardData } from "@/lib/dashboard-utils";
 import { prisma } from "@/lib/db";
 import { POLLING } from "@/lib/polling-config";
+import { CONTENT_STATUS } from "@/lib/sse-constants";
 
 interface ClientConnection {
   controller: ReadableStreamController<Uint8Array>;
@@ -107,13 +108,15 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
       // Refresh stats periodically to catch updates from other processes
       statsRefresh = setInterval(async () => {
         try {
-          // Always fetch full dashboard data; it includes groupBy internally
-          const freshData = await fetchDashboardData(userId);
-          const updatedGeneratingCount = freshData.generatingCount;
+          // Check only if generating count changed (lightweight query)
+          const generatingPosts = await prisma.post.count({
+            where: { userId, status: CONTENT_STATUS.GENERATING, archivedAt: null },
+          });
 
-          // Send stats-refresh if generating count changed
-          if (updatedGeneratingCount !== lastGeneratingCount) {
-            lastGeneratingCount = updatedGeneratingCount;
+          if (generatingPosts !== lastGeneratingCount) {
+            lastGeneratingCount = generatingPosts;
+            // Fetch full data only when count changes
+            const freshData = await fetchDashboardData(userId);
             const statsData = `event: stats-refresh\ndata: ${JSON.stringify({ stats: freshData })}\n\n`;
             try {
               controller.enqueue(encoder.encode(statsData));
