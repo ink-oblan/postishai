@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { fetchDashboardData } from "@/lib/dashboard-utils";
 import { prisma } from "@/lib/db";
+import { debugLog } from "@/lib/debug";
 import { POLLING } from "@/lib/polling-config";
 import { CONTENT_STATUS } from "@/lib/sse-constants";
 
@@ -21,7 +22,7 @@ const userSubscribers = new Map<string, Set<ClientConnection>>();
 function sendEventToUser(userId: string, event: string, data: unknown) {
   const subscribers = userSubscribers.get(userId);
   if (!subscribers || subscribers.size === 0) {
-    console.log(`[subscribe] No subscribers for userId=${userId}`);
+    debugLog(`[subscribe] No subscribers for userId=${userId}`);
     return;
   }
 
@@ -47,7 +48,7 @@ function sendEventToUser(userId: string, event: string, data: unknown) {
 export async function broadcastPostStatusUpdate(userId: string, postId: string, status: string) {
   // Fetch fresh dashboard data to include in the update
   const freshData = await fetchDashboardData(userId);
-  console.log(`[broadcast] Sending post-status-update for postId=${postId}, status=${status}`);
+  debugLog(`[broadcast] Sending post-status-update for postId=${postId}, status=${status}`);
   sendEventToUser(userId, "post-status-update", {
     postId,
     status,
@@ -84,7 +85,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
       }
 
       const encoder = new TextEncoder();
-      console.log(`[subscribe] Client connected for userId=${userId}`);
+      debugLog(`[subscribe] Client connected for userId=${userId}`);
 
       // Send initial data with current stats
       const currentStats = await fetchDashboardData(userId);

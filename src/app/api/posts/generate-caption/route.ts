@@ -5,6 +5,7 @@ import { withAuth } from "@/lib/auth/dal";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { validateCaptionMedia } from "@/lib/caption-media-validation";
 import { prisma } from "@/lib/db";
+import { debugLog } from "@/lib/debug";
 import { convertToJpeg } from "@/lib/image-convert";
 import { writeFile } from "@/lib/storage";
 import { enqueuePostCaptionGenerateJob } from "@/lib/worker/jobs";
@@ -16,7 +17,7 @@ const VIDEO_EXTENSIONS: Record<string, string> = {
 };
 
 export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userId }) {
-  console.log("[generate-caption] POST request started");
+  debugLog("[generate-caption] POST request started");
   const formData = await req.formData();
   const title = formData.get("title")?.toString();
   const platform = formData.get("platform")?.toString();
@@ -24,9 +25,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
   const llmModelId = formData.get("llmModelId")?.toString();
   const media = formData.getAll("media").filter((v): v is File => v instanceof File);
 
-  console.log(
-    `[generate-caption] title=${title}, platform=${platform}, media count=${media.length}`,
-  );
+  debugLog(`[generate-caption] title=${title}, platform=${platform}, media count=${media.length}`);
 
   if (!title?.trim()) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -85,20 +84,20 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
           const path = `posts/${post.id}/${i}.${ext}`;
           let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
 
-          console.log(
+          debugLog(
             `[generate-caption] Processing media ${i}: isVideo=${isVideo}, type=${file.type}, size=${buffer.length}`,
           );
 
           // Convert images to JPEG
           if (!isVideo) {
-            console.log(`[generate-caption] Converting image to JPEG`);
+            debugLog(`[generate-caption] Converting image to JPEG`);
             buffer = await convertToJpeg(buffer);
-            console.log(`[generate-caption] Converted, new size=${buffer.length}`);
+            debugLog(`[generate-caption] Converted, new size=${buffer.length}`);
           }
 
-          console.log(`[generate-caption] Writing to storage: ${path}`);
+          debugLog(`[generate-caption] Writing to storage: ${path}`);
           await writeFile(path, buffer);
-          console.log(`[generate-caption] Saved successfully: ${path}`);
+          debugLog(`[generate-caption] Saved successfully: ${path}`);
         } catch (err) {
           console.error(`[generate-caption] Failed to save media ${i}:`, err);
           throw err;

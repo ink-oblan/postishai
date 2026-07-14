@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { debugLog } from "@/lib/debug";
 import { runFfmpeg, runFfprobe } from "@/lib/ffmpeg";
 import { convertToJpeg } from "@/lib/image-convert";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
@@ -162,7 +163,7 @@ export const postCaptionGenerateJob: JobDefinition<
     } satisfies PostCaptionGeneratePayload;
   },
   async onEnqueue(db, payload) {
-    console.log(
+    debugLog(
       `[post.caption.generate] onEnqueue: setting status to GENERATING for postId=${payload.postId}`,
     );
     await db.post.update({
@@ -172,7 +173,7 @@ export const postCaptionGenerateJob: JobDefinition<
         errorMessage: null,
       },
     });
-    console.log(`[post.caption.generate] onEnqueue: status updated for postId=${payload.postId}`);
+    debugLog(`[post.caption.generate] onEnqueue: status updated for postId=${payload.postId}`);
   },
   async onStart(db, payload) {
     await db.post.update({
