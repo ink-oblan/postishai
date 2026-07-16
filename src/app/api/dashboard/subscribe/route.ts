@@ -4,7 +4,6 @@ import { fetchDashboardData } from "@/lib/dashboard-utils";
 import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { POLLING } from "@/lib/polling-config";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 
 interface ClientConnection {
   controller: ReadableStreamController<Uint8Array>;
@@ -109,7 +108,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
         try {
           // Check only if generating count changed (lightweight query)
           const generatingPosts = await prisma.post.count({
-            where: { userId, status: CONTENT_STATUS.GENERATING, archivedAt: null },
+            where: { userId, status: "GENERATING", archivedAt: null },
           });
 
           if (generatingPosts !== lastGeneratingCount) {
