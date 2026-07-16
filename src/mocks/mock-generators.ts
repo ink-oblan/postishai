@@ -1,7 +1,7 @@
 import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import sharp from "sharp";
-import { runFfmpeg } from "./ffmpeg";
-import { MOCK_TIMINGS } from "./mock-config";
+import { runFfmpeg } from "@/lib/ffmpeg";
+import { MOCK_TIMINGS } from "@/mocks/mock-config";
 
 // Generate placeholder avatar image (1080x1920 JPEG)
 export async function generateMockAvatarImage(seed: string): Promise<Buffer> {
