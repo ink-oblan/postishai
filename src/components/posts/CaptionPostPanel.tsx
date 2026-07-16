@@ -7,8 +7,8 @@ import { startTransition, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { POLLING } from "@/lib/polling-config";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 
 interface MediaItem {
   id: string;

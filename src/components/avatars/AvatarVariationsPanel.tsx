@@ -29,8 +29,8 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { generateAvatarVariationLabel } from "@/lib/avatar-variation-label";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { POLLING } from "@/lib/polling-config";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { cn } from "@/lib/utils";
 
 interface AvatarVariation {

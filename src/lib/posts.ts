@@ -1,4 +1,4 @@
-import { CONTENT_STATUS } from "@/lib/sse-constants";
+import { CONTENT_STATUS } from "@/lib/constants";
 export function isPostEditable(post: { status: string; videoPath: string | null }) {
   return (
     !post.videoPath &&

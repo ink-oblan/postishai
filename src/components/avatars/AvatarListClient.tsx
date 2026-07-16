@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
-import { CONTENT_STATUS, SSE_STATUS } from "@/lib/sse-constants";
+import { SSE_STATUS } from "@/lib/sse-constants";
 import { AvatarGrid } from "./AvatarGrid";
 
 interface AvatarWithCount {

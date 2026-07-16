@@ -17,8 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
 interface Avatar {

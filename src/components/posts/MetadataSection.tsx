@@ -12,8 +12,8 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
+import { CONTENT_STATUS } from "@/lib/constants";
 import type { PlatformMetadata } from "@/lib/metadata/types";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 
 interface MetadataSectionProps {
   postId: string;

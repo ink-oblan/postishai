@@ -21,10 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/constants";
 import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { POLLING } from "@/lib/polling-config";
-import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/sse-constants";
 
 interface LLMModel {
   id: string;

@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { formatDistanceToNow } from "@/lib/utils";
 import { AvatarStatusPoller } from "./AvatarStatusPoller";
 

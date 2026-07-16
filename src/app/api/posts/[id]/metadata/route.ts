@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 
 export const POST = withAuth(async function POST(

@@ -30,7 +30,7 @@ export const PLATFORM_FULL_NAMES: Record<string, string> = {
   YOUTUBE_SHORTS: "YouTube Shorts",
 };
 
-import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/sse-constants";
+import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/constants";
 
 export const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   [CONTENT_STATUS.DRAFT]: {

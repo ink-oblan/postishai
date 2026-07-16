@@ -5,12 +5,12 @@ import { CaptionPostPanel } from "@/components/posts/CaptionPostPanel";
 import { PostDetailClient } from "@/components/posts/PostDetailClient";
 import { PostEditPanel } from "@/components/posts/PostEditPanel";
 import { VideoSection } from "@/components/posts/VideoSection";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { listVoices } from "@/lib/heygen/client";
 import { getLLMModelInfo } from "@/lib/llm-models/registry";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { isPostEditable } from "@/lib/posts";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { formatDistanceToNow, PLATFORM_LABELS, STATUS_CONFIG } from "@/lib/utils";
 
 export default async function PostDetailPage({

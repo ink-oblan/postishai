@@ -4,10 +4,10 @@ import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { validateCaptionMedia } from "@/lib/caption-media-validation";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { convertToJpeg } from "@/lib/image-convert";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { writeFile } from "@/lib/storage";
 import { enqueuePostCaptionGenerateJob } from "@/lib/worker/jobs";
 

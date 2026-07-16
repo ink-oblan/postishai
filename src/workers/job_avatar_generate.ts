@@ -1,11 +1,11 @@
 import sharp from "sharp";
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { getImageAdapter } from "@/lib/image-models/registry";
-import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
-import { generateMockAvatarImage } from "@/lib/mock-generators";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { archiveFile, writeFile } from "@/lib/storage";
+import { isMockEnabled, MOCK_TIMINGS } from "@/mocks/mock-config";
+import { generateMockAvatarImage } from "@/mocks/mock-generators";
 import { safeDbUpdate } from "@/workers/db-utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition } from "@/workers/types";

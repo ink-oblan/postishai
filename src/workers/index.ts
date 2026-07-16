@@ -1,9 +1,9 @@
 import "dotenv/config";
 import { hostname } from "node:os";
 import type { Job } from "@prisma/client";
+import { JOB_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { assertStorageModeInitialized } from "@/lib/platform-config";
-import { JOB_STATUS } from "@/lib/sse-constants";
 import { removeWorkerHeartbeat, updateWorkerHeartbeat } from "@/workers/health";
 import { jobRegistry } from "@/workers/registry";
 import type { JobDefinition, JobType } from "@/workers/types";

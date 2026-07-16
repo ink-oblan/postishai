@@ -11,7 +11,7 @@ import { AvatarVariationsPanel } from "@/components/avatars/AvatarVariationsPane
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { cn, PLATFORM_LABELS, STATUS_CONFIG } from "@/lib/utils";
 
 interface AvatarVariation {

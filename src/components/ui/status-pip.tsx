@@ -1,4 +1,4 @@
-import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/sse-constants";
+import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/constants";
 
 export const STATUS_PIP_CONFIG: Record<string, { dot: string; label: string }> = {
   [CONTENT_STATUS.DRAFT]: {

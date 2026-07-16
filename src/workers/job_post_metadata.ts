@@ -1,5 +1,5 @@
+import { CONTENT_STATUS } from "@/lib/constants";
 import { generateMetadata } from "@/lib/metadata/generator";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition, PostMetadataGeneratePayload } from "@/workers/types";
 

@@ -1,7 +1,7 @@
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { getImageAdapter } from "@/lib/image-models/registry";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { archiveFile, readFile, writeFile } from "@/lib/storage";
 import { safeDbUpdate } from "@/workers/db-utils";
 import {

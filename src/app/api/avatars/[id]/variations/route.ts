@@ -2,9 +2,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { generateAvatarVariationLabel } from "@/lib/avatar-variation-label";
 import { renderAvatarVariationPrompt } from "@/lib/avatar-variation-prompt";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 
 export const GET = withAuth(async function GET(

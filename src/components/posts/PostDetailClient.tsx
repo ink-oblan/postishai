@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { addEventListener } from "@/lib/sse-client";
-import { CONTENT_STATUS, SSE_STATUS } from "@/lib/sse-constants";
+import { SSE_STATUS } from "@/lib/sse-constants";
 
 interface PostDetailClientProps {
   postId: string;

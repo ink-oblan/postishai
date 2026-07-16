@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { POLLING } from "@/lib/polling-config";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 
 interface Props {
   post: {

@@ -4,10 +4,10 @@ import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route
 import { withAuth } from "@/lib/auth/dal";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { CONTENT_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { decodeAndConvertImageBase64 } from "@/lib/image-convert";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
-import { CONTENT_STATUS } from "@/lib/sse-constants";
 import { writeFile } from "@/lib/storage";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 
