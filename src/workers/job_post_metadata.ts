@@ -1,3 +1,4 @@
+import { METADATA_STATUS } from "@/lib/constants";
 import { generateMetadata } from "@/lib/metadata/generator";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
 import type { JobDefinition, PostMetadataGeneratePayload } from "@/workers/types";
@@ -21,7 +22,7 @@ export const postMetadataJob: JobDefinition<"post.metadata", PostMetadataResult>
     await db.post.update({
       where: { id: payload.postId },
       data: {
-        metadataStatus: "GENERATING",
+        metadataStatus: METADATA_STATUS.GENERATING,
         metadataErrorMessage: null,
       },
     });
@@ -30,7 +31,7 @@ export const postMetadataJob: JobDefinition<"post.metadata", PostMetadataResult>
     await db.post.update({
       where: { id: payload.postId },
       data: {
-        metadataStatus: "GENERATING",
+        metadataStatus: METADATA_STATUS.GENERATING,
         metadataErrorMessage: null,
       },
     });
@@ -59,7 +60,7 @@ export const postMetadataJob: JobDefinition<"post.metadata", PostMetadataResult>
       where: { id: payload.postId },
       data: {
         metadata: result.metadataJson,
-        metadataStatus: "COMPLETED",
+        metadataStatus: METADATA_STATUS.COMPLETED,
         metadataErrorMessage: null,
         metadataUpdatedAt: new Date(),
       },
@@ -70,7 +71,7 @@ export const postMetadataJob: JobDefinition<"post.metadata", PostMetadataResult>
       .update({
         where: { id: payload.postId },
         data: {
-          metadataStatus: "FAILED",
+          metadataStatus: METADATA_STATUS.FAILED,
           metadataErrorMessage: error,
         },
       })

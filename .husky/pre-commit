@@ -1,3 +1,5 @@
+npx prisma format
+git add prisma/schema.prisma
 npx tsc --noEmit
 npx lint-staged
 npx vitest run

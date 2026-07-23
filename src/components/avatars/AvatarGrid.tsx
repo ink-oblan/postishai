@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { AVATAR_STATUS } from "@/lib/constants";
 import { formatDistanceToNow } from "@/lib/utils";
 import { AvatarStatusPoller } from "./AvatarStatusPoller";
 
@@ -53,13 +54,13 @@ export function AvatarGrid({ avatars }: { avatars: AvatarWithCount[] }) {
         <Link key={avatar.id} href={`/avatars/${avatar.id}`} className="group block">
           <div className="overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200 hover:border-primary/30 hover:shadow-md">
             <div className="relative aspect-[9/16] bg-muted">
-              {avatar.status === "GENERATING" ? (
+              {avatar.status === AVATAR_STATUS.GENERATING ? (
                 <AvatarStatusPoller
                   avatarId={avatar.id}
                   initialStatus={avatar.status}
                   generatedAt={avatar.updatedAt?.toISOString() || new Date().toISOString()}
                 />
-              ) : avatar.status === "FAILED" ? (
+              ) : avatar.status === AVATAR_STATUS.FAILED ? (
                 <div className="flex h-full flex-col items-center justify-center gap-1 px-3 text-center">
                   <p className="font-medium text-destructive text-xs">Failed</p>
                 </div>

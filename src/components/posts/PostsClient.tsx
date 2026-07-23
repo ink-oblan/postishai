@@ -1,10 +1,11 @@
 "use client";
 
-import type { Post, PostStatus } from "@prisma/client";
+import type { Post } from "@prisma/client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { POST_STATUS } from "@/lib/constants";
 import { POLLING } from "@/lib/polling-config";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
-import { SSE_STATUS } from "@/lib/sse-constants";
+import { type AllStatus, SSE_STATUS } from "@/lib/sse-constants";
 import { PostsContent } from "./PostsContent";
 
 interface PostsClientProps {
@@ -17,8 +18,8 @@ interface PostsClientProps {
 
 export function PostsClient({ initialPosts }: PostsClientProps) {
   const [posts, setPosts] = useState(initialPosts);
-  const [postStatuses, setPostStatuses] = useState<Map<string, PostStatus>>(
-    new Map(initialPosts.map((p) => [p.id, p.status])),
+  const [postStatuses, setPostStatuses] = useState<Map<string, AllStatus>>(
+    new Map(initialPosts.map((p) => [p.id, p.status as AllStatus])),
   );
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -42,7 +43,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         });
 
         // Check if any are still generating
-        const hasGenerating = updated.some((p: Post) => p.status === "GENERATING");
+        const hasGenerating = updated.some((p: Post) => p.status === POST_STATUS.GENERATING);
         if (!hasGenerating && pollIntervalRef.current) {
           if (process.env.NODE_ENV === "development")
             console.log("[PostsList] Stopping poll - all posts completed");
@@ -54,9 +55,9 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
       } else {
         // Full refresh: update entire list
         setPosts(updated as typeof initialPosts);
-        const newStatuses = new Map<string, PostStatus>();
+        const newStatuses = new Map<string, AllStatus>();
         for (const post of updated) {
-          newStatuses.set(post.id, post.status as PostStatus);
+          newStatuses.set(post.id, post.status as AllStatus);
         }
         setPostStatuses(newStatuses);
       }
@@ -98,10 +99,10 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
 
       // Validate that status is a known value (either Prisma PostStatus or synthetic ARCHIVED)
       const isValidStatus =
-        update.status === "DRAFT" ||
-        update.status === "GENERATING" ||
-        update.status === "COMPLETED" ||
-        update.status === "FAILED" ||
+        update.status === POST_STATUS.DRAFT ||
+        update.status === POST_STATUS.GENERATING ||
+        update.status === POST_STATUS.COMPLETED ||
+        update.status === POST_STATUS.FAILED ||
         update.status === SSE_STATUS.ARCHIVED;
 
       if (!isValidStatus) {
@@ -113,11 +114,11 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
 
       setPostStatuses((prev) => {
         const next = new Map(prev);
-        next.set(update.postId, update.status as PostStatus);
+        next.set(update.postId, update.status as AllStatus);
         return next;
       });
 
-      if (update.status === "GENERATING") {
+      if (update.status === POST_STATUS.GENERATING) {
         if (!pollIntervalRef.current) {
           if (process.env.NODE_ENV === "development")
             console.log("[PostsList] Starting poll for generating posts");
@@ -131,7 +132,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
           });
         }
       } else if (
-        (update.status === "COMPLETED" || update.status === "FAILED") &&
+        (update.status === POST_STATUS.COMPLETED || update.status === POST_STATUS.FAILED) &&
         pollIntervalRef.current
       ) {
         if (process.env.NODE_ENV === "development") console.log("[PostsList] Stopping poll");

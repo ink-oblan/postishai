@@ -12,6 +12,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
+import { METADATA_STATUS } from "@/lib/constants";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 
 interface MetadataSectionProps {
@@ -85,13 +86,13 @@ export function MetadataSection({
         )}
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        {metadataStatus === "GENERATING" && !metadata ? (
+        {metadataStatus === METADATA_STATUS.GENERATING && !metadata ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>Generating metadata...</span>
           </div>
         ) : null}
-        {metadataStatus === "FAILED" && !metadata ? (
+        {metadataStatus === METADATA_STATUS.FAILED && !metadata ? (
           <div className="flex items-start gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-destructive text-sm">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{metadataErrorMessage ?? "Metadata generation failed."}</span>
@@ -99,7 +100,7 @@ export function MetadataSection({
         ) : null}
         {metadata ? (
           <MetadataDisplay editing={editing} metadata={metadata} onChange={onChange} />
-        ) : metadataStatus === "IDLE" ? (
+        ) : metadataStatus === METADATA_STATUS.IDLE ? (
           <p className="text-muted-foreground text-sm">No metadata yet.</p>
         ) : null}
       </CardContent>

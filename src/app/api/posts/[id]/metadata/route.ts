@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { METADATA_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 
@@ -25,5 +26,5 @@ export const POST = withAuth(async function POST(
     return NextResponse.json({ error: "Metadata regeneration already queued" }, { status: 409 });
   }
 
-  return NextResponse.json({ status: "GENERATING" }, { status: 202 });
+  return NextResponse.json({ status: METADATA_STATUS.GENERATING }, { status: 202 });
 });

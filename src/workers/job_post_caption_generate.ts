@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { POST_STATUS } from "@/lib/constants";
 import { debugLog } from "@/lib/debug";
 import { runFfmpeg, runFfprobe } from "@/lib/ffmpeg";
 import { convertToJpeg } from "@/lib/image-convert";
@@ -169,7 +170,7 @@ export const postCaptionGenerateJob: JobDefinition<
     await db.post.update({
       where: { id: payload.postId },
       data: {
-        status: "GENERATING",
+        status: POST_STATUS.GENERATING,
         errorMessage: null,
       },
     });
@@ -179,7 +180,7 @@ export const postCaptionGenerateJob: JobDefinition<
     await db.post.update({
       where: { id: payload.postId },
       data: {
-        status: "GENERATING",
+        status: POST_STATUS.GENERATING,
         errorMessage: null,
       },
     });
@@ -263,7 +264,7 @@ export const postCaptionGenerateJob: JobDefinition<
         db.post.update({
           where: { id: payload.postId },
           data: {
-            status: "COMPLETED",
+            status: POST_STATUS.COMPLETED,
             caption: result.caption,
             errorMessage: null,
             updatedAt: new Date(),
@@ -275,7 +276,7 @@ export const postCaptionGenerateJob: JobDefinition<
     if (post?.userId) {
       const userId = post.userId;
       await broadcastWithContext("post-status-update", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, "COMPLETED"),
+        broadcastPostStatusUpdate(userId, payload.postId, POST_STATUS.COMPLETED),
       ).catch(() => {});
     }
   },
@@ -285,7 +286,7 @@ export const postCaptionGenerateJob: JobDefinition<
         db.post.update({
           where: { id: payload.postId },
           data: {
-            status: "FAILED",
+            status: POST_STATUS.FAILED,
             errorMessage: error,
           },
         }),
@@ -295,7 +296,7 @@ export const postCaptionGenerateJob: JobDefinition<
     if (post?.userId) {
       const userId = post.userId;
       await broadcastWithContext("post-status-update", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, "FAILED"),
+        broadcastPostStatusUpdate(userId, payload.postId, POST_STATUS.FAILED),
       ).catch(() => {});
     }
   },

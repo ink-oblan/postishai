@@ -11,6 +11,7 @@ import { AvatarVariationsPanel } from "@/components/avatars/AvatarVariationsPane
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AVATAR_STATUS } from "@/lib/constants";
 import { cn, PLATFORM_LABELS, STATUS_CONFIG } from "@/lib/utils";
 
 interface AvatarVariation {
@@ -71,7 +72,7 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
       <div className="space-y-4">
-        {avatar.status === "GENERATING" || avatar.status === "FAILED" ? (
+        {avatar.status === AVATAR_STATUS.GENERATING || avatar.status === AVATAR_STATUS.FAILED ? (
           <AvatarStatusPoller
             key={avatar.updatedAt}
             avatarId={avatar.id}

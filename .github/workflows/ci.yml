@@ -31,6 +31,8 @@ jobs:
 
       - run: npx prisma generate
 
+      - run: npx prisma format && git diff --exit-code prisma/schema.prisma
+
       - run: npm run lint
 
       - run: npx tsc --noEmit

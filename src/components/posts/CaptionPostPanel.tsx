@@ -7,6 +7,7 @@ import { startTransition, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { POST_STATUS } from "@/lib/constants";
 import { POLLING } from "@/lib/polling-config";
 
 interface MediaItem {
@@ -42,7 +43,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [captionLoading, setCaptionLoading] = useState(post.status === "GENERATING");
+  const [captionLoading, setCaptionLoading] = useState(post.status === POST_STATUS.GENERATING);
   const [status, setStatus] = useState(post.status);
 
   const captionChanged = caption.trim() !== (savedCaption?.trim() ?? "");
@@ -50,7 +51,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
   // Poll for caption while status is GENERATING
   useEffect(() => {
     // Only poll if status is GENERATING
-    if (status !== "GENERATING") return;
+    if (status !== POST_STATUS.GENERATING) return;
 
     const pollInterval = setInterval(async () => {
       try {
@@ -70,7 +71,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
           }
 
           // Stop polling if status is no longer GENERATING
-          if (data.status !== "GENERATING") {
+          if (data.status !== POST_STATUS.GENERATING) {
             clearInterval(pollInterval);
             setCaptionLoading(false);
           }

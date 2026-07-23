@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { POST_STATUS, STATUS_LABELS } from "@/lib/constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -31,17 +32,20 @@ export const PLATFORM_FULL_NAMES: Record<string, string> = {
 };
 
 export const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  DRAFT: { label: "Draft", className: "bg-muted text-muted-foreground" },
-  GENERATING: {
-    label: "Generating",
+  [POST_STATUS.DRAFT]: {
+    label: STATUS_LABELS[POST_STATUS.DRAFT],
+    className: "bg-muted text-muted-foreground",
+  },
+  [POST_STATUS.GENERATING]: {
+    label: STATUS_LABELS[POST_STATUS.GENERATING],
     className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   },
-  COMPLETED: {
-    label: "Completed",
+  [POST_STATUS.COMPLETED]: {
+    label: STATUS_LABELS[POST_STATUS.COMPLETED],
     className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   },
-  FAILED: {
-    label: "Failed",
+  [POST_STATUS.FAILED]: {
+    label: STATUS_LABELS[POST_STATUS.FAILED],
     className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
   },
 };

@@ -4,6 +4,7 @@ import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route
 import { withAuth } from "@/lib/auth/dal";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { AVATAR_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { decodeAndConvertImageBase64 } from "@/lib/image-convert";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
@@ -67,7 +68,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
           voiceId,
           imageModel: null,
           imagePath: relativePath,
-          status: "COMPLETED",
+          status: AVATAR_STATUS.COMPLETED,
           source,
           userId,
         },
@@ -78,7 +79,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
 
     try {
       await broadcastWithContext("avatar-upload", () =>
-        broadcastAvatarStatusUpdate(userId, created.id, "COMPLETED"),
+        broadcastAvatarStatusUpdate(userId, created.id, AVATAR_STATUS.COMPLETED),
       );
     } catch (broadcastErr) {
       console.error("[POST /api/avatars] Broadcast failed:", broadcastErr);
@@ -109,7 +110,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
           occupation,
           imageModel: usedModel,
           imagePath: "",
-          status: "GENERATING",
+          status: AVATAR_STATUS.GENERATING,
           source,
           userId,
         },
@@ -126,7 +127,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
 
     try {
       await broadcastWithContext("avatar-create", () =>
-        broadcastAvatarStatusUpdate(userId, avatar.id, "GENERATING"),
+        broadcastAvatarStatusUpdate(userId, avatar.id, AVATAR_STATUS.GENERATING),
       );
     } catch (broadcastErr) {
       console.error("[POST /api/avatars] Generate broadcast failed:", broadcastErr);

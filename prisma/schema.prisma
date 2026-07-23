@@ -56,7 +56,7 @@ model Avatar {
   occupation          String?
   analysisDescription String?
 
-  status         String            @default("COMPLETED") // GENERATING | COMPLETED | FAILED
+  status         String            @default("COMPLETED")
   source         String // UPLOADED | GENERATED
   errorMessage   String?
   voiceId        String            @default("")
@@ -98,7 +98,7 @@ model AvatarVariation {
   prompt         String?
   imageModel     String?
   imagePath      String    @default("")
-  status         String    @default("PENDING") // PENDING | GENERATING | COMPLETED | FAILED
+  status         String    @default("PENDING")
   errorMessage   String?
   heygenAssetId  String?
   heygenAssetUrl String?
@@ -112,7 +112,7 @@ model Job {
   id          String    @id @default(cuid())
   type        String // "avatar.generate"
   payload     String // JSON
-  status      String    @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED
+  status      String    @default("PENDING")
   attempts    Int       @default(0)
   maxAttempts Int       @default(3)
   dedupeKey   String?
@@ -133,28 +133,28 @@ model PlatformConfig {
 }
 
 model Post {
-  id                  String           @id @default(cuid())
-  type                PostType         @default(AVATAR_VIDEO)
-  title               String
-  platform            Platform
-  script              String?
-  details             String?
-  avatarId            String?
-  avatar              Avatar?          @relation(fields: [avatarId], references: [id])
-  avatarVariationId   String?
-  avatarVariation     AvatarVariation? @relation(fields: [avatarVariationId], references: [id])
-  caption        String?
-  media          PostMedia[]
-  userId         String?
-  user           User?      @relation(fields: [userId], references: [id])
-  llmModelId     String     @default("gemini-2.0-flash")
-  status         PostStatus @default(DRAFT)
-  generationStartedAt DateTime?
-  heygenVideoId  String?
-  videoPath      String?
-  heygenVideoUrl String?
-  metadata       String?
-  metadataStatus String     @default("IDLE")
+  id                   String           @id @default(cuid())
+  type                 PostType         @default(AVATAR_VIDEO)
+  title                String
+  platform             Platform
+  script               String?
+  details              String?
+  avatarId             String?
+  avatar               Avatar?          @relation(fields: [avatarId], references: [id])
+  avatarVariationId    String?
+  avatarVariation      AvatarVariation? @relation(fields: [avatarVariationId], references: [id])
+  caption              String?
+  media                PostMedia[]
+  userId               String?
+  user                 User?            @relation(fields: [userId], references: [id])
+  llmModelId           String           @default("gemini-2.0-flash")
+  status               String           @default("DRAFT")
+  generationStartedAt  DateTime?
+  heygenVideoId        String?
+  videoPath            String?
+  heygenVideoUrl       String?
+  metadata             String?
+  metadataStatus       String           @default("IDLE")
   metadataErrorMessage String?
   metadataUpdatedAt    DateTime?
   errorMessage         String?
@@ -167,7 +167,7 @@ model PostMedia {
   id        String   @id @default(cuid())
   postId    String
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  type      String   // "IMAGE" | "VIDEO"
+  type      String // "IMAGE" | "VIDEO"
   path      String
   order     Int      @default(0)
   createdAt DateTime @default(now())
@@ -183,13 +183,6 @@ enum Platform {
   INSTAGRAM
   TIKTOK
   YOUTUBE_SHORTS
-}
-
-enum PostStatus {
-  DRAFT
-  GENERATING
-  COMPLETED
-  FAILED
 }
 
 enum PostType {

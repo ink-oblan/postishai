@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { VARIATION_STATUS } from "@/lib/constants";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
@@ -88,7 +89,7 @@ export function PostWizard() {
       fetch(`/api/avatars/${preselectedAvatarId}/variations`)
         .then((r) => r.json())
         .then((all: AvatarVariation[]) =>
-          setAvatarVariations(all.filter((v) => v.status === "COMPLETED")),
+          setAvatarVariations(all.filter((v) => v.status === VARIATION_STATUS.COMPLETED)),
         )
         .catch(() => {});
     }
@@ -116,7 +117,7 @@ export function PostWizard() {
     try {
       const res = await fetch(`/api/avatars/${avatarId}/variations`);
       const all: AvatarVariation[] = await res.json();
-      setAvatarVariations(all.filter((v) => v.status === "COMPLETED"));
+      setAvatarVariations(all.filter((v) => v.status === VARIATION_STATUS.COMPLETED));
     } finally {
       setLoadingVariations(false);
     }

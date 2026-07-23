@@ -1,5 +1,6 @@
 import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
+import { VARIATION_STATUS } from "@/lib/constants";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { archiveFile, readFile, writeFile } from "@/lib/storage";
 import { safeDbUpdate } from "@/workers/db-utils";
@@ -35,13 +36,13 @@ export const avatarVariationGenerateJob: JobDefinition<
   async onEnqueue(db, payload) {
     await db.avatarVariation.update({
       where: { id: payload.variationId },
-      data: { status: "GENERATING", errorMessage: null },
+      data: { status: VARIATION_STATUS.GENERATING, errorMessage: null },
     });
   },
   async onStart(db, payload) {
     await db.avatarVariation.update({
       where: { id: payload.variationId },
-      data: { status: "GENERATING", errorMessage: null },
+      data: { status: VARIATION_STATUS.GENERATING, errorMessage: null },
     });
   },
   async run(ctx, payload) {
@@ -92,7 +93,7 @@ export const avatarVariationGenerateJob: JobDefinition<
           where: { id: payload.variationId },
           data: {
             imagePath: result.imagePath,
-            status: "COMPLETED",
+            status: VARIATION_STATUS.COMPLETED,
             errorMessage: null,
             heygenAssetId: null,
             heygenAssetUrl: null,
@@ -105,7 +106,7 @@ export const avatarVariationGenerateJob: JobDefinition<
     if (variation?.avatar?.userId) {
       const userId = variation.avatar.userId;
       await broadcastWithContext("avatar-status-update", () =>
-        broadcastAvatarStatusUpdate(userId, variation.avatarId, "COMPLETED"),
+        broadcastAvatarStatusUpdate(userId, variation.avatarId, VARIATION_STATUS.COMPLETED),
       ).catch(() => {});
     }
   },
@@ -114,7 +115,7 @@ export const avatarVariationGenerateJob: JobDefinition<
       () =>
         db.avatarVariation.update({
           where: { id: payload.variationId },
-          data: { status: "FAILED", errorMessage: error },
+          data: { status: VARIATION_STATUS.FAILED, errorMessage: error },
           include: { avatar: true },
         }),
       "avatar-variation-generate-failure",
@@ -123,7 +124,7 @@ export const avatarVariationGenerateJob: JobDefinition<
     if (variation?.avatar?.userId) {
       const userId = variation.avatar.userId;
       await broadcastWithContext("avatar-status-update", () =>
-        broadcastAvatarStatusUpdate(userId, variation.avatarId, "FAILED"),
+        broadcastAvatarStatusUpdate(userId, variation.avatarId, VARIATION_STATUS.FAILED),
       ).catch(() => {});
     }
   },

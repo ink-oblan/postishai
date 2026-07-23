@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { generateAvatarVariationLabel } from "@/lib/avatar-variation-label";
 import { renderAvatarVariationPrompt } from "@/lib/avatar-variation-prompt";
+import { VARIATION_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
@@ -61,7 +62,7 @@ export const POST = withAuth(async function POST(
           id: trimmedSourceVariationId,
           avatarId: id,
           archivedAt: null,
-          status: "COMPLETED",
+          status: VARIATION_STATUS.COMPLETED,
         },
       })
     : null;
@@ -75,7 +76,7 @@ export const POST = withAuth(async function POST(
           id: trimmedReplaceVariationId,
           avatarId: id,
           archivedAt: null,
-          status: "COMPLETED",
+          status: VARIATION_STATUS.COMPLETED,
         },
       })
     : null;
@@ -103,7 +104,7 @@ export const POST = withAuth(async function POST(
         pose: trimmedPose ?? null,
         prompt,
         imageModel: usedModel,
-        status: "PENDING",
+        status: VARIATION_STATUS.PENDING,
       },
     });
 

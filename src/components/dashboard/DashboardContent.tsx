@@ -2,6 +2,7 @@ import { ArrowUpRight, Plus, Zap } from "lucide-react";
 import Link from "next/link";
 import { PlatformChip } from "@/components/ui/platform-chip";
 import { StatusPip } from "@/components/ui/status-pip";
+import { POST_STATUS, STATUS_LABELS } from "@/lib/constants";
 import type { DashboardData } from "@/lib/dashboard-utils";
 
 export function DashboardContent({ data }: { data: DashboardData }) {
@@ -45,7 +46,7 @@ export function DashboardContent({ data }: { data: DashboardData }) {
             },
             {
               value: completedCount,
-              label: "Completed",
+              label: STATUS_LABELS[POST_STATUS.COMPLETED],
               sub: "Ready to publish",
               accent: true,
             },

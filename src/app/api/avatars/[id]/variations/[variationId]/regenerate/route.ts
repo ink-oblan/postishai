@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { VARIATION_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
@@ -32,7 +33,7 @@ export const POST = withAuth(async function POST(
     const v = await tx.avatarVariation.update({
       where: { id: variationId },
       data: {
-        status: "PENDING",
+        status: VARIATION_STATUS.PENDING,
         errorMessage: null,
         heygenAssetId: null,
         heygenAssetUrl: null,

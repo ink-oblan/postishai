@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { hostname } from "node:os";
 import type { Job } from "@prisma/client";
+import { JOB_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { assertStorageModeInitialized } from "@/lib/platform-config";
 import { removeWorkerHeartbeat, updateWorkerHeartbeat } from "@/workers/health";
@@ -54,7 +55,7 @@ function getRetryDelayMs(attempts: number): number {
 async function claimNextJob(): Promise<Job | null> {
   const pending = await prisma.job.findFirst({
     where: {
-      status: "PENDING",
+      status: JOB_STATUS.PENDING,
       runAfter: { lte: new Date() },
     },
     orderBy: { createdAt: "asc" },
@@ -68,10 +69,10 @@ async function claimNextJob(): Promise<Job | null> {
     const claim = await tx.job.updateMany({
       where: {
         id: pending.id,
-        status: "PENDING",
+        status: JOB_STATUS.PENDING,
       },
       data: {
-        status: "PROCESSING",
+        status: JOB_STATUS.PROCESSING,
         attempts: { increment: 1 },
         lockedAt: new Date(),
         lockedBy: workerId,
@@ -98,7 +99,7 @@ async function completeJob(
     await tx.job.update({
       where: { id: job.id },
       data: {
-        status: "COMPLETED",
+        status: JOB_STATUS.COMPLETED,
         error: null,
         finishedAt: new Date(),
         lockedAt: null,
@@ -119,7 +120,7 @@ async function failJob(
     await tx.job.update({
       where: { id: job.id },
       data: {
-        status: "FAILED",
+        status: JOB_STATUS.FAILED,
         error,
         finishedAt: new Date(),
         lockedAt: null,
@@ -134,7 +135,7 @@ async function requeueJob(job: Job, error: string): Promise<void> {
   await prisma.job.update({
     where: { id: job.id },
     data: {
-      status: "PENDING",
+      status: JOB_STATUS.PENDING,
       error,
       runAfter: nextRun,
       lockedAt: null,
@@ -185,7 +186,7 @@ async function processJob(job: Job): Promise<void> {
 
 async function recoverInterruptedJobs(): Promise<void> {
   const stuckJobs = await prisma.job.findMany({
-    where: { status: "PROCESSING" },
+    where: { status: JOB_STATUS.PROCESSING },
     orderBy: { createdAt: "asc" },
   });
 
@@ -212,7 +213,7 @@ async function recoverInterruptedJobs(): Promise<void> {
       await prisma.job.update({
         where: { id: job.id },
         data: {
-          status: "PENDING",
+          status: JOB_STATUS.PENDING,
           error,
           runAfter: new Date(Date.now() + getRetryDelayMs(job.attempts || 1)),
           lockedAt: null,

@@ -223,11 +223,11 @@ describe("SSE Architecture Integration", () => {
   });
 
   describe("type safety", () => {
-    it("should use PostStatus enum for status values", () => {
+    it("should use string status constants for status values", () => {
       /**
        * Status types: DRAFT | GENERATING | PROCESSING | COMPLETED | FAILED
        * Used in:
-       * - Post model (Prisma)
+       * - Post model (Prisma, TEXT column backed by POST_STATUS constants)
        * - SSE events
        * - Component state
        * - API filters (?status=GENERATING)
@@ -240,7 +240,7 @@ describe("SSE Architecture Integration", () => {
        * Event types:
        * - InitEvent: { stats: DashboardData }
        * - StatsRefreshEvent: { stats: DashboardData }
-       * - PostStatusUpdateEvent: { postId: string; status: PostStatus; stats: DashboardData }
+       * - PostStatusUpdateEvent: { postId: string; status: AllStatus; stats: DashboardData }
        */
       expect(true).toBe(true);
     });
