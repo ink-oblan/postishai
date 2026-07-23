@@ -48,7 +48,3 @@ export const STATUS_LABELS: Record<PostStatusValue, string> = {
   [POST_STATUS.COMPLETED]: "Completed",
   [POST_STATUS.FAILED]: "Failed",
 };
-
-export function getStatusLabel(status: PostStatusValue): string {
-  return STATUS_LABELS[status] ?? status;
-}

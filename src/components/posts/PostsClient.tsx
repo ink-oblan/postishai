@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { POST_STATUS } from "@/lib/constants";
 import { POLLING } from "@/lib/polling-config";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
-import { SSE_STATUS, type AllStatus } from "@/lib/sse-constants";
+import { type AllStatus, SSE_STATUS } from "@/lib/sse-constants";
 import { PostsContent } from "./PostsContent";
 
 interface PostsClientProps {

@@ -466,7 +466,8 @@ export function AvatarVariationsPanel({
                           } ${isClickable ? "cursor-pointer" : ""}`}
                           onClick={() => isClickable && onVariationClick(variation)}
                         >
-                          {variation.status === VARIATION_STATUS.COMPLETED && variation.imagePath ? (
+                          {variation.status === VARIATION_STATUS.COMPLETED &&
+                          variation.imagePath ? (
                             <Image
                               src={`/api/avatars/${avatarId}/variations/${variation.id}/image?t=${new Date(variation.updatedAt).getTime()}`}
                               alt={variation.label}

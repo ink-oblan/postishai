@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { POST_STATUS, METADATA_STATUS, VARIATION_STATUS, STATUS_LABELS } from "@/lib/constants";
+import { METADATA_STATUS, POST_STATUS, STATUS_LABELS, VARIATION_STATUS } from "@/lib/constants";
 import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { POLLING } from "@/lib/polling-config";
@@ -347,9 +347,7 @@ export function PostEditPanel({
           ? POST_STATUS.COMPLETED
           : savedMetadataStatus;
       const nextStatusLabel =
-        updated.status === POST_STATUS.DRAFT
-          ? STATUS_LABELS[POST_STATUS.DRAFT]
-          : savedStatusLabel;
+        updated.status === POST_STATUS.DRAFT ? STATUS_LABELS[POST_STATUS.DRAFT] : savedStatusLabel;
       const nextVoiceName = currentVoiceName;
       const nextAvatarName = currentAvatarName;
 

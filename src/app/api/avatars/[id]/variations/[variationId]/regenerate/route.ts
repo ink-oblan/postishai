@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { VARIATION_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
-import { VARIATION_STATUS } from "@/lib/constants";
 import { enqueueJobInDb } from "@/lib/worker/jobs";
 
 type Params = { params: Promise<{ id: string; variationId: string }> };

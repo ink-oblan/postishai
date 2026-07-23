@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
-import { prisma } from "@/lib/db";
 import type { PostStatusValue } from "@/lib/constants";
+import { prisma } from "@/lib/db";
 
 // GET /api/posts/list?status=GENERATING
 // Returns posts for authenticated user, optionally filtered by status
