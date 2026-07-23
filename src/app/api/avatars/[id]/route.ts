@@ -3,7 +3,7 @@ import { broadcastAvatarStatusUpdate, SSE_STATUS } from "@/app/api/dashboard/sub
 import { withAuth } from "@/lib/auth/dal";
 import { renderAvatarPrompt } from "@/lib/avatar-prompt";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
-import { CONTENT_STATUS } from "@/lib/constants";
+import { AVATAR_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { decodeAndConvertImageBase64 } from "@/lib/image-convert";
 import { DEFAULT_IMAGE_MODEL_ID } from "@/lib/image-models/registry";
@@ -103,7 +103,7 @@ export const PATCH = withAuth(async function PATCH(
 
       updateData.imagePath = relativePath;
       updateData.imageModel = null;
-      updateData.status = CONTENT_STATUS.COMPLETED;
+      updateData.status = AVATAR_STATUS.COMPLETED;
       updateData.heygenAssetId = null;
       updateData.heygenAssetUrl = null;
       if (prompt) updateData.prompt = prompt;
@@ -137,7 +137,7 @@ export const PATCH = withAuth(async function PATCH(
       if (!usedPrompt)
         return NextResponse.json({ error: "prompt required for regeneration" }, { status: 400 });
 
-      updateData.status = CONTENT_STATUS.GENERATING;
+      updateData.status = AVATAR_STATUS.GENERATING;
       updateData.imageModel = usedModel;
       updateData.heygenAssetId = null;
       updateData.heygenAssetUrl = null;
@@ -168,7 +168,7 @@ export const PATCH = withAuth(async function PATCH(
       // Broadcast avatar regeneration to all connected clients
       try {
         await broadcastWithContext("avatar-regenerate", () =>
-          broadcastAvatarStatusUpdate(userId, id, CONTENT_STATUS.GENERATING),
+          broadcastAvatarStatusUpdate(userId, id, AVATAR_STATUS.GENERATING),
         );
       } catch (broadcastErr) {
         console.error(

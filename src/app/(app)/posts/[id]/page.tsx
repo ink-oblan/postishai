@@ -5,7 +5,7 @@ import { CaptionPostPanel } from "@/components/posts/CaptionPostPanel";
 import { PostDetailClient } from "@/components/posts/PostDetailClient";
 import { PostEditPanel } from "@/components/posts/PostEditPanel";
 import { VideoSection } from "@/components/posts/VideoSection";
-import { CONTENT_STATUS } from "@/lib/constants";
+import { POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { listVoices } from "@/lib/heygen/client";
 import { getLLMModelInfo } from "@/lib/llm-models/registry";
@@ -125,7 +125,7 @@ export default async function PostDetailPage({
               createdAtLabel: formatDistanceToNow(post.createdAt),
               status: post.status,
               downloadUrl:
-                post.status === CONTENT_STATUS.COMPLETED ? `/api/posts/${post.id}/download` : null,
+                post.status === POST_STATUS.COMPLETED ? `/api/posts/${post.id}/download` : null,
               metadata,
               metadataStatus: post.metadataStatus,
               metadataErrorMessage: post.metadataErrorMessage,

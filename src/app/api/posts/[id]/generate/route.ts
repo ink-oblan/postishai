@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
-import { CONTENT_STATUS } from "@/lib/constants";
+import { POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { enqueuePostGenerateJob, enqueuePostMetadataJob } from "@/lib/worker/jobs";
 
@@ -13,10 +13,10 @@ export const POST = withAuth(async function POST(
 
   const post = await prisma.post.findFirst({ where: { id, userId } });
   if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
-  if (post.status === CONTENT_STATUS.GENERATING) {
+  if (post.status === POST_STATUS.GENERATING) {
     return NextResponse.json({ error: "Video already generating" }, { status: 409 });
   }
-  if (post.status === CONTENT_STATUS.COMPLETED) {
+  if (post.status === POST_STATUS.COMPLETED) {
     return NextResponse.json({ error: "Video already completed" }, { status: 409 });
   }
 
@@ -40,7 +40,7 @@ export const POST = withAuth(async function POST(
   const generationStartedAt = updated.generationStartedAt?.toISOString() ?? null;
 
   return NextResponse.json({
-    status: CONTENT_STATUS.GENERATING,
+    status: POST_STATUS.GENERATING,
     generationStartedAt,
   });
 });

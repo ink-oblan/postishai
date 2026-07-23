@@ -1,16 +1,16 @@
-import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/constants";
+import { POST_STATUS, STATUS_LABELS } from "@/lib/constants";
 
 export const STATUS_PIP_CONFIG: Record<string, { dot: string; label: string }> = {
-  [CONTENT_STATUS.DRAFT]: {
+  [POST_STATUS.DRAFT]: {
     dot: "bg-muted-foreground/40",
-    label: STATUS_LABELS[CONTENT_STATUS.DRAFT],
+    label: STATUS_LABELS[POST_STATUS.DRAFT],
   },
-  [CONTENT_STATUS.GENERATING]: {
+  [POST_STATUS.GENERATING]: {
     dot: "bg-yellow-400 animate-pulse",
-    label: STATUS_LABELS[CONTENT_STATUS.GENERATING],
+    label: STATUS_LABELS[POST_STATUS.GENERATING],
   },
-  [CONTENT_STATUS.COMPLETED]: { dot: "bg-primary", label: "Done" },
-  [CONTENT_STATUS.FAILED]: { dot: "bg-destructive", label: STATUS_LABELS[CONTENT_STATUS.FAILED] },
+  [POST_STATUS.COMPLETED]: { dot: "bg-primary", label: STATUS_LABELS[POST_STATUS.COMPLETED] },
+  [POST_STATUS.FAILED]: { dot: "bg-destructive", label: STATUS_LABELS[POST_STATUS.FAILED] },
 };
 
 export function StatusPip({ status }: { status: string }) {

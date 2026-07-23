@@ -1,4 +1,4 @@
-import type { ContentStatus } from "./constants";
+import type { PostStatusValue } from "./constants";
 
 // SSE status values and synthetic lifecycle events
 export const SSE_STATUS = {
@@ -8,4 +8,4 @@ export const SSE_STATUS = {
 export type SSEStatus = (typeof SSE_STATUS)[keyof typeof SSE_STATUS];
 
 // All possible status values (content + SSE)
-export type AllStatus = ContentStatus | SSEStatus;
+export type AllStatus = PostStatusValue | SSEStatus;

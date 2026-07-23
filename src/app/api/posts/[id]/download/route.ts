@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 import archiver from "archiver";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
-import { CONTENT_STATUS } from "@/lib/constants";
+import { POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { metadataToText } from "@/lib/metadata/generator";
 import type { PlatformMetadata } from "@/lib/metadata/types";
@@ -17,7 +17,7 @@ export const GET = withAuth(async function GET(
 
   const post = await prisma.post.findFirst({ where: { id, userId } });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (post.status !== CONTENT_STATUS.COMPLETED || !post.videoPath) {
+  if (post.status !== POST_STATUS.COMPLETED || !post.videoPath) {
     return NextResponse.json({ error: "Video not ready" }, { status: 409 });
   }
 

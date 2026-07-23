@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/constants";
+import { POST_STATUS, METADATA_STATUS, VARIATION_STATUS, STATUS_LABELS } from "@/lib/constants";
 import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { POLLING } from "@/lib/polling-config";
@@ -155,7 +155,7 @@ export function PostEditPanel({
 
   // Poll metadata status while generating so the spinner resolves without a manual refresh
   useEffect(() => {
-    if (savedMetadataStatus !== CONTENT_STATUS.GENERATING) return;
+    if (savedMetadataStatus !== METADATA_STATUS.GENERATING) return;
 
     const interval = setInterval(async () => {
       try {
@@ -166,13 +166,13 @@ export function PostEditPanel({
           metadataErrorMessage: string | null;
           metadata: string | null;
         };
-        if (savedMetadataStatusRef.current !== CONTENT_STATUS.GENERATING) return;
-        if (data.metadataStatus === CONTENT_STATUS.GENERATING) return;
+        if (savedMetadataStatusRef.current !== METADATA_STATUS.GENERATING) return;
+        if (data.metadataStatus === METADATA_STATUS.GENERATING) return;
 
         setSavedMetadataStatus(data.metadataStatus);
         setSavedMetadataErrorMessage(data.metadataErrorMessage ?? null);
 
-        if (data.metadataStatus === CONTENT_STATUS.COMPLETED && data.metadata) {
+        if (data.metadataStatus === METADATA_STATUS.COMPLETED && data.metadata) {
           const parsed = JSON.parse(data.metadata) as PlatformMetadata;
           setSavedMetadata(parsed);
           if (!editingRef.current) setMetadata(parsed);
@@ -202,7 +202,7 @@ export function PostEditPanel({
       // resulting state (COMPLETED/FAILED) so the sync isn't permanently blocked
       // when the job finishes before the first router.refresh() round-trip.
       const metadataMatch =
-        pendingPostSync.metadataStatus === CONTENT_STATUS.GENERATING ||
+        pendingPostSync.metadataStatus === METADATA_STATUS.GENERATING ||
         (post.metadataStatus === pendingPostSync.metadataStatus &&
           JSON.stringify(post.metadata) === JSON.stringify(pendingPostSync.metadata));
       const postMatchesPendingSync = coreFieldsMatch && metadataMatch;
@@ -250,7 +250,7 @@ export function PostEditPanel({
     fetch(`/api/avatars/${avatarId}/variations`)
       .then((r) => r.json())
       .then((data: AvatarVariationOption[]) => {
-        setAvatarVariations(data.filter((v) => v.status === CONTENT_STATUS.COMPLETED));
+        setAvatarVariations(data.filter((v) => v.status === VARIATION_STATUS.COMPLETED));
       })
       .catch(() => setAvatarVariations([]));
   }, [editing, avatarId]);
@@ -342,13 +342,13 @@ export function PostEditPanel({
       const selectedModel = llmModels.find((m) => m.id === llmModelId);
       const nextMetadata = updated.metadata ?? (updated.metadataRegenerated ? null : metadata);
       const nextMetadataStatus = updated.metadataRegenerated
-        ? CONTENT_STATUS.GENERATING
+        ? POST_STATUS.GENERATING
         : nextMetadata
-          ? CONTENT_STATUS.COMPLETED
+          ? POST_STATUS.COMPLETED
           : savedMetadataStatus;
       const nextStatusLabel =
-        updated.status === CONTENT_STATUS.DRAFT
-          ? STATUS_LABELS[CONTENT_STATUS.DRAFT]
+        updated.status === POST_STATUS.DRAFT
+          ? STATUS_LABELS[POST_STATUS.DRAFT]
           : savedStatusLabel;
       const nextVoiceName = currentVoiceName;
       const nextAvatarName = currentAvatarName;
@@ -380,7 +380,7 @@ export function PostEditPanel({
 
       toast.success(
         updated.metadataRegenerated
-          ? post.status === CONTENT_STATUS.FAILED
+          ? post.status === POST_STATUS.FAILED
             ? "Post updated, reset to draft, and metadata regeneration started"
             : "Post updated and metadata regeneration started"
           : "Post updated",
@@ -465,7 +465,7 @@ export function PostEditPanel({
         </div>
       </div>
 
-      {editing && post.status === CONTENT_STATUS.FAILED && metadataChanges && (
+      {editing && post.status === POST_STATUS.FAILED && metadataChanges && (
         <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 text-sm dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           Saving changes will reset this failed post back to draft and start metadata regeneration
@@ -637,7 +637,7 @@ export function PostEditPanel({
           metadataErrorMessage={savedMetadataErrorMessage}
           editing={editing}
           onChange={setMetadata}
-          canRegenerate={post.status !== CONTENT_STATUS.COMPLETED}
+          canRegenerate={post.status !== POST_STATUS.COMPLETED}
         />
       </div>
     </>

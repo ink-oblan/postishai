@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CONTENT_STATUS } from "@/lib/constants";
+import { POST_STATUS } from "@/lib/constants";
 import { POLLING } from "@/lib/polling-config";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
 
@@ -34,10 +34,10 @@ export function VideoSection({ post }: Props) {
 
   // Handle SSE updates and cross-tab messages
   useEffect(() => {
-    if (status !== CONTENT_STATUS.GENERATING) return;
+    if (status !== POST_STATUS.GENERATING) return;
 
     const handleStatusUpdate = (newStatus: string) => {
-      if (newStatus === CONTENT_STATUS.COMPLETED || newStatus === CONTENT_STATUS.FAILED) {
+      if (newStatus === POST_STATUS.COMPLETED || newStatus === POST_STATUS.FAILED) {
         // Cancel all timers before reload to prevent memory leak
         if (pollTimerRef.current) {
           clearInterval(pollTimerRef.current);
@@ -70,7 +70,7 @@ export function VideoSection({ post }: Props) {
 
   // Elapsed time display timer
   useEffect(() => {
-    if (status !== CONTENT_STATUS.GENERATING) return;
+    if (status !== POST_STATUS.GENERATING) return;
 
     setElapsed(getElapsedSeconds(post.generationStartedAt));
     const elapsedTimer = setInterval(
@@ -83,7 +83,7 @@ export function VideoSection({ post }: Props) {
 
   // Fallback polling: only active if SSE fails
   useEffect(() => {
-    if (status !== CONTENT_STATUS.GENERATING) return;
+    if (status !== POST_STATUS.GENERATING) return;
 
     const abortController = new AbortController();
 
@@ -97,8 +97,8 @@ export function VideoSection({ post }: Props) {
         const updatedPost = await res.json();
         // Compare against actual data from server, not stale state
         if (
-          updatedPost.status === CONTENT_STATUS.COMPLETED ||
-          updatedPost.status === CONTENT_STATUS.FAILED
+          updatedPost.status === POST_STATUS.COMPLETED ||
+          updatedPost.status === POST_STATUS.FAILED
         ) {
           if (pollTimerRef.current) {
             clearInterval(pollTimerRef.current);
@@ -141,7 +141,7 @@ export function VideoSection({ post }: Props) {
     }
   }
 
-  if (status === CONTENT_STATUS.COMPLETED && post.videoPath) {
+  if (status === POST_STATUS.COMPLETED && post.videoPath) {
     const filename = post.videoPath.split("/").pop() as string;
     return (
       <Card className="overflow-hidden">
@@ -150,7 +150,7 @@ export function VideoSection({ post }: Props) {
     );
   }
 
-  if (status === CONTENT_STATUS.GENERATING) {
+  if (status === POST_STATUS.GENERATING) {
     return (
       <Card suppressHydrationWarning>
         <CardContent className="flex flex-col items-center justify-center gap-3 py-12">
@@ -165,7 +165,7 @@ export function VideoSection({ post }: Props) {
     );
   }
 
-  if (status === CONTENT_STATUS.FAILED) {
+  if (status === POST_STATUS.FAILED) {
     return (
       <Card className="border-destructive/30">
         <CardContent className="flex flex-col items-center justify-center gap-3 py-10">

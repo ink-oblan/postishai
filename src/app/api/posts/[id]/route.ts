@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { broadcastPostStatusUpdate, SSE_STATUS } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
-import { CONTENT_STATUS } from "@/lib/constants";
+import { METADATA_STATUS, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { PlatformMetadata } from "@/lib/metadata/types";
@@ -122,7 +122,7 @@ export const PATCH = withAuth(async function PATCH(
       await archiveAndBroadcast();
       return new NextResponse(null, { status: 204 });
     }
-    if (post.status !== CONTENT_STATUS.DRAFT) {
+    if (post.status !== POST_STATUS.DRAFT) {
       return NextResponse.json({ error: "Only DRAFT posts can be archived" }, { status: 409 });
     }
     if (post.videoPath) await archiveFile(post.videoPath).catch(() => null);
@@ -208,10 +208,10 @@ export const PATCH = withAuth(async function PATCH(
       avatarVariationId: resolvedVariationId,
       ...(shouldRegenerateMetadata
         ? {
-            status: CONTENT_STATUS.DRAFT,
+            status: POST_STATUS.DRAFT,
             generationStartedAt: null,
             metadata: null,
-            metadataStatus: "IDLE",
+            metadataStatus: METADATA_STATUS.IDLE,
             metadataErrorMessage: null,
             metadataUpdatedAt: null,
             heygenVideoId: null,
@@ -220,7 +220,7 @@ export const PATCH = withAuth(async function PATCH(
         : nextMetadata
           ? {
               metadata: JSON.stringify(nextMetadata),
-              metadataStatus: CONTENT_STATUS.COMPLETED,
+              metadataStatus: METADATA_STATUS.COMPLETED,
               metadataErrorMessage: null,
               metadataUpdatedAt: new Date(),
             }

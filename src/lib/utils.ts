@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { POST_STATUS, STATUS_LABELS } from "@/lib/constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -30,23 +31,21 @@ export const PLATFORM_FULL_NAMES: Record<string, string> = {
   YOUTUBE_SHORTS: "YouTube Shorts",
 };
 
-import { CONTENT_STATUS, STATUS_LABELS } from "@/lib/constants";
-
 export const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  [CONTENT_STATUS.DRAFT]: {
-    label: STATUS_LABELS[CONTENT_STATUS.DRAFT],
+  [POST_STATUS.DRAFT]: {
+    label: STATUS_LABELS[POST_STATUS.DRAFT],
     className: "bg-muted text-muted-foreground",
   },
-  [CONTENT_STATUS.GENERATING]: {
-    label: STATUS_LABELS[CONTENT_STATUS.GENERATING],
+  [POST_STATUS.GENERATING]: {
+    label: STATUS_LABELS[POST_STATUS.GENERATING],
     className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   },
-  [CONTENT_STATUS.COMPLETED]: {
-    label: STATUS_LABELS[CONTENT_STATUS.COMPLETED],
+  [POST_STATUS.COMPLETED]: {
+    label: STATUS_LABELS[POST_STATUS.COMPLETED],
     className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   },
-  [CONTENT_STATUS.FAILED]: {
-    label: STATUS_LABELS[CONTENT_STATUS.FAILED],
+  [POST_STATUS.FAILED]: {
+    label: STATUS_LABELS[POST_STATUS.FAILED],
     className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
   },
 };

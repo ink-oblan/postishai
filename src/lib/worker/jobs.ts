@@ -1,3 +1,4 @@
+import { JOB_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { jobRegistry } from "@/workers/registry";
 import type {
@@ -13,7 +14,7 @@ import type {
   WorkerDb,
 } from "@/workers/types";
 
-type ActiveJobStatus = "PENDING" | "PROCESSING";
+type ActiveJobStatus = typeof JOB_STATUS.PENDING | typeof JOB_STATUS.PROCESSING;
 
 export type {
   AvatarAnalyzePayload,
@@ -46,7 +47,7 @@ export async function enqueueJobInDb<T extends JobType>(
       where: {
         type,
         dedupeKey,
-        status: { in: ["PENDING", "PROCESSING"] satisfies ActiveJobStatus[] },
+        status: { in: [JOB_STATUS.PENDING, JOB_STATUS.PROCESSING] satisfies ActiveJobStatus[] },
       },
       orderBy: { createdAt: "asc" },
     });

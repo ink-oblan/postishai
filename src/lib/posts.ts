@@ -1,7 +1,7 @@
-import { CONTENT_STATUS } from "@/lib/constants";
+import { POST_STATUS } from "@/lib/constants";
 export function isPostEditable(post: { status: string; videoPath: string | null }) {
   return (
     !post.videoPath &&
-    (post.status === CONTENT_STATUS.DRAFT || post.status === CONTENT_STATUS.FAILED)
+    (post.status === POST_STATUS.DRAFT || post.status === POST_STATUS.FAILED)
   );
 }

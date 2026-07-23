@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
-import { CONTENT_STATUS } from "@/lib/constants";
+import { POST_STATUS } from "@/lib/constants";
 import { fetchDashboardData } from "@/lib/dashboard-utils";
 import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
@@ -109,7 +109,7 @@ export const GET = withAuth(async function GET(_req: NextRequest, _ctx, { userId
         try {
           // Check only if generating count changed (lightweight query)
           const generatingPosts = await prisma.post.count({
-            where: { userId, status: "GENERATING", archivedAt: null },
+            where: { userId, status: POST_STATUS.GENERATING, archivedAt: null },
           });
 
           if (generatingPosts !== lastGeneratingCount) {
