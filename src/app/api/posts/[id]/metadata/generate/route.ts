@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { convertToJpeg } from "@/lib/image-convert";
 import { writeFile } from "@/lib/storage";
-import { enqueueJobInDb } from "@/lib/worker/jobs";
+import { enqueueJobInDb, hasActiveJob } from "@/lib/worker/jobs";
 
 const VIDEO_EXTENSIONS: Record<string, string> = {
   "video/mp4": "mp4",
@@ -59,7 +59,14 @@ export const POST = withAuth(async function POST(
     `[metadata/generate] Using ${mode} mode. Fields sourced: title="${post.title}" platform=${post.platform} llmModelId=${post.llmModelId}`,
   );
 
-  // If media files were provided, persist them first (replace existing media for this post)
+  // Reject duplicate requests before mutating any media. Media must be persisted before the job
+  // is enqueued (the worker can claim it immediately), so we can't lean on the enqueue transaction
+  // to guard the media writes — check up front instead.
+  if (await hasActiveJob("post.metadata.generate", { postId: id })) {
+    return NextResponse.json({ error: "Caption generation already queued" }, { status: 409 });
+  }
+
+  // If media files were provided, persist them first (replace existing media for this post).
   if (hasMedia) {
     await prisma.postMedia.deleteMany({ where: { postId: id } });
     await Promise.all(

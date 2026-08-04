@@ -118,31 +118,6 @@ export async function generateMockVideo(): Promise<Buffer> {
   }
 }
 
-// Generate rich mock caption with multiple paragraphs
-export async function generateMockCaption(
-  mediaType: "image" | "video",
-  seed: string,
-): Promise<string> {
-  const captions = [
-    `This is a beautiful moment captured in perfect detail. The composition flows naturally, drawing the viewer's eye across the frame with intention and grace. Every element works together to create a compelling visual narrative that resonates with authenticity and creativity.\n\nThe lighting is exceptional, highlighting the key subjects while maintaining depth and dimension. The color palette is vibrant yet harmonious, creating an aesthetic that's both modern and timeless. This content stands out in any feed.\n\n#CreativeContent #VisualStory #MustWatch`,
-
-    `A stunning visual representation of modern creativity and expression. This piece showcases exceptional attention to detail and professional craftsmanship. The production quality is top-tier, with careful consideration given to every frame.\n\nThe narrative arc is compelling, keeping viewers engaged from beginning to end. The transitions are smooth, the pacing is perfect, and the message is clear. This is content that inspires and entertains simultaneously.\n\n#ProQuality #CreativeVision #ArtisticExpression`,
-
-    `Innovative content that pushes boundaries and challenges conventional thinking. This is more than just media—it's a statement. The approach is fresh, the execution is flawless, and the impact is undeniable.\n\nEvery scene is carefully constructed to deliver maximum impact. The sound design complements the visuals perfectly, creating an immersive experience. This is the kind of content that audiences remember and share.\n\n#Innovation #NextLevel #GameChanger`,
-
-    `Engaging media that tells a powerful story with depth and nuance. Watch how each frame contributes to the larger narrative. The cinematography is stunning, capturing moments that might otherwise go unnoticed.\n\nThis production demonstrates mastery of the craft. The attention to detail is remarkable, from color grading to sound mixing. Every technical aspect serves the creative vision perfectly.\n\n#Storytelling #Cinematography #VisualArt`,
-
-    `Professional quality content created with passion and expertise. This is the result of careful planning, skilled execution, and artistic vision coming together seamlessly. Every moment has been optimized for maximum engagement and impact.\n\nThe audience connection is immediate and visceral. Whether it's the compelling narrative, the stunning visuals, or the emotional resonance, this content delivers on every level. This is what excellence looks like.\n\n#Professional #Excellence #ContentCreation`,
-  ];
-
-  // Deterministic selection based on seed
-  const index = parseInt(seed.slice(0, 8), 16) % captions.length;
-  const suffix =
-    mediaType === "video" ? "\n[Generated from Video Content]" : "\n[Generated from Image Content]";
-
-  return captions[index] + suffix;
-}
-
 // Get mock generation time for display/testing
 export function getMockTimingMs(type: "avatar" | "video" | "caption"): number {
   switch (type) {

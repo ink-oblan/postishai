@@ -43,7 +43,7 @@ export function MetadataSection({
   async function handleRegenerate() {
     setRegenerating(true);
     try {
-      const res = await fetch(`/api/posts/${postId}/metadata`, { method: "POST" });
+      const res = await fetch(`/api/posts/${postId}/metadata/generate`, { method: "POST" });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to queue metadata regeneration");

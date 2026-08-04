@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, Loader2, Pencil, Trash2 } from "lucide-react";
+import { AlertCircle, Check, Copy, Loader2, Pencil, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
@@ -23,6 +23,7 @@ interface PostData {
   platformLabel: string;
   metadata: PlatformMetadata | null;
   metadataStatus: string;
+  metadataErrorMessage: string | null;
   createdAtLabel: string;
   media: MediaItem[];
 }
@@ -47,6 +48,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
   const [savedTitle] = useState(post.title);
   const [metadata, setMetadata] = useState(post.metadata);
   const [metadataStatus, setMetadataStatus] = useState(post.metadataStatus);
+  const [metadataError, setMetadataError] = useState(post.metadataErrorMessage);
   const [caption, setCaption] = useState(getCaptionText(post.metadata));
   const [savedCaption, setSavedCaption] = useState(getCaptionText(post.metadata));
   const [saving, setSaving] = useState(false);
@@ -54,6 +56,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
   const [copied, setCopied] = useState(false);
 
   const captionLoading = metadataStatus === METADATA_STATUS.GENERATING;
+  const captionFailed = metadataStatus === METADATA_STATUS.FAILED && !savedCaption;
   const captionChanged = caption.trim() !== (savedCaption?.trim() ?? "");
 
   // Listen for SSE metadata status updates
@@ -74,8 +77,17 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
               setMetadata(data.metadata as PlatformMetadata);
               setSavedCaption(newCaptionText);
               setCaption(newCaptionText);
+              setMetadataError(null);
               startTransition(() => router.refresh());
             }
+          })
+          .catch(console.error);
+      } else if (update.metadataStatus === METADATA_STATUS.FAILED) {
+        // Re-fetch to surface the failure reason
+        fetch(`/api/posts/${post.id}/status`)
+          .then((r) => r.json())
+          .then((data: { metadataErrorMessage: string | null }) => {
+            setMetadataError(data.metadataErrorMessage ?? null);
           })
           .catch(console.error);
       }
@@ -182,32 +194,34 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
             Caption
             {captionLoading && <span className="text-destructive">*</span>}
           </PropLabel>
-          {!editingCaption && savedCaption && (
+          {!editingCaption && (savedCaption || captionFailed) && (
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="inline-flex items-center gap-1.5 font-medium text-primary text-xs transition-colors hover:text-primary/80"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-3.5 w-3.5" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-3.5 w-3.5" />
-                    Copy
-                  </>
-                )}
-              </button>
+              {savedCaption && (
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="inline-flex items-center gap-1.5 font-medium text-primary text-xs transition-colors hover:text-primary/80"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setEditingCaption(true)}
                 className="inline-flex items-center gap-1.5 font-medium text-primary text-xs transition-colors hover:text-primary/80"
               >
                 <Pencil className="h-3.5 w-3.5" />
-                Edit
+                {savedCaption ? "Edit" : "Write"}
               </button>
             </div>
           )}
@@ -243,6 +257,13 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
               <p className="font-medium text-sm">Generating caption...</p>
             </div>
+          </div>
+        ) : captionFailed ? (
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-destructive text-sm">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              {metadataError ?? "Caption generation failed. You can write one manually below."}
+            </span>
           </div>
         ) : (
           <PropValue>

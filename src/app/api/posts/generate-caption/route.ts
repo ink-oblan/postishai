@@ -1,6 +1,8 @@
 import type { Platform } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
+import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
+import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { validateCaptionMedia } from "@/lib/caption-media-validation";
 import { METADATA_STATUS, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
@@ -87,6 +89,19 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
     );
 
     await enqueuePostMetadataGenerateJob({ postId: post.id });
+
+    // Broadcast post creation so open dashboards/lists pick it up without a refresh.
+    try {
+      await broadcastWithContext("post-caption-create", () =>
+        broadcastPostStatusUpdate(userId, post.id, post.status),
+      );
+    } catch (broadcastErr) {
+      console.error(
+        `[POST /api/posts/generate-caption] Broadcast failed for postId=${post.id}:`,
+        broadcastErr,
+      );
+      // Don't fail the request - post and job were created successfully
+    }
 
     return NextResponse.json({
       postId: post.id,

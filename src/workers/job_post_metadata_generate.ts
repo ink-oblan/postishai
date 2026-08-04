@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
+import type { Prisma } from "@prisma/client";
 import { broadcastPostMetadataStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { METADATA_STATUS } from "@/lib/constants";
@@ -237,7 +238,7 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
         post.platform,
         {
           visualDescriptions,
-          title: post.title ?? undefined,
+          title: post.title,
           details: post.details ?? undefined,
         },
         post.llmModelId,
@@ -262,7 +263,7 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
         db.post.update({
           where: { id: payload.postId },
           data: {
-            metadata: result as object,
+            metadata: result as unknown as Prisma.InputJsonValue,
             metadataStatus: METADATA_STATUS.COMPLETED,
             metadataErrorMessage: null,
             metadataUpdatedAt: new Date(),
@@ -273,12 +274,10 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
     );
     if (post?.userId) {
       await broadcastWithContext("post-metadata-status-update", () =>
-        Promise.resolve(
-          broadcastPostMetadataStatusUpdate(
-            post.userId as string,
-            payload.postId,
-            METADATA_STATUS.COMPLETED,
-          ),
+        broadcastPostMetadataStatusUpdate(
+          post.userId as string,
+          payload.postId,
+          METADATA_STATUS.COMPLETED,
         ),
       ).catch(() => {});
     }
@@ -298,12 +297,10 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
     );
     if (post?.userId) {
       await broadcastWithContext("post-metadata-status-update", () =>
-        Promise.resolve(
-          broadcastPostMetadataStatusUpdate(
-            post.userId as string,
-            payload.postId,
-            METADATA_STATUS.FAILED,
-          ),
+        broadcastPostMetadataStatusUpdate(
+          post.userId as string,
+          payload.postId,
+          METADATA_STATUS.FAILED,
         ),
       ).catch(() => {});
     }

@@ -53,6 +53,7 @@ export default async function PostDetailPage({
               platformLabel: PLATFORM_LABELS[post.platform],
               metadata: post.metadata as import("@/lib/metadata/types").PlatformMetadata | null,
               metadataStatus: post.metadataStatus,
+              metadataErrorMessage: post.metadataErrorMessage,
               createdAtLabel: formatDistanceToNow(post.createdAt),
               media: post.media.map((m) => ({
                 id: m.id,

@@ -2,7 +2,7 @@ import { isMockEnabled } from "./mock-config";
 
 export async function broadcastWithContext(
   context: string,
-  broadcastFn: () => Promise<void>,
+  broadcastFn: () => void | Promise<void>,
 ): Promise<void> {
   // In mock mode, add delay to ensure file is fully written before broadcast
   if (isMockEnabled()) {

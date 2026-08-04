@@ -136,10 +136,29 @@ export const PATCH = withAuth(async function PATCH(
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
     const currentMetadata = post.metadata as Record<string, unknown> | null;
-    const updatedMetadata =
-      caption?.trim() && currentMetadata
-        ? { ...currentMetadata, caption: caption.trim() }
-        : currentMetadata;
+    const trimmedCaption = caption?.trim();
+    // On YouTube Shorts the editable caption text is the `description` field; elsewhere it's `caption`.
+    const isYouTube = post.platform === "YOUTUBE_SHORTS";
+    let updatedMetadata: Record<string, unknown> | null = currentMetadata;
+    if (trimmedCaption) {
+      if (currentMetadata) {
+        updatedMetadata = {
+          ...currentMetadata,
+          [isYouTube ? "description" : "caption"]: trimmedCaption,
+        };
+      } else {
+        // Metadata not generated yet (e.g. generation failed) — seed a minimal object so the
+        // user's edit isn't silently dropped.
+        updatedMetadata = isYouTube
+          ? {
+              platform: "YOUTUBE_SHORTS",
+              title: title.trim(),
+              description: trimmedCaption,
+              tags: [],
+            }
+          : { platform: post.platform, caption: trimmedCaption, hashtags: [] };
+      }
+    }
     const updated = await prisma.post.update({
       where: { id },
       data: {
@@ -229,7 +248,7 @@ export const PATCH = withAuth(async function PATCH(
           }
         : nextMetadata
           ? {
-              metadata: nextMetadata as object,
+              metadata: nextMetadata as unknown as Prisma.InputJsonValue,
               metadataStatus: METADATA_STATUS.COMPLETED,
               metadataErrorMessage: null,
               metadataUpdatedAt: new Date(),
