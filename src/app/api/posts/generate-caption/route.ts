@@ -1,15 +1,13 @@
 import type { Platform } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
-import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
-import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { validateCaptionMedia } from "@/lib/caption-media-validation";
-import { POST_STATUS } from "@/lib/constants";
+import { METADATA_STATUS, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { convertToJpeg } from "@/lib/image-convert";
 import { writeFile } from "@/lib/storage";
-import { enqueuePostCaptionGenerateJob } from "@/lib/worker/jobs";
+import { enqueuePostMetadataGenerateJob } from "@/lib/worker/jobs";
 
 const VIDEO_EXTENSIONS: Record<string, string> = {
   "video/mp4": "mp4",
@@ -49,15 +47,14 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
           type: "CAPTION",
           title: title.trim(),
           platform: (platform as Platform) || "INSTAGRAM",
-          caption: null,
           details: details?.trim() || null,
-          status: POST_STATUS.DRAFT,
+          status: POST_STATUS.COMPLETED,
+          metadataStatus: METADATA_STATUS.GENERATING,
           userId,
           llmModelId,
         },
       });
 
-      // Create all media records
       await Promise.all(
         media.map((file, i) => {
           const isVideo = file.type.startsWith("video/");
@@ -79,48 +76,17 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
     // Save media files to storage in parallel (after transaction succeeds)
     await Promise.all(
       media.map(async (file, i) => {
-        try {
-          const isVideo = file.type.startsWith("video/");
-          const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
-          const path = `posts/${post.id}/${i}.${ext}`;
-          let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
-
-          debugLog(
-            `[generate-caption] Processing media ${i}: isVideo=${isVideo}, type=${file.type}, size=${buffer.length}`,
-          );
-
-          // Convert images to JPEG
-          if (!isVideo) {
-            debugLog(`[generate-caption] Converting image to JPEG`);
-            buffer = await convertToJpeg(buffer);
-            debugLog(`[generate-caption] Converted, new size=${buffer.length}`);
-          }
-
-          debugLog(`[generate-caption] Writing to storage: ${path}`);
-          await writeFile(path, buffer);
-          debugLog(`[generate-caption] Saved successfully: ${path}`);
-        } catch (err) {
-          console.error(`[generate-caption] Failed to save media ${i}:`, err);
-          throw err;
-        }
+        const isVideo = file.type.startsWith("video/");
+        const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
+        const path = `posts/${post.id}/${i}.${ext}`;
+        let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
+        if (!isVideo) buffer = await convertToJpeg(buffer);
+        debugLog(`[generate-caption] Writing to storage: ${path}`);
+        await writeFile(path, buffer);
       }),
     );
 
-    // Enqueue caption generation job
-    await enqueuePostCaptionGenerateJob({ postId: post.id });
-
-    // Broadcast post creation and generation start to connected clients
-    try {
-      await broadcastWithContext("post-caption-generate-start", () =>
-        broadcastPostStatusUpdate(userId, post.id, POST_STATUS.GENERATING),
-      );
-    } catch (broadcastErr) {
-      console.error(
-        `[POST /api/posts/generate-caption] Broadcast failed for postId=${post.id}:`,
-        broadcastErr,
-      );
-      // Don't fail request - post and job were created successfully
-    }
+    await enqueuePostMetadataGenerateJob({ postId: post.id });
 
     return NextResponse.json({
       postId: post.id,
@@ -128,8 +94,8 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
         id: post.id,
         title: post.title,
         platform: post.platform,
-        caption: post.caption,
-        status: POST_STATUS.GENERATING,
+        metadataStatus: METADATA_STATUS.GENERATING,
+        status: POST_STATUS.COMPLETED,
         media: await prisma.postMedia.findMany({
           where: { postId: post.id },
           orderBy: { order: "asc" },
@@ -137,9 +103,9 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
       },
     });
   } catch (err) {
-    console.error("Caption generation job enqueue failed:", err);
+    console.error("Caption post creation failed:", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to start caption generation" },
+      { error: err instanceof Error ? err.message : "Failed to create post" },
       { status: 500 },
     );
   }

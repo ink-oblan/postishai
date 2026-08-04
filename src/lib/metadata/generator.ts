@@ -3,21 +3,20 @@ import { getLLMAdapter } from "../llm-models/registry";
 import { buildInstagramPrompt } from "./platforms/instagram";
 import { buildTikTokPrompt } from "./platforms/tiktok";
 import { buildYouTubeShortsPrompt } from "./platforms/youtube-shorts";
-import type { PlatformMetadata } from "./types";
+import type { CaptionInput, PlatformMetadata } from "./types";
 
-function buildPrompt(platform: Platform, script: string, title: string): Promise<string> {
+function buildPrompt(platform: Platform, input: CaptionInput, title: string): Promise<string> {
   switch (platform) {
     case "INSTAGRAM":
-      return buildInstagramPrompt(script, title);
+      return buildInstagramPrompt(input, title);
     case "TIKTOK":
-      return buildTikTokPrompt(script, title);
+      return buildTikTokPrompt(input, title);
     case "YOUTUBE_SHORTS":
-      return buildYouTubeShortsPrompt(script, title);
+      return buildYouTubeShortsPrompt(input, title);
   }
 }
 
 function parseResponse(platform: Platform, raw: string): PlatformMetadata {
-  // Strip markdown code fences if present
   const cleaned = raw.replace(/```(?:json)?\n?/g, "").trim();
   const parsed = JSON.parse(cleaned);
 
@@ -38,12 +37,12 @@ function parseResponse(platform: Platform, raw: string): PlatformMetadata {
 
 export async function generateMetadata(
   platform: Platform,
-  script: string,
-  title: string,
+  input: CaptionInput,
   llmModelId: string,
 ): Promise<PlatformMetadata> {
   const adapter = getLLMAdapter(llmModelId);
-  const prompt = await buildPrompt(platform, script, title);
+  const title = "title" in input ? (input.title ?? "") : "";
+  const prompt = await buildPrompt(platform, input, title);
   const raw = await adapter.generate(prompt);
   return parseResponse(platform, raw);
 }

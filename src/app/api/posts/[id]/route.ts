@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { broadcastPostStatusUpdate, SSE_STATUS } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
@@ -8,7 +9,7 @@ import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { isPostEditable } from "@/lib/posts";
 import { archiveFile } from "@/lib/storage";
-import { enqueuePostMetadataJob } from "@/lib/worker/jobs";
+import { enqueuePostMetadataGenerateJob } from "@/lib/worker/jobs";
 
 function normalizeTagList(values: unknown) {
   if (!Array.isArray(values)) return [];
@@ -131,12 +132,21 @@ export const PATCH = withAuth(async function PATCH(
   }
 
   if (post.type === "CAPTION") {
-    if (!title?.trim() || !caption?.trim()) {
-      return NextResponse.json({ error: "Title and caption are required" }, { status: 400 });
+    if (!title?.trim()) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
+    const currentMetadata = post.metadata as Record<string, unknown> | null;
+    const updatedMetadata =
+      caption?.trim() && currentMetadata
+        ? { ...currentMetadata, caption: caption.trim() }
+        : currentMetadata;
     const updated = await prisma.post.update({
       where: { id },
-      data: { title: title.trim(), caption: caption.trim() },
+      data: {
+        title: title.trim(),
+        metadata:
+          updatedMetadata !== null ? (updatedMetadata as Prisma.InputJsonValue) : Prisma.DbNull,
+      },
     });
     return NextResponse.json(updated);
   }
@@ -210,7 +220,7 @@ export const PATCH = withAuth(async function PATCH(
         ? {
             status: POST_STATUS.DRAFT,
             generationStartedAt: null,
-            metadata: null,
+            metadata: Prisma.DbNull,
             metadataStatus: METADATA_STATUS.IDLE,
             metadataErrorMessage: null,
             metadataUpdatedAt: null,
@@ -219,7 +229,7 @@ export const PATCH = withAuth(async function PATCH(
           }
         : nextMetadata
           ? {
-              metadata: JSON.stringify(nextMetadata),
+              metadata: nextMetadata as object,
               metadataStatus: METADATA_STATUS.COMPLETED,
               metadataErrorMessage: null,
               metadataUpdatedAt: new Date(),
@@ -229,12 +239,8 @@ export const PATCH = withAuth(async function PATCH(
   });
 
   if (shouldRegenerateMetadata) {
-    await enqueuePostMetadataJob({ postId: id });
+    await enqueuePostMetadataGenerateJob({ postId: id });
   }
 
-  return NextResponse.json({
-    ...updated,
-    metadata: updated.metadata ? JSON.parse(updated.metadata) : null,
-    metadataRegenerated: shouldRegenerateMetadata,
-  });
+  return NextResponse.json({ ...updated, metadataRegenerated: shouldRegenerateMetadata });
 });

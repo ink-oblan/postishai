@@ -7,8 +7,9 @@ import { startTransition, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { POST_STATUS } from "@/lib/constants";
-import { POLLING } from "@/lib/polling-config";
+import { METADATA_STATUS } from "@/lib/constants";
+import type { PlatformMetadata } from "@/lib/metadata/types";
+import { addEventListener } from "@/lib/sse-client";
 
 interface MediaItem {
   id: string;
@@ -20,10 +21,10 @@ interface PostData {
   id: string;
   title: string;
   platformLabel: string;
-  caption: string;
+  metadata: PlatformMetadata | null;
+  metadataStatus: string;
   createdAtLabel: string;
   media: MediaItem[];
-  status: string;
 }
 
 function PropLabel({ children }: { children: React.ReactNode }) {
@@ -34,67 +35,53 @@ function PropValue({ children }: { children: React.ReactNode }) {
   return <p className="font-medium text-sm">{children}</p>;
 }
 
+function getCaptionText(metadata: PlatformMetadata | null): string {
+  if (!metadata) return "";
+  if (metadata.platform === "YOUTUBE_SHORTS") return metadata.description;
+  return metadata.caption;
+}
+
 export function CaptionPostPanel({ post }: { post: PostData }) {
   const router = useRouter();
   const [editingCaption, setEditingCaption] = useState(false);
   const [savedTitle] = useState(post.title);
-  const [savedCaption, setSavedCaption] = useState(post.caption);
-  const [caption, setCaption] = useState(post.caption);
+  const [metadata, setMetadata] = useState(post.metadata);
+  const [metadataStatus, setMetadataStatus] = useState(post.metadataStatus);
+  const [caption, setCaption] = useState(getCaptionText(post.metadata));
+  const [savedCaption, setSavedCaption] = useState(getCaptionText(post.metadata));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [captionLoading, setCaptionLoading] = useState(post.status === POST_STATUS.GENERATING);
-  const [status, setStatus] = useState(post.status);
 
+  const captionLoading = metadataStatus === METADATA_STATUS.GENERATING;
   const captionChanged = caption.trim() !== (savedCaption?.trim() ?? "");
 
-  // Poll for caption while status is GENERATING
+  // Listen for SSE metadata status updates
   useEffect(() => {
-    // Only poll if status is GENERATING
-    if (status !== POST_STATUS.GENERATING) return;
+    const unsubscribe = addEventListener("post-metadata-status-update", (payload: unknown) => {
+      const update = payload as { postId: string; metadataStatus: string };
+      if (update.postId !== post.id) return;
 
-    const pollInterval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/posts/${post.id}/status`);
-        if (res.ok) {
-          const data = await res.json();
-          // Update status in real-time
-          setStatus(data.status);
+      setMetadataStatus(update.metadataStatus);
 
-          // Update caption if it's ready
-          if (data.caption && !caption) {
-            setSavedCaption(data.caption);
-            setCaption(data.caption);
-            setCaptionLoading(false);
-            clearInterval(pollInterval);
-            startTransition(() => router.refresh());
-          }
-
-          // Stop polling if status is no longer GENERATING
-          if (data.status !== POST_STATUS.GENERATING) {
-            clearInterval(pollInterval);
-            setCaptionLoading(false);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to poll caption:", err);
+      if (update.metadataStatus === METADATA_STATUS.COMPLETED) {
+        // Re-fetch post to get updated metadata
+        fetch(`/api/posts/${post.id}/status`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.metadata) {
+              const newCaptionText = getCaptionText(data.metadata as PlatformMetadata);
+              setMetadata(data.metadata as PlatformMetadata);
+              setSavedCaption(newCaptionText);
+              setCaption(newCaptionText);
+              startTransition(() => router.refresh());
+            }
+          })
+          .catch(console.error);
       }
-    }, POLLING.STATUS);
-
-    // Timeout after 5 minutes
-    const timeout = setTimeout(
-      () => {
-        clearInterval(pollInterval);
-        setCaptionLoading(false);
-      },
-      5 * 60 * 1000,
-    );
-
-    return () => {
-      clearInterval(pollInterval);
-      clearTimeout(timeout);
-    };
-  }, [post.id, status, caption, router]);
+    });
+    return unsubscribe;
+  }, [post.id, router]);
 
   function handleCancelCaption() {
     setCaption(savedCaption);
@@ -261,6 +248,21 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
           <PropValue>
             <span className="whitespace-pre-wrap">{savedCaption}</span>
           </PropValue>
+        )}
+
+        {metadata && "hashtags" in metadata && metadata.hashtags.length > 0 && (
+          <div className="mt-3">
+            <PropLabel>Hashtags</PropLabel>
+            <p className="text-muted-foreground text-sm">
+              {metadata.hashtags.map((h) => `#${h}`).join(" ")}
+            </p>
+          </div>
+        )}
+        {metadata && "tags" in metadata && metadata.tags.length > 0 && (
+          <div className="mt-3">
+            <PropLabel>Tags</PropLabel>
+            <p className="text-muted-foreground text-sm">{metadata.tags.join(", ")}</p>
+          </div>
         )}
       </div>
 

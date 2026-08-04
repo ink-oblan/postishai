@@ -51,8 +51,8 @@ export default async function PostDetailPage({
               id: post.id,
               title: post.title,
               platformLabel: PLATFORM_LABELS[post.platform],
-              caption: post.caption ?? "",
-              status: post.status,
+              metadata: post.metadata as import("@/lib/metadata/types").PlatformMetadata | null,
+              metadataStatus: post.metadataStatus,
               createdAtLabel: formatDistanceToNow(post.createdAt),
               media: post.media.map((m) => ({
                 id: m.id,
@@ -72,7 +72,7 @@ export default async function PostDetailPage({
   const voice = voices.find((v) => v.voice_id === avatar.voiceId);
   const llmModel = getLLMModelInfo(post.llmModelId);
 
-  const metadata: PlatformMetadata | null = post.metadata ? JSON.parse(post.metadata) : null;
+  const metadata = post.metadata as PlatformMetadata | null;
   const statusCfg = STATUS_CONFIG[post.status] ?? STATUS_CONFIG.DRAFT;
   const canEditPost = isPostEditable(post);
 

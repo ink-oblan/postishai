@@ -13,7 +13,6 @@ export const GET = withAuth(async function GET(
     select: {
       id: true,
       title: true,
-      caption: true,
       platform: true,
       status: true,
       videoPath: true,

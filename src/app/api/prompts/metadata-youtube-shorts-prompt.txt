@@ -1,7 +1,17 @@
-You are a YouTube content strategist. Generate YouTube Shorts metadata for the following video script.
+You are a YouTube content strategist. Generate YouTube Shorts metadata for the following video.
 
 Video title: {{title}}
+{{#if script}}
 Video script: {{script}}
+{{else}}
+Visual description of the media:
+{{#each visualDescriptions}}
+- {{{this}}}
+{{/each}}
+{{/if}}
+{{#if details}}
+Additional context: {{details}}
+{{/if}}
 
 Return ONLY a valid JSON object (no markdown, no explanation) with this exact structure:
 {

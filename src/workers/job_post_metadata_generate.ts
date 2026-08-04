@@ -1,27 +1,23 @@
 import { randomBytes } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
-import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
+import { broadcastPostMetadataStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
-import { POST_STATUS } from "@/lib/constants";
+import { METADATA_STATUS } from "@/lib/constants";
 import { debugLog } from "@/lib/debug";
 import { runFfmpeg, runFfprobe } from "@/lib/ffmpeg";
 import { convertToJpeg } from "@/lib/image-convert";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { LLMModelAdapter } from "@/lib/llm-models/types";
+import { generateMetadata } from "@/lib/metadata/generator";
+import type { PlatformMetadata } from "@/lib/metadata/types";
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
-import { generateMockCaption } from "@/lib/mock-generators";
 import { renderPromptTemplate } from "@/lib/prompts";
 import { readFile as readFileStorage } from "@/lib/storage";
-import { PLATFORM_FULL_NAMES } from "@/lib/utils";
 import { safeDbUpdate } from "@/workers/db-utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
-import type { JobDefinition, PostCaptionGeneratePayload } from "@/workers/types";
+import type { JobDefinition, PostMetadataGeneratePayload } from "@/workers/types";
 
 const VIDEO_FRAME_COUNT = 10;
-
-type PostCaptionGenerateResult = {
-  caption: string;
-};
 
 class UserInputError extends Error {}
 
@@ -149,114 +145,116 @@ async function describeMedia(
   return descriptions;
 }
 
-export const postCaptionGenerateJob: JobDefinition<
-  "post.caption.generate",
-  PostCaptionGenerateResult
-> = {
-  type: "post.caption.generate",
+export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", PlatformMetadata> = {
+  type: "post.metadata.generate",
   timeoutMs: 15 * 60 * 1000,
   maxAttempts: 3,
-  dedupeKey: ({ postId }) => `post.caption.generate:${postId}`,
+  dedupeKey: ({ postId }) => `post.metadata.generate:${postId}`,
   parse(rawPayload) {
     const payload = parseObjectPayload(rawPayload);
     return {
       postId: readRequiredString(payload, "postId"),
-    } satisfies PostCaptionGeneratePayload;
+    } satisfies PostMetadataGeneratePayload;
   },
   async onEnqueue(db, payload) {
-    debugLog(
-      `[post.caption.generate] onEnqueue: setting status to GENERATING for postId=${payload.postId}`,
-    );
+    debugLog(`[post.metadata.generate] onEnqueue: postId=${payload.postId}`);
     await db.post.update({
       where: { id: payload.postId },
-      data: {
-        status: POST_STATUS.GENERATING,
-        errorMessage: null,
-      },
+      data: { metadataStatus: METADATA_STATUS.GENERATING, metadataErrorMessage: null },
     });
-    debugLog(`[post.caption.generate] onEnqueue: status updated for postId=${payload.postId}`);
   },
   async onStart(db, payload) {
     await db.post.update({
       where: { id: payload.postId },
-      data: {
-        status: POST_STATUS.GENERATING,
-        errorMessage: null,
-      },
+      data: { metadataStatus: METADATA_STATUS.GENERATING, metadataErrorMessage: null },
     });
   },
   async run(ctx, payload) {
-    ctx.log(`[post.caption.generate] start postId=${payload.postId}`);
+    ctx.log(`[post.metadata.generate] start postId=${payload.postId}`);
 
-    if (isMockEnabled()) {
-      // Mock mode: simulate caption generation
-      ctx.log(`[post.caption.generate] MOCK MODE: waiting ${MOCK_TIMINGS.POST_CAPTION}ms`);
-      await new Promise((resolve) => setTimeout(resolve, MOCK_TIMINGS.POST_CAPTION));
-      const caption = await generateMockCaption("image", payload.postId);
-      ctx.log(`[post.caption.generate] MOCK MODE: generated mock caption`);
-
-      return {
-        caption,
-      };
-    }
-
-    // Real caption generation
     const post = await ctx.db.post.findUnique({
       where: { id: payload.postId },
       include: { media: { orderBy: { order: "asc" } } },
     });
 
-    if (!post) {
-      throw new Error(`Post ${payload.postId} not found`);
+    if (!post) throw new Error(`Post ${payload.postId} not found`);
+    if (!post.llmModelId) throw new Error(`Post ${payload.postId} has no LLM model specified`);
+
+    const hasMedia = post.media.length > 0;
+    const hasScript = !!post.script;
+    const mode = hasMedia ? "media" : hasScript ? "script" : null;
+
+    if (!mode) {
+      throw new UserInputError(
+        `Post ${payload.postId} has no media and no script — cannot generate captions`,
+      );
     }
 
-    if (post.media.length === 0) {
-      throw new Error(`Post ${payload.postId} has no media files`);
+    ctx.log(
+      `[post.metadata.generate] Using ${mode} mode. Fields: title="${post.title}", platform=${post.platform}, llmModelId=${post.llmModelId}`,
+    );
+
+    if (isMockEnabled()) {
+      ctx.log(`[post.metadata.generate] MOCK MODE: waiting ${MOCK_TIMINGS.POST_CAPTION}ms`);
+      await new Promise((resolve) => setTimeout(resolve, MOCK_TIMINGS.POST_CAPTION));
+      const mockResult: PlatformMetadata =
+        post.platform === "YOUTUBE_SHORTS"
+          ? {
+              platform: "YOUTUBE_SHORTS",
+              title: post.title,
+              description: "Mock generated description for this video.",
+              tags: ["mock", "content", "generated"],
+            }
+          : {
+              platform: post.platform as "INSTAGRAM" | "TIKTOK",
+              caption: "Mock generated caption for this content. #mock #generated",
+              hashtags: ["mock", "generated", "content"],
+            };
+      ctx.log(`[post.metadata.generate] MOCK MODE: returning mock result`);
+      return mockResult;
     }
 
-    if (!post.llmModelId) {
-      throw new Error(`Post ${payload.postId} has no LLM model specified`);
-    }
+    const adapter = getLLMAdapter(post.llmModelId);
 
-    // Read media files from storage
-    const mediaBuffers: Buffer[] = [];
-    const isVideoArray: boolean[] = [];
+    if (mode === "media") {
+      ctx.log(
+        `[post.metadata.generate] Media files: count=${post.media.length}, types=[${post.media.map((m) => m.type).join(", ")}]`,
+      );
 
-    for (const mediaFile of post.media) {
-      ctx.log(`[post.caption.generate] reading media file: ${mediaFile.path}`);
-      try {
+      const mediaBuffers: Buffer[] = [];
+      const isVideoArray: boolean[] = [];
+      for (const mediaFile of post.media) {
+        ctx.log(`[post.metadata.generate] reading media file: ${mediaFile.path}`);
         const buffer = await readFileStorage(mediaFile.path);
-        ctx.log(`[post.caption.generate] read ${buffer.length} bytes from ${mediaFile.path}`);
         mediaBuffers.push(buffer);
         isVideoArray.push(mediaFile.type === "VIDEO");
-      } catch (err) {
-        ctx.logError(`[post.caption.generate] failed to read ${mediaFile.path}:`, err);
-        throw err;
       }
+
+      const visualDescriptions = await describeMedia(adapter, mediaBuffers, isVideoArray);
+      ctx.log(`[post.metadata.generate] got ${visualDescriptions.length} visual descriptions`);
+
+      return generateMetadata(
+        post.platform,
+        {
+          visualDescriptions,
+          title: post.title ?? undefined,
+          details: post.details ?? undefined,
+        },
+        post.llmModelId,
+      );
     }
 
-    const platform = PLATFORM_FULL_NAMES[post.platform] ?? "short-form video";
-
-    // Get media descriptions
-    const adapter = getLLMAdapter(post.llmModelId);
-    ctx.log(`[post.caption.generate] describing ${mediaBuffers.length} media files`);
-    const visualDescriptions = await describeMedia(adapter, mediaBuffers, isVideoArray);
-    ctx.log(`[post.caption.generate] got ${visualDescriptions.length} descriptions`);
-
-    const prompt = await renderPromptTemplate("caption-generate-prompt.txt", {
-      platformLabel: platform,
-      topic: post.title?.trim(),
-      details: post.details?.trim(),
-      visualDescriptions: visualDescriptions.map((d) => d.trim()),
-    });
-
-    ctx.log(`[post.caption.generate] generating caption with prompt length ${prompt.length}`);
-    const caption = await adapter.generate(prompt);
-    ctx.log(`[post.caption.generate] generated caption: ${caption.substring(0, 100)}...`);
-
-    return {
-      caption: caption.trim(),
-    };
+    // script mode
+    ctx.log(`[post.metadata.generate] Using script (length=${post.script?.length})`);
+    return generateMetadata(
+      post.platform,
+      {
+        script: post.script as string,
+        title: post.title,
+        details: post.details ?? undefined,
+      },
+      post.llmModelId,
+    );
   },
   async onSuccess(db, payload, result) {
     const post = await safeDbUpdate(
@@ -264,19 +262,24 @@ export const postCaptionGenerateJob: JobDefinition<
         db.post.update({
           where: { id: payload.postId },
           data: {
-            status: POST_STATUS.COMPLETED,
-            caption: result.caption,
-            errorMessage: null,
-            updatedAt: new Date(),
+            metadata: result as object,
+            metadataStatus: METADATA_STATUS.COMPLETED,
+            metadataErrorMessage: null,
+            metadataUpdatedAt: new Date(),
           },
         }),
-      "post-caption-generate-success",
+      "post-metadata-generate-success",
       payload.postId,
     );
     if (post?.userId) {
-      const userId = post.userId;
-      await broadcastWithContext("post-status-update", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, POST_STATUS.COMPLETED),
+      await broadcastWithContext("post-metadata-status-update", () =>
+        Promise.resolve(
+          broadcastPostMetadataStatusUpdate(
+            post.userId as string,
+            payload.postId,
+            METADATA_STATUS.COMPLETED,
+          ),
+        ),
       ).catch(() => {});
     }
   },
@@ -286,21 +289,27 @@ export const postCaptionGenerateJob: JobDefinition<
         db.post.update({
           where: { id: payload.postId },
           data: {
-            status: POST_STATUS.FAILED,
-            errorMessage: error,
+            metadataStatus: METADATA_STATUS.FAILED,
+            metadataErrorMessage: error,
           },
         }),
-      "post-caption-generate-failure",
+      "post-metadata-generate-failure",
       payload.postId,
     );
     if (post?.userId) {
-      const userId = post.userId;
-      await broadcastWithContext("post-status-update", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, POST_STATUS.FAILED),
+      await broadcastWithContext("post-metadata-status-update", () =>
+        Promise.resolve(
+          broadcastPostMetadataStatusUpdate(
+            post.userId as string,
+            payload.postId,
+            METADATA_STATUS.FAILED,
+          ),
+        ),
       ).catch(() => {});
     }
   },
   classifyError(error) {
+    if (error instanceof UserInputError) return "permanent";
     return isRetryableError(error) ? "retryable" : "permanent";
   },
 };
