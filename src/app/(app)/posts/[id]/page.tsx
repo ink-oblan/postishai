@@ -51,7 +51,7 @@ export default async function PostDetailPage({
               id: post.id,
               title: post.title,
               platformLabel: PLATFORM_LABELS[post.platform],
-              metadata: post.metadata as import("@/lib/metadata/types").PlatformMetadata | null,
+              metadata: post.metadata as PlatformMetadata | null,
               metadataStatus: post.metadataStatus,
               metadataErrorMessage: post.metadataErrorMessage,
               createdAtLabel: formatDistanceToNow(post.createdAt),

@@ -50,7 +50,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
           title: title.trim(),
           platform: (platform as Platform) || "INSTAGRAM",
           details: details?.trim() || null,
-          status: POST_STATUS.COMPLETED,
+          status: POST_STATUS.GENERATING,
           metadataStatus: METADATA_STATUS.GENERATING,
           userId,
           llmModelId,
@@ -81,10 +81,14 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
         const isVideo = file.type.startsWith("video/");
         const ext = isVideo ? (VIDEO_EXTENSIONS[file.type] ?? "mp4") : "jpg";
         const path = `posts/${post.id}/${i}.${ext}`;
-        let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
-        if (!isVideo) buffer = await convertToJpeg(buffer);
-        debugLog(`[generate-caption] Writing to storage: ${path}`);
-        await writeFile(path, buffer);
+        try {
+          let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
+          if (!isVideo) buffer = await convertToJpeg(buffer);
+          debugLog(`[generate-caption] Writing to storage: ${path}`);
+          await writeFile(path, buffer);
+        } catch (err) {
+          throw new Error(`Failed to save media ${i} (${path})`, { cause: err });
+        }
       }),
     );
 
@@ -110,7 +114,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx, { userI
         title: post.title,
         platform: post.platform,
         metadataStatus: METADATA_STATUS.GENERATING,
-        status: POST_STATUS.COMPLETED,
+        status: POST_STATUS.GENERATING,
         media: await prisma.postMedia.findMany({
           where: { postId: post.id },
           orderBy: { order: "asc" },
