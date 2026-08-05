@@ -18,3 +18,7 @@ export interface YouTubeShortsMetadata {
 }
 
 export type PlatformMetadata = InstagramMetadata | TikTokMetadata | YouTubeShortsMetadata;
+
+export type CaptionInput =
+  | { script: string; title: string; details?: string }
+  | { visualDescriptions: string[]; title?: string; details?: string };

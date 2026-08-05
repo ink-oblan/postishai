@@ -25,16 +25,11 @@ export type PostMetadataGeneratePayload = {
   postId: string;
 };
 
-export type PostCaptionGeneratePayload = {
-  postId: string;
-};
-
 export type JobPayloadMap = {
   "avatar.generate": AvatarGeneratePayload;
   "avatar.variation.generate": AvatarVariationGeneratePayload;
   "avatar.analyze": AvatarAnalyzePayload;
-  "post.metadata": PostMetadataGeneratePayload;
-  "post.caption.generate": PostCaptionGeneratePayload;
+  "post.metadata.generate": PostMetadataGeneratePayload;
   "post.generate": PostGeneratePayload;
 };
 

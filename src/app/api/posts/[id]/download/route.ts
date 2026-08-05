@@ -22,8 +22,9 @@ export const GET = withAuth(async function GET(
   }
 
   const videoBuffer = await readFile(post.videoPath);
-  const metadata: PlatformMetadata = JSON.parse(post.metadata ?? "{}");
-  const metadataText = metadataToText(metadata);
+  const metadataText = post.metadata
+    ? metadataToText(post.metadata as unknown as PlatformMetadata)
+    : "";
 
   const slug = post.title
     .toLowerCase()

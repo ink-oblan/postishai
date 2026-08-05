@@ -153,39 +153,41 @@ export function PostEditPanel({
   const editingRef = useRef(editing);
   editingRef.current = editing;
 
-  // Poll metadata status while generating so the spinner resolves without a manual refresh
+  // Poll for metadata status updates while generating
   useEffect(() => {
     if (savedMetadataStatus !== METADATA_STATUS.GENERATING) return;
 
-    const interval = setInterval(async () => {
+    const poll = setInterval(async () => {
       try {
         const res = await fetch(`/api/posts/${post.id}/status`);
         if (!res.ok) return;
-        const data = (await res.json()) as {
+        const data: {
           metadataStatus: string;
           metadataErrorMessage: string | null;
-          metadata: string | null;
-        };
-        if (savedMetadataStatusRef.current !== METADATA_STATUS.GENERATING) return;
-        if (data.metadataStatus === METADATA_STATUS.GENERATING) return;
+          metadata: PlatformMetadata | null;
+        } = await res.json();
 
-        setSavedMetadataStatus(data.metadataStatus);
-        setSavedMetadataErrorMessage(data.metadataErrorMessage ?? null);
-
-        if (data.metadataStatus === METADATA_STATUS.COMPLETED && data.metadata) {
-          const parsed = JSON.parse(data.metadata) as PlatformMetadata;
-          setSavedMetadata(parsed);
-          if (!editingRef.current) setMetadata(parsed);
+        if (data.metadataStatus === METADATA_STATUS.COMPLETED) {
+          clearInterval(poll);
+          setSavedMetadataErrorMessage(data.metadataErrorMessage ?? null);
+          if (data.metadata) {
+            setSavedMetadata(data.metadata);
+            if (!editingRef.current) setMetadata(data.metadata);
+          }
+          setSavedMetadataStatus(METADATA_STATUS.COMPLETED);
+          startTransition(() => router.refresh());
+        } else if (data.metadataStatus === METADATA_STATUS.FAILED) {
+          clearInterval(poll);
+          setSavedMetadataErrorMessage(data.metadataErrorMessage ?? null);
+          setSavedMetadataStatus(METADATA_STATUS.FAILED);
         }
-
-        startTransition(() => router.refresh());
       } catch {
         // ignore transient errors
       }
-    }, POLLING.METADATA);
+    }, POLLING.STATUS);
 
-    return () => clearInterval(interval);
-  }, [savedMetadataStatus, post.id, router]);
+    return () => clearInterval(poll);
+  }, [post.id, savedMetadataStatus, router.refresh]);
 
   useEffect(() => {
     const pendingPostSync = pendingPostSyncRef.current;
@@ -342,9 +344,9 @@ export function PostEditPanel({
       const selectedModel = llmModels.find((m) => m.id === llmModelId);
       const nextMetadata = updated.metadata ?? (updated.metadataRegenerated ? null : metadata);
       const nextMetadataStatus = updated.metadataRegenerated
-        ? POST_STATUS.GENERATING
+        ? METADATA_STATUS.GENERATING
         : nextMetadata
-          ? POST_STATUS.COMPLETED
+          ? METADATA_STATUS.COMPLETED
           : savedMetadataStatus;
       const nextStatusLabel =
         updated.status === POST_STATUS.DRAFT ? STATUS_LABELS[POST_STATUS.DRAFT] : savedStatusLabel;

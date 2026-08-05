@@ -1,11 +1,21 @@
-You are a TikTok content strategist. Generate TikTok metadata for the following video script.
+You are a TikTok content strategist. Generate TikTok metadata for the following video.
 
 Video title: {{title}}
+{{#if script}}
 Video script: {{script}}
+{{else}}
+Visual description of the media:
+{{#each visualDescriptions}}
+- {{{this}}}
+{{/each}}
+{{/if}}
+{{#if details}}
+Additional context: {{details}}
+{{/if}}
 
 Return ONLY a valid JSON object (no markdown, no explanation) with this exact structure:
 {
-  "caption": "short punchy caption up to 150 characters with 2-3 hashtags inline",
+  "caption": "short punchy caption up to 150 characters, do NOT include any hashtags in the caption text",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3", "hashtag4", "hashtag5"]
 }
 

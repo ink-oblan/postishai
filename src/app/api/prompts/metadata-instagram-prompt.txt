@@ -1,11 +1,21 @@
-You are a social media copywriter. Generate Instagram Reels metadata for the following video script.
+You are a social media copywriter. Generate Instagram Reels metadata for the following video.
 
 Video title: {{title}}
+{{#if script}}
 Video script: {{script}}
+{{else}}
+Visual description of the media:
+{{#each visualDescriptions}}
+- {{{this}}}
+{{/each}}
+{{/if}}
+{{#if details}}
+Additional context: {{details}}
+{{/if}}
 
 Return ONLY a valid JSON object (no markdown, no explanation) with this exact structure:
 {
-  "caption": "engaging caption up to 2200 characters, include 3-5 relevant hashtags inline",
+  "caption": "engaging caption up to 2200 characters, do NOT include any hashtags in the caption text",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3", "hashtag4", "hashtag5"]
 }
 

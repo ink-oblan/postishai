@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
-import { enqueuePostGenerateJob, enqueuePostMetadataJob } from "@/lib/worker/jobs";
+import { enqueuePostGenerateJob, enqueuePostMetadataGenerateJob } from "@/lib/worker/jobs";
 
 export const POST = withAuth(async function POST(
   _req: NextRequest,
@@ -21,7 +21,7 @@ export const POST = withAuth(async function POST(
   }
 
   if (!post.metadata) {
-    await enqueuePostMetadataJob({ postId: id });
+    await enqueuePostMetadataGenerateJob({ postId: id });
   }
 
   const queued = await enqueuePostGenerateJob({ postId: id });

@@ -1,5 +1,11 @@
+import type { CaptionInput } from "@/lib/metadata/types";
 import { renderPromptTemplate } from "@/lib/prompts";
 
-export function buildTikTokPrompt(script: string, title: string): Promise<string> {
-  return renderPromptTemplate("metadata-tiktok-prompt.txt", { script, title });
+export function buildTikTokPrompt(input: CaptionInput, title: string): Promise<string> {
+  return renderPromptTemplate("metadata-tiktok-prompt.txt", {
+    title,
+    script: "script" in input ? input.script : undefined,
+    visualDescriptions: "visualDescriptions" in input ? input.visualDescriptions : undefined,
+    details: input.details,
+  });
 }

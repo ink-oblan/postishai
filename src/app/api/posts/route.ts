@@ -6,7 +6,7 @@ import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { DEFAULT_LLM_MODEL_ID, getLLMAdapter } from "@/lib/llm-models/registry";
-import { enqueuePostMetadataJob } from "@/lib/worker/jobs";
+import { enqueuePostMetadataGenerateJob } from "@/lib/worker/jobs";
 
 export const GET = withAuth(async function GET(_req: NextRequest, _ctx: unknown, { userId }) {
   const posts = await prisma.post.findMany({
@@ -69,7 +69,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
     include: { avatar: { select: { id: true, name: true, imagePath: true } } },
   });
 
-  await enqueuePostMetadataJob({ postId: post.id });
+  await enqueuePostMetadataGenerateJob({ postId: post.id });
 
   // Broadcast post creation to all connected clients
   debugLog(

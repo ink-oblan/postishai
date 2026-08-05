@@ -1,7 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:fs/promises";
-import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { POST_STATUS, VARIATION_STATUS } from "@/lib/constants";
 import { runFfmpeg } from "@/lib/ffmpeg";
 import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
@@ -157,7 +155,7 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
     throw new Error(`HeyGen polling timed out after ${HEYGEN_POLL_TIMEOUT_MS / 1000}s`);
   },
   async onSuccess(db, payload, result) {
-    const post = await safeDbUpdate(
+    await safeDbUpdate(
       () =>
         db.post.update({
           where: { id: payload.postId },
@@ -171,15 +169,9 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
       "post-generate-success",
       payload.postId,
     );
-    if (post?.userId) {
-      const userId = post.userId;
-      await broadcastWithContext("post-status-update", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, POST_STATUS.COMPLETED),
-      ).catch(() => {});
-    }
   },
   async onFailure(db, payload, error) {
-    const post = await safeDbUpdate(
+    await safeDbUpdate(
       () =>
         db.post.update({
           where: { id: payload.postId },
@@ -191,12 +183,6 @@ export const postGenerateJob: JobDefinition<"post.generate", PostGenerateResult>
       "post-generate-failure",
       payload.postId,
     );
-    if (post?.userId) {
-      const userId = post.userId;
-      await broadcastWithContext("post-status-update", () =>
-        broadcastPostStatusUpdate(userId, payload.postId, POST_STATUS.FAILED),
-      ).catch(() => {});
-    }
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";
