@@ -1,5 +1,3 @@
-import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { VARIATION_STATUS } from "@/lib/constants";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { archiveFile, readFile, writeFile } from "@/lib/storage";
@@ -87,7 +85,7 @@ export const avatarVariationGenerateJob: JobDefinition<
     return { imagePath };
   },
   async onSuccess(db, payload, result) {
-    const variation = await safeDbUpdate(
+    await safeDbUpdate(
       () =>
         db.avatarVariation.update({
           where: { id: payload.variationId },
@@ -98,35 +96,21 @@ export const avatarVariationGenerateJob: JobDefinition<
             heygenAssetId: null,
             heygenAssetUrl: null,
           },
-          include: { avatar: true },
         }),
       "avatar-variation-generate-success",
       payload.variationId,
     );
-    if (variation?.avatar?.userId) {
-      const userId = variation.avatar.userId;
-      await broadcastWithContext("avatar-status-update", () =>
-        broadcastAvatarStatusUpdate(userId, variation.avatarId, VARIATION_STATUS.COMPLETED),
-      ).catch(() => {});
-    }
   },
   async onFailure(db, payload, error) {
-    const variation = await safeDbUpdate(
+    await safeDbUpdate(
       () =>
         db.avatarVariation.update({
           where: { id: payload.variationId },
           data: { status: VARIATION_STATUS.FAILED, errorMessage: error },
-          include: { avatar: true },
         }),
       "avatar-variation-generate-failure",
       payload.variationId,
     );
-    if (variation?.avatar?.userId) {
-      const userId = variation.avatar.userId;
-      await broadcastWithContext("avatar-status-update", () =>
-        broadcastAvatarStatusUpdate(userId, variation.avatarId, VARIATION_STATUS.FAILED),
-      ).catch(() => {});
-    }
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";

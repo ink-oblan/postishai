@@ -24,7 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { METADATA_STATUS, POST_STATUS, STATUS_LABELS, VARIATION_STATUS } from "@/lib/constants";
 import { fetchHeyGenVoices } from "@/lib/heygen/fetch-voices";
 import type { PlatformMetadata } from "@/lib/metadata/types";
-import { addEventListener } from "@/lib/sse-client";
+import { POLLING } from "@/lib/polling-config";
 
 interface LLMModel {
   id: string;
@@ -153,45 +153,41 @@ export function PostEditPanel({
   const editingRef = useRef(editing);
   editingRef.current = editing;
 
-  // Listen for SSE metadata status updates so the spinner resolves without a manual refresh
+  // Poll for metadata status updates while generating
   useEffect(() => {
-    const unsubscribe = addEventListener("post-metadata-status-update", (payload: unknown) => {
-      const update = payload as { postId: string; metadataStatus: string };
-      if (update.postId !== post.id) return;
-      if (savedMetadataStatusRef.current !== METADATA_STATUS.GENERATING) return;
-      if (update.metadataStatus === METADATA_STATUS.GENERATING) return;
+    if (savedMetadataStatus !== METADATA_STATUS.GENERATING) return;
 
-      setSavedMetadataStatus(update.metadataStatus);
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/posts/${post.id}/status`);
+        if (!res.ok) return;
+        const data: {
+          metadataStatus: string;
+          metadataErrorMessage: string | null;
+          metadata: PlatformMetadata | null;
+        } = await res.json();
 
-      if (update.metadataStatus === METADATA_STATUS.COMPLETED) {
-        fetch(`/api/posts/${post.id}/status`)
-          .then((r) => r.json())
-          .then(
-            (data: {
-              metadataStatus: string;
-              metadataErrorMessage: string | null;
-              metadata: PlatformMetadata | null;
-            }) => {
-              setSavedMetadataErrorMessage(data.metadataErrorMessage ?? null);
-              if (data.metadata) {
-                setSavedMetadata(data.metadata);
-                if (!editingRef.current) setMetadata(data.metadata);
-              }
-              startTransition(() => router.refresh());
-            },
-          )
-          .catch(() => {});
-      } else {
-        fetch(`/api/posts/${post.id}/status`)
-          .then((r) => r.json())
-          .then((data: { metadataErrorMessage: string | null }) => {
-            setSavedMetadataErrorMessage(data.metadataErrorMessage ?? null);
-          })
-          .catch(() => {});
+        if (data.metadataStatus === METADATA_STATUS.COMPLETED) {
+          clearInterval(poll);
+          setSavedMetadataErrorMessage(data.metadataErrorMessage ?? null);
+          if (data.metadata) {
+            setSavedMetadata(data.metadata);
+            if (!editingRef.current) setMetadata(data.metadata);
+          }
+          setSavedMetadataStatus(METADATA_STATUS.COMPLETED);
+          startTransition(() => router.refresh());
+        } else if (data.metadataStatus === METADATA_STATUS.FAILED) {
+          clearInterval(poll);
+          setSavedMetadataErrorMessage(data.metadataErrorMessage ?? null);
+          setSavedMetadataStatus(METADATA_STATUS.FAILED);
+        }
+      } catch {
+        // ignore transient errors
       }
-    });
-    return unsubscribe;
-  }, [post.id, router.refresh]);
+    }, POLLING.STATUS);
+
+    return () => clearInterval(poll);
+  }, [post.id, savedMetadataStatus, router.refresh]);
 
   useEffect(() => {
     const pendingPostSync = pendingPostSyncRef.current;

@@ -1,6 +1,4 @@
 import sharp from "sharp";
-import { broadcastAvatarStatusUpdate } from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { AVATAR_STATUS } from "@/lib/constants";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import { archiveFile, writeFile } from "@/lib/storage";
@@ -84,7 +82,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
     return { imagePath };
   },
   async onSuccess(db, payload, result) {
-    const avatar = await safeDbUpdate(
+    await safeDbUpdate(
       () =>
         db.avatar.update({
           where: { id: payload.avatarId },
@@ -97,15 +95,9 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
       "avatar-generate-success",
       payload.avatarId,
     );
-    if (avatar?.userId) {
-      const userId = avatar.userId;
-      await broadcastWithContext("avatar-status-update", () =>
-        broadcastAvatarStatusUpdate(userId, payload.avatarId, AVATAR_STATUS.COMPLETED),
-      ).catch(() => {});
-    }
   },
   async onFailure(db, payload, error) {
-    const avatar = await safeDbUpdate(
+    await safeDbUpdate(
       () =>
         db.avatar.update({
           where: { id: payload.avatarId },
@@ -117,12 +109,6 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
       "avatar-generate-failure",
       payload.avatarId,
     );
-    if (avatar?.userId) {
-      const userId = avatar.userId;
-      await broadcastWithContext("avatar-status-update", () =>
-        broadcastAvatarStatusUpdate(userId, payload.avatarId, AVATAR_STATUS.FAILED),
-      ).catch(() => {});
-    }
   },
   classifyError(error) {
     return isRetryableError(error) ? "retryable" : "permanent";

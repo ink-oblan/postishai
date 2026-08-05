@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { METADATA_STATUS } from "@/lib/constants";
 import type { PlatformMetadata } from "@/lib/metadata/types";
-import { addEventListener } from "@/lib/sse-client";
+import { POLLING } from "@/lib/polling-config";
 
 interface MediaItem {
   id: string;
@@ -59,41 +59,39 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
   const captionFailed = metadataStatus === METADATA_STATUS.FAILED && !savedCaption;
   const captionChanged = caption.trim() !== (savedCaption?.trim() ?? "");
 
-  // Listen for SSE metadata status updates
+  // Poll for metadata status updates while generating
   useEffect(() => {
-    const unsubscribe = addEventListener("post-metadata-status-update", (payload: unknown) => {
-      const update = payload as { postId: string; metadataStatus: string };
-      if (update.postId !== post.id) return;
+    if (metadataStatus !== METADATA_STATUS.GENERATING) return;
 
-      setMetadataStatus(update.metadataStatus);
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/posts/${post.id}/status`);
+        if (!res.ok) return;
+        const data = await res.json();
 
-      if (update.metadataStatus === METADATA_STATUS.COMPLETED) {
-        // Re-fetch post to get updated metadata
-        fetch(`/api/posts/${post.id}/status`)
-          .then((r) => r.json())
-          .then((data) => {
-            if (data.metadata) {
-              const newCaptionText = getCaptionText(data.metadata as PlatformMetadata);
-              setMetadata(data.metadata as PlatformMetadata);
-              setSavedCaption(newCaptionText);
-              setCaption(newCaptionText);
-              setMetadataError(null);
-              startTransition(() => router.refresh());
-            }
-          })
-          .catch(console.error);
-      } else if (update.metadataStatus === METADATA_STATUS.FAILED) {
-        // Re-fetch to surface the failure reason
-        fetch(`/api/posts/${post.id}/status`)
-          .then((r) => r.json())
-          .then((data: { metadataErrorMessage: string | null }) => {
-            setMetadataError(data.metadataErrorMessage ?? null);
-          })
-          .catch(console.error);
+        if (data.metadataStatus === METADATA_STATUS.COMPLETED) {
+          clearInterval(poll);
+          if (data.metadata) {
+            const newCaptionText = getCaptionText(data.metadata as PlatformMetadata);
+            setMetadata(data.metadata as PlatformMetadata);
+            setSavedCaption(newCaptionText);
+            setCaption(newCaptionText);
+            setMetadataError(null);
+          }
+          setMetadataStatus(METADATA_STATUS.COMPLETED);
+          startTransition(() => router.refresh());
+        } else if (data.metadataStatus === METADATA_STATUS.FAILED) {
+          clearInterval(poll);
+          setMetadataStatus(METADATA_STATUS.FAILED);
+          setMetadataError(data.metadataErrorMessage ?? null);
+        }
+      } catch {
+        // ignore transient errors
       }
-    });
-    return unsubscribe;
-  }, [post.id, router]);
+    }, POLLING.STATUS);
+
+    return () => clearInterval(poll);
+  }, [post.id, metadataStatus, router]);
 
   function handleCancelCaption() {
     setCaption(savedCaption);

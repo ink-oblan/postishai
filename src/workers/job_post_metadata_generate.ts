@@ -1,11 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { readFile, unlink, writeFile as writeFileFs } from "node:fs/promises";
 import type { Prisma } from "@prisma/client";
-import {
-  broadcastPostMetadataStatusUpdate,
-  broadcastPostStatusUpdate,
-} from "@/app/api/dashboard/subscribe/route";
-import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { METADATA_STATUS, POST_STATUS } from "@/lib/constants";
 import { debugLog } from "@/lib/debug";
 import { runFfmpeg, runFfprobe } from "@/lib/ffmpeg";
@@ -297,7 +292,7 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
       `[post.metadata.generate] onSuccess: postId=${payload.postId}, isCaptionPost=${isCaptionPost}, platform=${(result as PlatformMetadata).platform}`,
     );
 
-    const post = await safeDbUpdate(
+    await safeDbUpdate(
       () =>
         db.post.update({
           where: { id: payload.postId },
@@ -312,27 +307,6 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
       "post-metadata-generate-success",
       payload.postId,
     );
-    if (post?.userId) {
-      if (isCaptionPost) {
-        debugLog(
-          `[post.metadata.generate] broadcasting post-status-update COMPLETED for userId=${post.userId}`,
-        );
-        await broadcastWithContext("post-status-update", () =>
-          broadcastPostStatusUpdate(post.userId as string, payload.postId, POST_STATUS.COMPLETED),
-        ).catch(() => {});
-      } else {
-        debugLog(
-          `[post.metadata.generate] broadcasting post-metadata-status-update COMPLETED for userId=${post.userId}`,
-        );
-        await broadcastWithContext("post-metadata-status-update", () =>
-          broadcastPostMetadataStatusUpdate(
-            post.userId as string,
-            payload.postId,
-            METADATA_STATUS.COMPLETED,
-          ),
-        ).catch(() => {});
-      }
-    }
   },
   async onFailure(db, payload, error) {
     const existing = await db.post.findUnique({
@@ -344,7 +318,7 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
       `[post.metadata.generate] onFailure: postId=${payload.postId}, isCaptionPost=${isCaptionPost}, error="${error}"`,
     );
 
-    const post = await safeDbUpdate(
+    await safeDbUpdate(
       () =>
         db.post.update({
           where: { id: payload.postId },
@@ -357,27 +331,6 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
       "post-metadata-generate-failure",
       payload.postId,
     );
-    if (post?.userId) {
-      if (isCaptionPost) {
-        debugLog(
-          `[post.metadata.generate] broadcasting post-status-update FAILED for userId=${post.userId}`,
-        );
-        await broadcastWithContext("post-status-update", () =>
-          broadcastPostStatusUpdate(post.userId as string, payload.postId, POST_STATUS.FAILED),
-        ).catch(() => {});
-      } else {
-        debugLog(
-          `[post.metadata.generate] broadcasting post-metadata-status-update FAILED for userId=${post.userId}`,
-        );
-        await broadcastWithContext("post-metadata-status-update", () =>
-          broadcastPostMetadataStatusUpdate(
-            post.userId as string,
-            payload.postId,
-            METADATA_STATUS.FAILED,
-          ),
-        ).catch(() => {});
-      }
-    }
   },
   classifyError(error) {
     if (error instanceof UserInputError) return "permanent";

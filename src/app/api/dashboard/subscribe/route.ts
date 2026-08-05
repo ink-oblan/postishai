@@ -56,17 +56,6 @@ export async function broadcastPostStatusUpdate(userId: string, postId: string, 
   });
 }
 
-export function broadcastPostMetadataStatusUpdate(
-  userId: string,
-  postId: string,
-  metadataStatus: string,
-) {
-  debugLog(
-    `[broadcast] Sending post-metadata-status-update for postId=${postId}, metadataStatus=${metadataStatus}`,
-  );
-  sendEventToUser(userId, "post-metadata-status-update", { postId, metadataStatus });
-}
-
 export async function broadcastAvatarStatusUpdate(
   userId: string,
   avatarId: string,
