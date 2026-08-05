@@ -17,6 +17,7 @@ function buildPrompt(platform: Platform, input: CaptionInput, title: string): Pr
 }
 
 function parseResponse(platform: Platform, raw: string): PlatformMetadata {
+  // Strip markdown code fences if present
   const cleaned = raw.replace(/```(?:json)?\n?/g, "").trim();
   const parsed = JSON.parse(cleaned);
 

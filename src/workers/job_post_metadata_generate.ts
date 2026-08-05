@@ -76,6 +76,9 @@ async function extractVideoMedia(buffer: Buffer): Promise<VideoMedia> {
     await writeFileFs(tmpIn, buffer);
 
     const duration = await getVideoDurationSeconds(tmpIn);
+    debugLog(
+      `[post.metadata.generate] video duration=${duration.toFixed(2)}s, extracting ${VIDEO_FRAME_COUNT} frames`,
+    );
 
     const step = duration / VIDEO_FRAME_COUNT;
     const selectExpr = `isnan(prev_selected_t)+gte(t-prev_selected_t\\,${step.toFixed(6)})`;
@@ -99,13 +102,18 @@ async function extractVideoMedia(buffer: Buffer): Promise<VideoMedia> {
         return { mimeType: "image/jpeg", base64: frame.toString("base64") };
       }),
     );
+    debugLog(`[post.metadata.generate] extracted ${frames.length} frames`);
 
     let audio: { mimeType: string; base64: string } | null = null;
     if (await hasAudioStream(tmpIn)) {
+      debugLog(`[post.metadata.generate] audio stream found, extracting`);
       await runFfmpeg(["-i", tmpIn, "-vn", "-acodec", "libmp3lame", "-y", tmpAudio]);
       const audioBuffer = await readFile(tmpAudio);
       audio = { mimeType: "audio/mp3", base64: audioBuffer.toString("base64") };
       await unlink(tmpAudio).catch(() => {});
+      debugLog(`[post.metadata.generate] audio extracted (${audioBuffer.length} bytes)`);
+    } else {
+      debugLog(`[post.metadata.generate] no audio stream in video`);
     }
 
     return { frames, audio };
@@ -128,6 +136,9 @@ async function describeMedia(
   for (let i = 0; i < media.length; i++) {
     const buffer = media[i];
     const isVideoFile = isVideo[i];
+    debugLog(
+      `[post.metadata.generate] describing media ${i + 1}/${media.length} (${isVideoFile ? "video" : "image"}, ${buffer.length} bytes)`,
+    );
 
     if (isVideoFile) {
       const { frames, audio } = await extractVideoMedia(buffer);
@@ -135,15 +146,27 @@ async function describeMedia(
         "describe-video-frames-prompt.txt",
         { frameCount: frames.length, hasAudio: audio !== null },
       );
-      descriptions.push(
-        await adapter.describeImages(videoDescriptionPrompt, frames, audio ?? undefined),
+      const description = await adapter.describeImages(
+        videoDescriptionPrompt,
+        frames,
+        audio ?? undefined,
       );
+      debugLog(
+        `[post.metadata.generate] media ${i + 1} described (descriptionLength=${description.length})`,
+      );
+      descriptions.push(description);
     } else {
       const jpeg = await convertToJpeg(buffer);
       const imageDescriptionPrompt = await renderPromptTemplate("describe-media-prompt.txt");
-      descriptions.push(
-        await adapter.describeImage(imageDescriptionPrompt, jpeg.toString("base64"), "image/jpeg"),
+      const description = await adapter.describeImage(
+        imageDescriptionPrompt,
+        jpeg.toString("base64"),
+        "image/jpeg",
       );
+      debugLog(
+        `[post.metadata.generate] media ${i + 1} described (descriptionLength=${description.length})`,
+      );
+      descriptions.push(description);
     }
   }
   return descriptions;
@@ -237,7 +260,7 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
       const visualDescriptions = await describeMedia(adapter, mediaBuffers, isVideoArray);
       ctx.log(`[post.metadata.generate] got ${visualDescriptions.length} visual descriptions`);
 
-      return generateMetadata(
+      const mediaResult = await generateMetadata(
         post.platform,
         {
           visualDescriptions,
@@ -246,11 +269,13 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
         },
         post.llmModelId,
       );
+      ctx.log(`[post.metadata.generate] metadata generated for platform=${post.platform}`);
+      return mediaResult;
     }
 
     // script mode
-    ctx.log(`[post.metadata.generate] Using script (length=${post.script?.length})`);
-    return generateMetadata(
+    ctx.log(`[post.metadata.generate] script mode (length=${post.script?.length})`);
+    const scriptResult = await generateMetadata(
       post.platform,
       {
         script: post.script as string,
@@ -259,6 +284,8 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
       },
       post.llmModelId,
     );
+    ctx.log(`[post.metadata.generate] metadata generated for platform=${post.platform}`);
+    return scriptResult;
   },
   async onSuccess(db, payload, result) {
     const existing = await db.post.findUnique({
@@ -266,6 +293,9 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
       select: { type: true },
     });
     const isCaptionPost = existing?.type === "CAPTION";
+    debugLog(
+      `[post.metadata.generate] onSuccess: postId=${payload.postId}, isCaptionPost=${isCaptionPost}, platform=${(result as PlatformMetadata).platform}`,
+    );
 
     const post = await safeDbUpdate(
       () =>
@@ -284,10 +314,16 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
     );
     if (post?.userId) {
       if (isCaptionPost) {
+        debugLog(
+          `[post.metadata.generate] broadcasting post-status-update COMPLETED for userId=${post.userId}`,
+        );
         await broadcastWithContext("post-status-update", () =>
           broadcastPostStatusUpdate(post.userId as string, payload.postId, POST_STATUS.COMPLETED),
         ).catch(() => {});
       } else {
+        debugLog(
+          `[post.metadata.generate] broadcasting post-metadata-status-update COMPLETED for userId=${post.userId}`,
+        );
         await broadcastWithContext("post-metadata-status-update", () =>
           broadcastPostMetadataStatusUpdate(
             post.userId as string,
@@ -304,6 +340,9 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
       select: { type: true },
     });
     const isCaptionPost = existing?.type === "CAPTION";
+    debugLog(
+      `[post.metadata.generate] onFailure: postId=${payload.postId}, isCaptionPost=${isCaptionPost}, error="${error}"`,
+    );
 
     const post = await safeDbUpdate(
       () =>
@@ -320,10 +359,16 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
     );
     if (post?.userId) {
       if (isCaptionPost) {
+        debugLog(
+          `[post.metadata.generate] broadcasting post-status-update FAILED for userId=${post.userId}`,
+        );
         await broadcastWithContext("post-status-update", () =>
           broadcastPostStatusUpdate(post.userId as string, payload.postId, POST_STATUS.FAILED),
         ).catch(() => {});
       } else {
+        debugLog(
+          `[post.metadata.generate] broadcasting post-metadata-status-update FAILED for userId=${post.userId}`,
+        );
         await broadcastWithContext("post-metadata-status-update", () =>
           broadcastPostMetadataStatusUpdate(
             post.userId as string,
