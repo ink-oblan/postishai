@@ -4,6 +4,7 @@ import { Dialog } from "@base-ui/react";
 import { Check, ChevronLeft, ChevronRight, Loader2, Plus, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
+import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -142,6 +143,7 @@ export function PostWizard() {
       }
       const { script: generated } = await res.json();
       setScript(generated);
+      posthog.capture("ai_script_generated", { platform: data.platform });
       setAiScriptOpen(false);
       setAiScriptDetails("");
       toast.success("Script generated!");
@@ -166,6 +168,10 @@ export function PostWizard() {
         throw new Error(err.error ?? "Failed to create post");
       }
       const post = await res.json();
+      posthog.capture("post_created", {
+        platform: data.platform,
+        has_avatar_variation: !!data.avatarVariationId,
+      });
       toast.success("Post created! Metadata generation started.");
       router.push(`/posts/${post.id}`);
     } catch (err) {

@@ -2,6 +2,12 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { POST_STATUS, STATUS_LABELS } from "@/lib/constants";
 
+const TRUTHY_VALUES = new Set(["1", "true", "yes", "on"]);
+export function isTruthyEnv(value: string | undefined): boolean {
+  if (!value) return false;
+  return TRUTHY_VALUES.has(value.trim().toLowerCase());
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import "./globals.css";
+import { PostHogPageView } from "@/components/PostHogPageView";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { AppConfigProvider } from "@/lib/app-config-context";
@@ -26,6 +28,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="h-full bg-background text-foreground">
         <AppConfigProvider config={{ selfDeployment: config.selfDeployment }}>
           <ThemeProvider>
+            <Suspense fallback={null}>
+              <PostHogPageView />
+            </Suspense>
             {children}
             <Toaster />
           </ThemeProvider>

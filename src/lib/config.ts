@@ -1,6 +1,7 @@
 import type { StorageMode } from "./storage-mode";
+import { isTruthyEnv } from "./utils";
 
-const TRUTHY_VALUES = new Set(["1", "true", "yes", "on"]);
+export { isTruthyEnv };
 
 function required(name: string): string {
   const value = process.env[name];
@@ -18,14 +19,9 @@ function withDefault(name: string, fallback: string): string {
   return process.env[name] || fallback;
 }
 
-export function isTruthyEnv(value: string | undefined): boolean {
-  if (!value) return false;
-  return TRUTHY_VALUES.has(value.trim().toLowerCase());
-}
-
 export const config = {
   get selfDeployment() {
-    const val = process.env.SELF_DEPLOYMENT;
+    const val = process.env.NEXT_PUBLIC_SELF_DEPLOYMENT;
     if (val === undefined) return true;
     return isTruthyEnv(val);
   },

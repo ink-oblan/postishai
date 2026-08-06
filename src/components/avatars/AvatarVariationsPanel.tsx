@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -301,6 +302,10 @@ export function AvatarVariationsPanel({
         throw new Error(err.error ?? "Failed to create variation");
       }
       const created = (await res.json()) as AvatarVariation;
+      posthog.capture("avatar_variation_created", {
+        scope: scope ?? "all",
+        is_replacement: !!replaceVariationId,
+      });
       setVariations((prev) => [...prev.filter((v) => v.id !== replaceVariationId), created]);
       if (replaceVariationId) onVariationDelete?.(replaceVariationId);
       resetForm();
@@ -321,6 +326,7 @@ export function AvatarVariationsPanel({
       });
       if (!res.ok) throw new Error("Failed to regenerate");
       const updated = (await res.json()) as AvatarVariation;
+      posthog.capture("avatar_variation_regeneration_started");
       setVariations((prev) => prev.map((v) => (v.id === variation.id ? updated : v)));
       toast.success("Regeneration started");
     } catch {
@@ -339,6 +345,7 @@ export function AvatarVariationsPanel({
         const err = await res.json();
         throw new Error(err.error ?? "Failed to delete");
       }
+      posthog.capture("avatar_variation_archived");
       setVariations((prev) => prev.filter((v) => v.id !== deleteTarget.id));
       onVariationDelete?.(deleteTarget.id);
       toast.success("Variation archived");

@@ -5,6 +5,7 @@ import { AlertTriangle, Download, Loader2, Pencil, RefreshCw } from "lucide-reac
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import type React from "react";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -378,6 +379,10 @@ export function PostEditPanel({
         statusLabel: nextStatusLabel,
       };
 
+      posthog.capture(
+        updated.metadataRegenerated ? "post_metadata_regeneration_started" : "post_updated",
+        { avatar_changed: avatarId !== savedAvatarId },
+      );
       toast.success(
         updated.metadataRegenerated
           ? post.status === POST_STATUS.FAILED

@@ -2,6 +2,7 @@
 
 import { Loader2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { MediaUploader } from "@/components/posts/MediaUploader";
@@ -71,6 +72,10 @@ export function CaptionGenerator() {
         throw new Error(err.error ?? "Failed to generate caption");
       }
       const { postId } = await res.json();
+      posthog.capture("caption_generation_started", {
+        media_file_count: mediaFiles.length,
+        platform,
+      });
 
       // Navigate to post page where caption will load
       router.push(`/posts/${postId}`);
