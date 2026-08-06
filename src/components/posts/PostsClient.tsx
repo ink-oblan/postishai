@@ -3,6 +3,7 @@
 import type { Post } from "@prisma/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { POST_STATUS } from "@/lib/constants";
+import { debugLog } from "@/lib/debug";
 import { POLLING } from "@/lib/polling-config";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
 import { type AllStatus, SSE_STATUS } from "@/lib/sse-constants";
@@ -45,8 +46,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         // Check if any are still generating
         const hasGenerating = updated.some((p: Post) => p.status === POST_STATUS.GENERATING);
         if (!hasGenerating && pollIntervalRef.current) {
-          if (process.env.NODE_ENV === "development")
-            console.log("[PostsList] Stopping poll - all posts completed");
+          debugLog("[PostsList] Stopping poll - all posts completed");
           clearInterval(pollIntervalRef.current);
           pollIntervalRef.current = null;
           // Fetch full list to get updated statuses (COMPLETED/FAILED)
@@ -80,13 +80,11 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
 
     const handleUpdate = (payload: unknown) => {
       const update = payload as { postId: string; status: string };
-      if (process.env.NODE_ENV === "development")
-        console.log(`[PostsList] Update: ${update.postId} = ${update.status}`);
+      debugLog(`[PostsList] Update: ${update.postId} = ${update.status}`);
 
       // Handle ARCHIVED separately - remove immediately to avoid UI flicker
       if (update.status === SSE_STATUS.ARCHIVED) {
-        if (process.env.NODE_ENV === "development")
-          console.log("[PostsList] Post archived, removing from list");
+        debugLog("[PostsList] Post archived, removing from list");
         // Remove archived post immediately
         setPosts((prev) => prev.filter((p) => p.id !== update.postId));
         setPostStatuses((prev) => {
@@ -120,8 +118,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
 
       if (update.status === POST_STATUS.GENERATING) {
         if (!pollIntervalRef.current) {
-          if (process.env.NODE_ENV === "development")
-            console.log("[PostsList] Starting poll for generating posts");
+          debugLog("[PostsList] Starting poll for generating posts");
           // First fetch full list to get the new post, then poll for updates
           fetchPosts(false).then(() => {
             if (!pollIntervalRef.current) {
@@ -135,7 +132,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
         (update.status === POST_STATUS.COMPLETED || update.status === POST_STATUS.FAILED) &&
         pollIntervalRef.current
       ) {
-        if (process.env.NODE_ENV === "development") console.log("[PostsList] Stopping poll");
+        debugLog("[PostsList] Stopping poll");
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
         // Schedule a full refresh to get updated statuses
@@ -145,8 +142,7 @@ export function PostsClient({ initialPosts }: PostsClientProps) {
 
     const handleStatsRefresh = () => {
       // When stats refresh (which indicates status changes), schedule full list fetch
-      if (process.env.NODE_ENV === "development")
-        console.log("[PostsList] Stats refreshed, scheduling fetch");
+      debugLog("[PostsList] Stats refreshed, scheduling fetch");
       scheduleFullRefresh();
     };
 

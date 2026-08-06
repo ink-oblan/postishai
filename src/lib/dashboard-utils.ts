@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { debugLog } from "@/lib/debug";
 
 export interface DashboardData {
   avatarCount: number;
@@ -18,8 +19,7 @@ export interface DashboardData {
 
 export async function fetchDashboardData(userId: string): Promise<DashboardData> {
   const activeWhere = { archivedAt: null, userId };
-  if (process.env.NODE_ENV === "development")
-    console.log(`[dashboard] Fetching dashboard data for userId=${userId}`);
+  debugLog(`[dashboard] Fetching dashboard data for userId=${userId}`);
 
   const [avatarCount, postCount, recentPosts, statusCounts] = await Promise.all([
     prisma.avatar.count({ where: activeWhere }),

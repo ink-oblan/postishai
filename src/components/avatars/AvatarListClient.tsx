@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AVATAR_STATUS } from "@/lib/constants";
+import { debugLog } from "@/lib/debug";
 import { addEventListener, onTabMessage } from "@/lib/sse-client";
 import { SSE_STATUS } from "@/lib/sse-constants";
 import { AvatarGrid } from "./AvatarGrid";
@@ -44,9 +45,7 @@ export function AvatarListClient({ initialAvatars }: AvatarListClientProps) {
   useEffect(() => {
     const handleUpdate = (payload: unknown) => {
       const update = payload as { avatarId: string; status: string };
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[AvatarList] Update: ${update.avatarId} = ${update.status}`);
-      }
+      debugLog(`[AvatarList] Update: ${update.avatarId} = ${update.status}`);
 
       // Track new avatars
       setPendingAvatarIds((prev) => {
