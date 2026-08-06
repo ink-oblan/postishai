@@ -4,13 +4,16 @@ import { FileVideo, LayoutDashboard, LogOut, Menu, Settings, Users, X } from "lu
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import posthog from "posthog-js";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type UserInfo = {
+  id: string;
   name: string | null;
   email: string;
   avatarUrl: string | null;
+  role: string;
 };
 
 const navItems = [
@@ -58,6 +61,7 @@ function ProfileFooter({
   const active = pathname.startsWith("/settings");
 
   async function handleLogout() {
+    posthog.reset();
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   }
@@ -115,6 +119,14 @@ function Logo({ onClick }: { onClick?: () => void }) {
 export function Sidebar({ user }: { user: UserInfo }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    posthog.identify(user.id, {
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+  }, [user.id, user.email, user.name, user.role]);
 
   return (
     <>
