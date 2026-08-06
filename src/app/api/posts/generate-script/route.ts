@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import { renderPromptTemplate } from "@/lib/prompts";
+import { PLATFORM_FULL_NAMES } from "@/lib/utils";
 
 export const POST = withAuth(async function POST(req: NextRequest) {
   const { title, platform, details, llmModelId } = await req.json();
@@ -10,14 +11,7 @@ export const POST = withAuth(async function POST(req: NextRequest) {
     return NextResponse.json({ error: "llmModelId is required" }, { status: 400 });
   }
 
-  const platformLabel =
-    platform === "INSTAGRAM"
-      ? "Instagram Reels"
-      : platform === "TIKTOK"
-        ? "TikTok"
-        : platform === "YOUTUBE_SHORTS"
-          ? "YouTube Shorts"
-          : "short-form video";
+  const platformLabel = PLATFORM_FULL_NAMES[platform] ?? "short-form video";
 
   const prompt = await renderPromptTemplate("script-generate-prompt.txt", {
     platformLabel,
