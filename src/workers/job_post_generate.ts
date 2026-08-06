@@ -3,9 +3,9 @@ import { readFile as readFileFs, unlink, writeFile as writeFileFs } from "node:f
 import { POST_STATUS, VARIATION_STATUS } from "@/lib/constants";
 import { runFfmpeg } from "@/lib/ffmpeg";
 import { createVideo, downloadVideo, getVideoStatus, uploadAvatarImage } from "@/lib/heygen/client";
+import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
 import { POLLING } from "@/lib/polling-config";
 import { readFile, writeFile } from "@/lib/storage";
-import { isMockEnabled, MOCK_TIMINGS } from "@/mocks/mock-config";
 import { generateMockVideo } from "@/mocks/mock-generators";
 import { safeDbUpdate } from "@/workers/db-utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";

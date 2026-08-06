@@ -1,8 +1,8 @@
 import sharp from "sharp";
 import { AVATAR_STATUS } from "@/lib/constants";
 import { getImageAdapter } from "@/lib/image-models/registry";
+import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
 import { archiveFile, writeFile } from "@/lib/storage";
-import { isMockEnabled, MOCK_TIMINGS } from "@/mocks/mock-config";
 import { generateMockAvatarImage } from "@/mocks/mock-generators";
 import { safeDbUpdate } from "@/workers/db-utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
