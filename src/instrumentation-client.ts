@@ -27,5 +27,6 @@ if (!selfDeployment) {
       capture_pageview: false,
       debug: process.env.NODE_ENV === "development",
     });
+    posthog.register({ environment: process.env.NODE_ENV });
   }
 }
