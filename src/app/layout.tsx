@@ -3,7 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import "./globals.css";
-import { PostHogPageView } from "@/components/PostHogPageView";
+import { PostHogInit, PostHogPageView } from "@/components/PostHogProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { AppConfigProvider } from "@/lib/app-config-context";
@@ -26,8 +26,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${plusJakarta.variable} h-full`} suppressHydrationWarning>
       <body className="h-full bg-background text-foreground">
-        <AppConfigProvider config={{ selfDeployment: config.selfDeployment }}>
+        <AppConfigProvider
+          config={{
+            selfDeployment: config.selfDeployment,
+            posthogProjectToken: config.posthog.projectToken,
+            posthogHost: config.posthog.host,
+          }}
+        >
           <ThemeProvider>
+            <PostHogInit />
             <Suspense fallback={null}>
               <PostHogPageView />
             </Suspense>

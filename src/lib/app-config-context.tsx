@@ -4,6 +4,8 @@ import { createContext, useContext } from "react";
 
 export interface AppConfig {
   selfDeployment: boolean;
+  posthogProjectToken?: string;
+  posthogHost?: string;
 }
 
 const AppConfigContext = createContext<AppConfig | null>(null);

@@ -103,4 +103,13 @@ export const config = {
       return optional("TELEGRAM_APPROVAL_CHAT_ID");
     },
   },
+
+  posthog: {
+    get projectToken() {
+      return optional("POSTHOG_PROJECT_TOKEN");
+    },
+    get host() {
+      return optional("POSTHOG_HOST");
+    },
+  },
 };

@@ -2,17 +2,13 @@ import { logs, SeverityNumber } from "@opentelemetry/api-logs";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchLogRecordProcessor, LoggerProvider } from "@opentelemetry/sdk-logs";
-import { isTruthyEnv } from "./lib/utils";
-
-const selfDeployment =
-  process.env.NEXT_PUBLIC_SELF_DEPLOYMENT === undefined ||
-  isTruthyEnv(process.env.NEXT_PUBLIC_SELF_DEPLOYMENT);
+import { config } from "./lib/config";
 
 let posthogLoggerProvider: LoggerProvider | undefined;
 
-if (!selfDeployment) {
-  const projectToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
-  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+if (!config.selfDeployment) {
+  const projectToken = config.posthog.projectToken;
+  const host = config.posthog.host;
 
   if (projectToken && host) {
     posthogLoggerProvider = new LoggerProvider({
