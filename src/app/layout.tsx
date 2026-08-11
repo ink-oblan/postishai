@@ -3,9 +3,11 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import "./globals.css";
+import { CookieConsent } from "@/components/CookieConsent";
 import { PostHogInit, PostHogPageView } from "@/components/PostHogProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { AnalyticsConsentProvider } from "@/lib/analytics-consent";
 import { AppConfigProvider } from "@/lib/app-config-context";
 import { config } from "@/lib/config";
 
@@ -34,12 +36,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         >
           <ThemeProvider>
-            <PostHogInit />
-            <Suspense fallback={null}>
-              <PostHogPageView />
-            </Suspense>
-            {children}
-            <Toaster />
+            <AnalyticsConsentProvider>
+              <PostHogInit />
+              <Suspense fallback={null}>
+                <PostHogPageView />
+              </Suspense>
+              {children}
+              <CookieConsent />
+              <Toaster />
+            </AnalyticsConsentProvider>
           </ThemeProvider>
         </AppConfigProvider>
       </body>
