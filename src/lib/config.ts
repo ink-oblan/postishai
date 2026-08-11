@@ -21,7 +21,7 @@ function withDefault(name: string, fallback: string): string {
 
 export const config = {
   get selfDeployment() {
-    const val = process.env.NEXT_PUBLIC_SELF_DEPLOYMENT;
+    const val = process.env.SELF_DEPLOYMENT;
     if (val === undefined) return true;
     return isTruthyEnv(val);
   },

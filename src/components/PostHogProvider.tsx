@@ -20,7 +20,7 @@ export function PostHogInit() {
         const missing = !posthogProjectToken ? "POSTHOG_PROJECT_TOKEN" : "POSTHOG_HOST";
         console.warn(
           `${missing} is missing — PostHog is not initialized and events are silently dropped. ` +
-            `Set ${missing} (or NEXT_PUBLIC_SELF_DEPLOYMENT=true) to resolve this.`,
+            `Set ${missing} (or SELF_DEPLOYMENT=true) to resolve this.`,
         );
       }
       return;
