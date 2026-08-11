@@ -22,7 +22,7 @@ export default function PrivacyPage() {
           >
             Privacy Policy
           </h1>
-          <p className="text-gray-500 text-sm">Effective date: July 10, 2026</p>
+          <p className="text-gray-500 text-sm">Effective date: August 11, 2026</p>
         </div>
 
         <div className="prose prose-gray max-w-none">
@@ -43,8 +43,10 @@ export default function PrivacyPage() {
               later.
             </p>
             <p>
-              <strong>Usage data.</strong> We collect basic information about how you use the
-              platform (pages visited, features used, errors encountered) to improve the service.
+              <strong>Usage data.</strong> We collect information about how you use the platform —
+              pages visited, features used, and errors encountered — through our analytics provider
+              (see Section 4). This may include a persistent identifier and technical details such
+              as your browser type, device, and approximate location derived from your IP address.
             </p>
             <p>
               <strong>Communications.</strong> If you contact us by email or join our waitlist, we
@@ -87,7 +89,34 @@ export default function PrivacyPage() {
             </p>
           </Section>
 
-          <Section title="4. Content Ownership">
+          <Section title="4. Analytics &amp; Error Tracking">
+            <p>
+              We use <strong>PostHog</strong> to understand how the platform is used and to detect
+              and diagnose errors. PostHog is hosted in the European Union. As part of this, we may
+              send to PostHog:
+            </p>
+            <ul>
+              <li>
+                an identifier linked to your account, together with your email, name, and role, so
+                we can understand usage on a per-account basis;
+              </li>
+              <li>
+                product and interaction events — for example, pages viewed, posts and avatars
+                created, and waitlist sign-ups;
+              </li>
+              <li>
+                error and diagnostic information, including exception details and server-side logs,
+                which may incidentally contain personal data.
+              </li>
+            </ul>
+            <p>
+              PostHog processes this data on our behalf as a data processor, under its own privacy
+              policy and our data processing agreement. We use it only to operate, secure, and
+              improve PostishAI — never for advertising.
+            </p>
+          </Section>
+
+          <Section title="5. Content Ownership">
             <p>
               You retain ownership of the content you upload and create on PostishAI. We do not
               claim any intellectual property rights over your content. We do not use your generated
@@ -95,7 +124,7 @@ export default function PrivacyPage() {
             </p>
           </Section>
 
-          <Section title="5. Data Sharing">
+          <Section title="6. Data Sharing">
             <p>
               We do not sell, trade, or share your personal data with third parties except in the
               following cases:
@@ -103,7 +132,7 @@ export default function PrivacyPage() {
             <ul>
               <li>
                 <strong>Service providers</strong> — infrastructure, hosting, and analytics tools
-                necessary to operate the platform
+                necessary to operate the platform (such as PostHog — see Section 4)
               </li>
               <li>
                 <strong>Legal compliance</strong> — when required by law or to protect the rights,
@@ -112,22 +141,24 @@ export default function PrivacyPage() {
             </ul>
           </Section>
 
-          <Section title="6. Cookies">
+          <Section title="7. Cookies &amp; Local Storage">
             <p>
               We use a session cookie to keep you logged in. This cookie is essential for the
-              service to function and does not track you across other websites. We do not use
-              third-party tracking or advertising cookies.
+              service to function. Our analytics provider, PostHog, also stores identifiers in
+              cookies and in your browser&apos;s local storage to recognize returning visitors and
+              measure product usage (see Section 4). We do not use cookies for advertising, and we
+              do not sell your data.
             </p>
           </Section>
 
-          <Section title="7. Security">
+          <Section title="8. Security">
             <p>
               We use industry-standard measures to protect your data, including encrypted
               connections (HTTPS) and secure session management.
             </p>
           </Section>
 
-          <Section title="8. Your Rights">
+          <Section title="9. Your Rights">
             <p>You can at any time:</p>
             <ul>
               <li>Request a copy of the data we hold about you</li>
@@ -143,16 +174,16 @@ export default function PrivacyPage() {
             </p>
           </Section>
 
-          <Section title="9. Data Retention">
+          <Section title="10. Data Retention">
             <p>
               We retain your account data for as long as your account is active. If you request
-              deletion, we will remove your personal data within 30 days. Generated content (videos,
-              scripts, captions) is deleted along with your account. Backups may retain data for up
-              to 90 days after deletion.
+              deletion, we will remove your personal data — including profiles held by our analytics
+              provider — within 30 days. Generated content (videos, scripts, captions) is deleted
+              along with your account. Backups may retain data for up to 90 days after deletion.
             </p>
           </Section>
 
-          <Section title="10. Changes to This Policy">
+          <Section title="11. Changes to This Policy">
             <p>
               We may update this policy from time to time. We will notify you of material changes by
               email. Continued use of the service after changes take effect constitutes acceptance
@@ -160,7 +191,7 @@ export default function PrivacyPage() {
             </p>
           </Section>
 
-          <Section title="11. Contact">
+          <Section title="12. Contact">
             <p>
               If you have questions about this privacy policy, contact us at{" "}
               <a href="mailto:support@postishai.com" className="text-primary hover:underline">
