@@ -2,6 +2,7 @@
 
 import { Loader2, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export function DeletePostButton({ postId }: { postId: string }) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to delete");
       }
+      posthog.capture("post_archived");
       toast.success("Post deleted");
       router.refresh();
     } catch (err) {

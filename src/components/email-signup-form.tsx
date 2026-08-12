@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import posthog from "posthog-js";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { normalizeWaitlistEmail, waitlistEmailPattern } from "@/lib/waitlist";
@@ -93,6 +94,7 @@ export function EmailSignupForm({ variant = "light", label = "Notify me" }: Emai
 
       if (res.ok) {
         const data = (await res.json()) as { alreadyRegistered?: boolean };
+        posthog.capture("waitlist_joined", { already_registered: !!data.alreadyRegistered });
         setStatus(data.alreadyRegistered ? "already" : "success");
         setEmail("");
       } else {

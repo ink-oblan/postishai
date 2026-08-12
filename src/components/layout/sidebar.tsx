@@ -4,13 +4,17 @@ import { FileVideo, LayoutDashboard, LogOut, Menu, Settings, Users, X } from "lu
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import posthog from "posthog-js";
+import { useEffect, useState } from "react";
+import { useAnalyticsConsent } from "@/lib/analytics-consent";
 import { cn } from "@/lib/utils";
 
 type UserInfo = {
+  id: string;
   name: string | null;
   email: string;
   avatarUrl: string | null;
+  role: string;
 };
 
 const navItems = [
@@ -55,9 +59,14 @@ function ProfileFooter({
   user: UserInfo;
 }) {
   const router = useRouter();
+  const { consent } = useAnalyticsConsent();
   const active = pathname.startsWith("/settings");
 
   async function handleLogout() {
+    posthog.reset();
+    // reset() returns PostHog to its opted-out default, so re-affirm consent to
+    // keep capturing (anonymously) for users who already opted in.
+    if (consent === "granted") posthog.opt_in_capturing();
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   }
@@ -114,7 +123,18 @@ function Logo({ onClick }: { onClick?: () => void }) {
 
 export function Sidebar({ user }: { user: UserInfo }) {
   const pathname = usePathname();
+  const { consent } = useAnalyticsConsent();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    // Only tie the user's identity to PostHog once they have opted in.
+    if (consent !== "granted" || !posthog.__loaded) return;
+    posthog.identify(user.id, {
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+  }, [user.id, user.email, user.name, user.role, consent]);
 
   return (
     <>

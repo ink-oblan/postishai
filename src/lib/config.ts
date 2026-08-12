@@ -1,6 +1,7 @@
 import type { StorageMode } from "./storage-mode";
+import { isTruthyEnv } from "./utils";
 
-const TRUTHY_VALUES = new Set(["1", "true", "yes", "on"]);
+export { isTruthyEnv };
 
 function required(name: string): string {
   const value = process.env[name];
@@ -16,11 +17,6 @@ function optional(name: string): string | undefined {
 
 function withDefault(name: string, fallback: string): string {
   return process.env[name] || fallback;
-}
-
-export function isTruthyEnv(value: string | undefined): boolean {
-  if (!value) return false;
-  return TRUTHY_VALUES.has(value.trim().toLowerCase());
 }
 
 export const config = {
@@ -105,6 +101,15 @@ export const config = {
     },
     get approvalChatId() {
       return optional("TELEGRAM_APPROVAL_CHAT_ID");
+    },
+  },
+
+  posthog: {
+    get projectToken() {
+      return optional("POSTHOG_PROJECT_TOKEN");
+    },
+    get host() {
+      return optional("POSTHOG_HOST");
     },
   },
 };

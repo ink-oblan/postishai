@@ -2,6 +2,7 @@
 
 import { Archive, Loader2, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export function AvatarActions({ avatar }: Props) {
         body: JSON.stringify({ regenerate: true }),
       });
       if (!res.ok) throw new Error("Failed to regenerate");
+      posthog.capture("avatar_regeneration_started");
       toast.success("Regeneration started");
       router.refresh();
     } catch {
@@ -52,6 +54,7 @@ export function AvatarActions({ avatar }: Props) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to archive");
       }
+      posthog.capture("avatar_archived");
       toast.success("Avatar archived");
       router.push("/avatars");
     } catch (err) {

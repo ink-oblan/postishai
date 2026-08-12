@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Loader2, Sparkles, Upload, XCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import posthog from "posthog-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { type AvatarVoice, AvatarVoiceField } from "@/components/avatars/AvatarVoiceField";
@@ -329,6 +330,7 @@ export function NewAvatarForm({ mode, onModeChange }: NewAvatarFormProps) {
         throw new Error(err.error ?? "Failed to create avatar");
       }
       const avatar = await res.json();
+      posthog.capture("avatar_created", { source: mode });
       toast.success(mode === "upload" ? "Avatar created!" : "Generating image…");
       const redirectTo = searchParams.get("redirectTo");
       if (redirectTo) {
