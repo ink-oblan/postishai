@@ -52,5 +52,5 @@ export function DashboardClient({ initialData }: Props) {
     };
   }, [debouncedSetData]);
 
-  return <DashboardContent data={data} />;
+  return <DashboardContent data={data} hasBrandProfile={data.hasBrandProfile} />;
 }

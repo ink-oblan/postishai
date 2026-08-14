@@ -4,14 +4,23 @@ import { PlatformChip } from "@/components/ui/platform-chip";
 import { StatusPip } from "@/components/ui/status-pip";
 import { POST_STATUS, STATUS_LABELS } from "@/lib/constants";
 import type { DashboardData } from "@/lib/dashboard-utils";
+import { BrandPrompt } from "./BrandPrompt";
 
-export function DashboardContent({ data }: { data: DashboardData }) {
+export function DashboardContent({
+  data,
+  hasBrandProfile = false,
+}: {
+  data: DashboardData;
+  hasBrandProfile?: boolean;
+}) {
   const { avatarCount, postCount, completedCount, generatingCount, completionRate, recentPosts } =
     data;
 
   return (
     <div className="min-h-full bg-background text-foreground">
       <div className="space-y-10 px-6 py-8 sm:px-10">
+        <BrandPrompt hasBrandProfile={hasBrandProfile} />
+
         {/* ── Header ── */}
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
