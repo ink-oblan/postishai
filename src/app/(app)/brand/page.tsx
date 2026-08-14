@@ -4,10 +4,21 @@ import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { BrandSetupWizard } from "./components/BrandSetupWizard";
+import { DeleteBrandButton } from "./components/DeleteBrandButton";
 
 export const metadata = {
   title: "Brand Profile — PostishAI",
 };
+
+interface Color {
+  id: string;
+  hex: string;
+}
+
+interface Font {
+  id: string;
+  name: string;
+}
 
 export default async function BrandPage() {
   const session = await requireSession();
@@ -30,7 +41,7 @@ export default async function BrandPage() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="mb-2 text-3xl font-bold">Your Brand Profiles</h1>
+                <h1 className="mb-2 font-bold text-3xl">Your Brand Profiles</h1>
                 <p className="text-muted-foreground">Manage your brand identities</p>
               </div>
               <Link href="/brand/new">
@@ -45,15 +56,15 @@ export default async function BrandPage() {
                   className="space-y-4 rounded-lg border border-border bg-card p-6"
                 >
                   <div>
-                    <h2 className="text-xl font-semibold">{brandProfile.brandName}</h2>
+                    <h2 className="font-semibold text-xl">{brandProfile.brandName}</h2>
                     {brandProfile.topic && (
-                      <p className="text-sm text-muted-foreground">{brandProfile.topic}</p>
+                      <p className="text-muted-foreground text-sm">{brandProfile.topic}</p>
                     )}
                   </div>
 
                   {brandProfile.targetAudience && (
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground">
+                      <h3 className="font-semibold text-muted-foreground text-sm">
                         Target Audience
                       </h3>
                       <p className="mt-1 text-sm">{brandProfile.targetAudience}</p>
@@ -62,16 +73,16 @@ export default async function BrandPage() {
 
                   {brandProfile.mission && (
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground">Mission</h3>
+                      <h3 className="font-semibold text-muted-foreground text-sm">Mission</h3>
                       <p className="mt-1 text-sm">{brandProfile.mission}</p>
                     </div>
                   )}
 
                   {brandProfile.colors && (
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">Colors</h3>
+                      <h3 className="mb-2 font-semibold text-muted-foreground text-sm">Colors</h3>
                       <div className="flex gap-2">
-                        {JSON.parse(brandProfile.colors).map((color: any) => (
+                        {(JSON.parse(brandProfile.colors) as Color[]).map((color) => (
                           <div
                             key={color.id}
                             className="h-8 w-8 rounded border border-border"
@@ -85,11 +96,11 @@ export default async function BrandPage() {
 
                   {brandProfile.typography && (
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+                      <h3 className="mb-2 font-semibold text-muted-foreground text-sm">
                         Typefaces
                       </h3>
                       <div className="flex flex-wrap gap-2">
-                        {JSON.parse(brandProfile.typography).map((font: any) => (
+                        {(JSON.parse(brandProfile.typography) as Font[]).map((font) => (
                           <span
                             key={font.id}
                             className="inline-block rounded bg-muted px-2 py-1 text-xs"
@@ -107,6 +118,7 @@ export default async function BrandPage() {
                         Edit
                       </Button>
                     </Link>
+                    <DeleteBrandButton brandId={brandProfile.id} />
                   </div>
                 </div>
               ))}
