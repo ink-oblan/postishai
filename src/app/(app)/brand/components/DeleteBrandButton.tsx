@@ -13,25 +13,37 @@ export function DeleteBrandButton({ brandId }: DeleteBrandButtonProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDelete = async () => {
     setIsDeleting(true);
+    setError(null);
     try {
       const response = await fetch(`/api/brand-profile?id=${brandId}`, {
         method: "DELETE",
       });
 
+      if (response.status === 404) {
+        setError("Brand not found");
+        return;
+      }
+
+      if (response.status === 403) {
+        setError("You don't have permission to delete this brand");
+        return;
+      }
+
       if (!response.ok) {
-        const error = await response.json();
-        alert(`Failed to delete brand: ${error.error}`);
+        const data = await response.json();
+        setError(data.error || "Failed to delete brand");
         return;
       }
 
       router.refresh();
       setShowConfirm(false);
-    } catch (error) {
-      console.error("Error deleting brand:", error);
-      alert("Failed to delete brand");
+    } catch (err) {
+      console.error("Error deleting brand:", err);
+      setError("Network error. Please try again.");
     } finally {
       setIsDeleting(false);
     }
@@ -39,25 +51,31 @@ export function DeleteBrandButton({ brandId }: DeleteBrandButtonProps) {
 
   if (showConfirm) {
     return (
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="destructive"
-          size="sm"
-          onClick={handleDelete}
-          disabled={isDeleting}
-        >
-          {isDeleting ? "Deleting..." : "Confirm Delete"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setShowConfirm(false)}
-          disabled={isDeleting}
-        >
-          Cancel
-        </Button>
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Deleting..." : "Confirm Delete"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setShowConfirm(false);
+              setError(null);
+            }}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+        </div>
+        {error && <p className="text-destructive text-sm">{error}</p>}
       </div>
     );
   }

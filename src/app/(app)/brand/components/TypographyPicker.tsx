@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 export interface FontItem {
   id: string;
   name: string;
-  source: "builtin" | "uploaded"; // builtin or custom file
-  file?: File; // for uploaded fonts
+  source: "builtin" | "uploaded";
+  data?: string; // base64 encoded font file
 }
 
 interface TypographyPickerProps {
@@ -87,6 +87,7 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
   const [_selectedBuiltin, setSelectedBuiltin] = useState<string>("");
   const [fontSearch, setFontSearch] = useState<string>("");
   const [isFocused, setIsFocused] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const filteredBuiltins = useMemo(() => {
     return BUILTIN_FONTS.filter((font) =>
@@ -109,13 +110,13 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
     }
   };
 
-  const addCustomFont = (file: File) => {
+  const addCustomFont = (file: File, fileData: string) => {
     if (fonts.length < maxFonts) {
       const newFont: FontItem = {
         id: Math.random().toString(36).slice(2),
         name: file.name,
         source: "uploaded",
-        file,
+        data: fileData,
       };
       onChange([...fonts, newFont]);
     }
@@ -128,17 +129,34 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Support: .ttf, .otf, .woff, .woff2
       const validTypes = ["font/ttf", "font/otf", "font/woff", "font/woff2"];
       const isValidFont =
         validTypes.includes(file.type) || file.name.match(/\.(ttf|otf|woff|woff2)$/i);
 
-      if (isValidFont) {
-        addCustomFont(file);
-      } else {
+      if (!isValidFont) {
         alert("Please upload a valid font file (.ttf, .otf, .woff, .woff2)");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
       }
+
+      setIsLoading(true);
+      const reader = new FileReader();
+
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          addCustomFont(file, event.target.result as string);
+        }
+        setIsLoading(false);
+      };
+
+      reader.onerror = () => {
+        alert(`Failed to read ${file.name}`);
+        setIsLoading(false);
+      };
+
+      reader.readAsDataURL(file);
     }
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -160,7 +178,7 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
         {fonts.length === 0 ? (
           <p className="text-muted-foreground text-sm italic">No fonts selected yet</p>
         ) : (
-          fonts.map((font, _index) => (
+          fonts.map((font) => (
             <div
               key={font.id}
               className="flex items-center justify-between rounded-md bg-muted p-3"
@@ -242,9 +260,12 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="w-full cursor-pointer rounded-lg border-2 border-border border-dashed p-6 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
+              disabled={isLoading}
             >
               <Upload className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
-              <p className="font-medium text-sm">Click to upload</p>
+              <p className="font-medium text-sm">
+                {isLoading ? "Uploading..." : "Click to upload"}
+              </p>
               <p className="text-muted-foreground text-xs">TTF, OTF, WOFF, or WOFF2</p>
             </button>
             <input
@@ -254,6 +275,7 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
               accept=".ttf,.otf,.woff,.woff2"
               onChange={handleFileInput}
               className="hidden"
+              disabled={isLoading}
             />
           </div>
         </div>

@@ -211,10 +211,10 @@ model BrandProfile {
   mission        String?
 
   // Step 2: Visual Identity
-  colors     String? // JSON array: [{id, name, hex}, ...]
-  typography String? // JSON array: [{id, name, source}, ...]
-  logoPath   String? // JSON array: [base64, ...]
-  patterns   String? // JSON array: [base64, ...]
+  colors     String? // JSON array: [{id, name, source: builtin|uploaded, data: base64 for uploaded}]
+  typography String? // JSON array: [{id, name, source: builtin|uploaded, data: base64 for uploaded}]
+  logoPath   String? // JSON array: [{id, name, source: builtin|uploaded, data: base64 for uploaded}]
+  patterns   String? // JSON array: [{id, name, source: builtin|uploaded, data: base64 for uploaded}]
   photoStyle String?
 
   // Step 3: Tone of Voice
