@@ -1,6 +1,15 @@
 "use client";
 
-import { FileVideo, Palette, LayoutDashboard, LogOut, Menu, Settings, Users, X } from "lucide-react";
+import {
+  FileVideo,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Palette,
+  Settings,
+  Users,
+  X,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";

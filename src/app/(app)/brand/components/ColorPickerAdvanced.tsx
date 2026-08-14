@@ -1,6 +1,9 @@
 "use client";
 
+import { Palette } from "lucide-react";
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface ColorPickerAdvancedProps {
   value: string;
@@ -9,47 +12,10 @@ interface ColorPickerAdvancedProps {
   onAddColor?: (hex: string) => void;
 }
 
-interface RGB {
-  r: number;
-  g: number;
-  b: number;
-}
-
-function hexToRgb(hex: string): RGB {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
-    : { r: 0, g: 0, b: 0 };
-}
-
-function rgbToHex(r: number, g: number, b: number): string {
-  return (
-    "#" +
-    [r, g, b]
-      .map((x) => {
-        const hex = x.toString(16);
-        return hex.length === 1 ? `0${hex}` : hex;
-      })
-      .join("")
-      .toUpperCase()
-  );
-}
-
-// Get complementary color (opposite on color wheel)
-function getComplementaryColor(hex: string): string {
-  const rgb = hexToRgb(hex);
-  return rgbToHex(255 - rgb.r, 255 - rgb.g, 255 - rgb.b);
-}
-
-// RGB to HSL conversion
-function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
-  r /= 255;
-  g /= 255;
-  b /= 255;
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -60,7 +26,6 @@ function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: n
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
     switch (max) {
       case r:
         h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
@@ -74,67 +39,45 @@ function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: n
     }
   }
 
-  return { h, s, l };
-}
-
-// HSL to RGB conversion
-function hslToRgb(h: number, s: number, l: number): RGB {
-  let r = 0,
-    g = 0,
-    b = 0;
-
-  if (s === 0) {
-    r = g = b = l;
-  } else {
-    const hue2rgb = (p: number, q: number, t: number) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1 / 6) return p + (q - p) * 6 * t;
-      if (t < 1 / 2) return q;
-      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-      return p;
-    };
-
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1 / 3);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1 / 3);
-  }
-
   return {
-    r: Math.round(r * 255),
-    g: Math.round(g * 255),
-    b: Math.round(b * 255),
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100),
   };
 }
 
-// Get triadic colors (120° apart on color wheel)
-function getTriadicColors(hex: string): string[] {
-  const rgb = hexToRgb(hex);
-  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-
-  const triadic1 = hslToRgb((hsl.h + 1 / 3) % 1, hsl.s, hsl.l);
-  const triadic2 = hslToRgb((hsl.h + 2 / 3) % 1, hsl.s, hsl.l);
-
-  return [
-    rgbToHex(triadic1.r, triadic1.g, triadic1.b),
-    rgbToHex(triadic2.r, triadic2.g, triadic2.b),
-  ];
+function hslToHex(h: number, s: number, l: number): string {
+  s /= 100;
+  l /= 100;
+  const a = (s * Math.min(l, 1 - l)) / 100;
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-// Get analogous colors (30° apart)
+function getComplementaryColor(hex: string): string {
+  const { h, s, l } = hexToHsl(hex);
+  const complementaryHue = (h + 180) % 360;
+  return hslToHex(complementaryHue, s, l);
+}
+
+function getTriadicColors(hex: string): string[] {
+  const { h, s, l } = hexToHsl(hex);
+  const color1 = hslToHex((h + 120) % 360, s, l);
+  const color2 = hslToHex((h + 240) % 360, s, l);
+  return [color1, color2];
+}
+
 function getAnalogousColors(hex: string): string[] {
-  const rgb = hexToRgb(hex);
-  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-
-  const analogous1 = hslToRgb((hsl.h + 1 / 12) % 1, hsl.s, hsl.l);
-  const analogous2 = hslToRgb((hsl.h - 1 / 12 + 1) % 1, hsl.s, hsl.l);
-
-  return [
-    rgbToHex(analogous1.r, analogous1.g, analogous1.b),
-    rgbToHex(analogous2.r, analogous2.g, analogous2.b),
-  ];
+  const { h, s, l } = hexToHsl(hex);
+  const color1 = hslToHex((h - 30 + 360) % 360, s, l);
+  const color2 = hslToHex((h + 30) % 360, s, l);
+  return [color1, color2];
 }
 
 export function ColorPickerAdvanced({
@@ -143,124 +86,129 @@ export function ColorPickerAdvanced({
   label = "Color",
   onAddColor,
 }: ColorPickerAdvancedProps) {
-  const [showHarmony, setShowHarmony] = useState(false);
-  const rgb = hexToRgb(value);
-
-  // Calculate if text should be light or dark on this color
-  const luminance = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
-  const textColor = luminance > 128 ? "#000000" : "#FFFFFF";
-
-  const _handleRgbChange = (channel: "r" | "g" | "b", val: number) => {
-    const newRgb = { ...rgb, [channel]: Math.max(0, Math.min(255, val)) };
-    const newHex = rgbToHex(newRgb.r, newRgb.g, newRgb.b);
-    onChange(newHex);
-  };
-
-  const complementary = getComplementaryColor(value);
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="space-y-2">
-      <p className="font-medium text-muted-foreground text-xs">{label}</p>
+    <div className="space-y-3">
+      {isOpen && (
+        <div className="space-y-4 rounded-lg border border-border bg-muted p-4">
+          {/* Hex input */}
+          <div>
+            <Label className="mb-2 block text-sm">{label}</Label>
+            <Input
+              type="text"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="#000000"
+              className="font-mono text-sm"
+            />
+          </div>
 
-      <div className="flex items-center gap-2">
-        {/* Color sample with text */}
-        <div
-          className="flex h-12 flex-1 items-center justify-center rounded border border-border/50 font-medium text-xs transition-colors"
-          style={{ backgroundColor: value, color: textColor }}
-        >
-          Sample
-        </div>
+          {/* Color preview on background */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground text-xs">Preview</Label>
+            <div className="h-16 rounded border border-border" style={{ backgroundColor: value }} />
+          </div>
 
-        {/* Color picker */}
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-12 w-12 flex-shrink-0 cursor-pointer rounded border border-input"
-          title="Pick color"
-        />
-      </div>
+          {/* HSL display */}
+          <div className="space-y-2 rounded bg-background p-3 text-xs">
+            {(() => {
+              const { h, s, l } = hexToHsl(value);
+              return (
+                <div className="space-y-1 font-mono text-muted-foreground">
+                  <div>H: {h}°</div>
+                  <div>S: {s}%</div>
+                  <div>L: {l}%</div>
+                </div>
+              );
+            })()}
+          </div>
 
-      {/* Harmony suggestions */}
-      <div className="space-y-2 border-border/50 border-t pt-2">
-        <button
-          type="button"
-          onClick={() => setShowHarmony(!showHarmony)}
-          className="flex w-full items-center justify-between px-0 py-0 text-left transition-opacity hover:opacity-70"
-        >
-          <p className="font-medium text-muted-foreground text-xs">Harmony Suggestions</p>
-          <span className="text-muted-foreground text-xs">{showHarmony ? "−" : "+"}</span>
-        </button>
-
-        {showHarmony && (
-          <div className="space-y-3 border-border/50 border-t pt-2">
-            {/* Complementary */}
-            <div className="space-y-2">
-              <p className="font-medium text-muted-foreground text-xs">Complementary</p>
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => onAddColor?.(complementary)}
-                  className="h-8 rounded border-2 border-border ring-primary/50 transition-all hover:ring-2"
-                  style={{ backgroundColor: complementary }}
-                  title={`Click to add ${complementary}`}
-                />
-                <code className="text-center font-mono text-muted-foreground text-xs">
-                  {complementary}
-                </code>
-              </div>
+          {/* Complementary color suggestion */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between font-semibold text-xs">
+              <span>Complementary</span>
+              <button
+                type="button"
+                onClick={() => onAddColor?.(getComplementaryColor(value))}
+                className="rounded bg-primary px-2 py-1 text-primary-foreground transition-opacity hover:opacity-80"
+              >
+                + Add
+              </button>
             </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-8 w-8 rounded border border-border"
+                style={{ backgroundColor: getComplementaryColor(value) }}
+              />
+              <code className="font-mono text-muted-foreground text-xs">
+                {getComplementaryColor(value)}
+              </code>
+            </div>
+          </div>
 
-            {/* Triadic */}
-            <div className="space-y-2">
-              <p className="font-medium text-muted-foreground text-xs">Triadic</p>
-              <div className="grid grid-cols-2 gap-2">
+          {/* Triadic color suggestions */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between font-semibold text-xs">
+              <span>Triadic</span>
+              <div className="flex gap-1">
                 {getTriadicColors(value).map((color) => (
                   <button
                     key={color}
                     type="button"
                     onClick={() => onAddColor?.(color)}
-                    className="h-8 rounded border-2 border-border ring-primary/50 transition-all hover:ring-2"
-                    style={{ backgroundColor: color }}
-                    title={`Click to add ${color}`}
-                  />
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {getTriadicColors(value).map((color, idx) => (
-                  <code key={idx} className="text-center font-mono text-muted-foreground">
-                    {color}
-                  </code>
+                    className="rounded bg-primary px-2 py-1 text-primary-foreground text-xs transition-opacity hover:opacity-80"
+                  >
+                    + Add
+                  </button>
                 ))}
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {getTriadicColors(value).map((color) => (
+                <code key={color} className="text-center font-mono text-muted-foreground">
+                  {color}
+                </code>
+              ))}
+            </div>
+          </div>
 
-            {/* Analogous */}
-            <div className="space-y-2">
-              <p className="font-medium text-muted-foreground text-xs">Analogous</p>
-              <div className="grid grid-cols-2 gap-2">
+          {/* Analogous color suggestions */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between font-semibold text-xs">
+              <span>Analogous</span>
+              <div className="flex gap-1">
                 {getAnalogousColors(value).map((color) => (
                   <button
                     key={color}
                     type="button"
                     onClick={() => onAddColor?.(color)}
-                    className="h-8 rounded border-2 border-border ring-primary/50 transition-all hover:ring-2"
-                    style={{ backgroundColor: color }}
-                    title={`Click to add ${color}`}
-                  />
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {getAnalogousColors(value).map((color, idx) => (
-                  <code key={idx} className="text-center font-mono text-muted-foreground">
-                    {color}
-                  </code>
+                    className="rounded bg-primary px-2 py-1 text-primary-foreground text-xs transition-opacity hover:opacity-80"
+                  >
+                    + Add
+                  </button>
                 ))}
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {getAnalogousColors(value).map((color) => (
+                <code key={color} className="text-center font-mono text-muted-foreground">
+                  {color}
+                </code>
+              ))}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 rounded-lg border border-border bg-muted p-3 text-sm transition-colors hover:bg-muted/80"
+      >
+        <Palette className="h-4 w-4" />
+        {isOpen ? "Hide" : "Show"} Advanced Picker
+      </button>
     </div>
   );
 }
