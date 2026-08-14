@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 
 interface DeleteBrandButtonProps {
   brandId: string;
+  onDelete?: () => void;
 }
 
-export function DeleteBrandButton({ brandId }: DeleteBrandButtonProps) {
+export function DeleteBrandButton({ brandId, onDelete }: DeleteBrandButtonProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -39,6 +40,7 @@ export function DeleteBrandButton({ brandId }: DeleteBrandButtonProps) {
         return;
       }
 
+      onDelete?.();
       router.refresh();
       setShowConfirm(false);
     } catch (err) {
