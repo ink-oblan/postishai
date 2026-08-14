@@ -1,9 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { BrandSetupWizard } from "./components/BrandSetupWizard";
-import Link from "next/link";
 
 export const metadata = {
   title: "Brand Profile — PostishAI",
@@ -31,9 +31,7 @@ export default async function BrandPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="mb-2 text-3xl font-bold">Your Brand Profiles</h1>
-                <p className="text-muted-foreground">
-                  Manage your brand identities
-                </p>
+                <p className="text-muted-foreground">Manage your brand identities</p>
               </div>
               <Link href="/brand/new">
                 <Button variant="default">Create New Brand</Button>
@@ -42,7 +40,10 @@ export default async function BrandPage() {
 
             <div className="grid gap-6 md:grid-cols-2">
               {brandProfiles.map((brandProfile) => (
-                <div key={brandProfile.id} className="space-y-4 rounded-lg border border-border bg-card p-6">
+                <div
+                  key={brandProfile.id}
+                  className="space-y-4 rounded-lg border border-border bg-card p-6"
+                >
                   <div>
                     <h2 className="text-xl font-semibold">{brandProfile.brandName}</h2>
                     {brandProfile.topic && (
@@ -52,7 +53,9 @@ export default async function BrandPage() {
 
                   {brandProfile.targetAudience && (
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground">Target Audience</h3>
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        Target Audience
+                      </h3>
                       <p className="mt-1 text-sm">{brandProfile.targetAudience}</p>
                     </div>
                   )}
@@ -82,10 +85,15 @@ export default async function BrandPage() {
 
                   {brandProfile.typography && (
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">Typefaces</h3>
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+                        Typefaces
+                      </h3>
                       <div className="flex flex-wrap gap-2">
                         {JSON.parse(brandProfile.typography).map((font: any) => (
-                          <span key={font.id} className="inline-block rounded bg-muted px-2 py-1 text-xs">
+                          <span
+                            key={font.id}
+                            className="inline-block rounded bg-muted px-2 py-1 text-xs"
+                          >
                             {font.name}
                           </span>
                         ))}

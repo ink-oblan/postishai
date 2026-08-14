@@ -238,14 +238,15 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
             <Label htmlFor="font-upload" className="text-sm">
               Upload custom font
             </Label>
-            <div
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="cursor-pointer rounded-lg border-2 border-border border-dashed p-6 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
+              className="w-full cursor-pointer rounded-lg border-2 border-border border-dashed p-6 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
             >
               <Upload className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
               <p className="font-medium text-sm">Click to upload</p>
               <p className="text-muted-foreground text-xs">TTF, OTF, WOFF, or WOFF2</p>
-            </div>
+            </button>
             <input
               ref={fileInputRef}
               id="font-upload"

@@ -79,7 +79,9 @@ function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: n
 
 // HSL to RGB conversion
 function hslToRgb(h: number, s: number, l: number): RGB {
-  let r, g, b;
+  let r = 0,
+    g = 0,
+    b = 0;
 
   if (s === 0) {
     r = g = b = l;
@@ -213,9 +215,9 @@ export function ColorPickerAdvanced({
             <div className="space-y-2">
               <p className="font-medium text-muted-foreground text-xs">Triadic</p>
               <div className="grid grid-cols-2 gap-2">
-                {getTriadicColors(value).map((color, idx) => (
+                {getTriadicColors(value).map((color) => (
                   <button
-                    key={idx}
+                    key={color}
                     type="button"
                     onClick={() => onAddColor?.(color)}
                     className="h-8 rounded border-2 border-border ring-primary/50 transition-all hover:ring-2"
@@ -237,9 +239,9 @@ export function ColorPickerAdvanced({
             <div className="space-y-2">
               <p className="font-medium text-muted-foreground text-xs">Analogous</p>
               <div className="grid grid-cols-2 gap-2">
-                {getAnalogousColors(value).map((color, idx) => (
+                {getAnalogousColors(value).map((color) => (
                   <button
-                    key={idx}
+                    key={color}
                     type="button"
                     onClick={() => onAddColor?.(color)}
                     className="h-8 rounded border-2 border-border ring-primary/50 transition-all hover:ring-2"

@@ -161,10 +161,7 @@ export function validateStep(
 
   if (stepNumber === 2) {
     // Step 3: Optional fields
-    const optionalFields: (keyof typeof VALIDATION_RULES)[] = [
-      "voiceStyle",
-      "brandVocabulary",
-    ];
+    const optionalFields: (keyof typeof VALIDATION_RULES)[] = ["voiceStyle", "brandVocabulary"];
 
     optionalFields.forEach((field) => {
       if (formData[field] && formData[field]!.trim().length > 0) {

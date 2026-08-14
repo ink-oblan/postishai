@@ -103,7 +103,7 @@ export function ImageUploader({
         <div className="grid grid-cols-5 gap-2">
           {values.map((preview, index) => (
             <div
-              key={index}
+              key={preview.slice(0, 50)}
               className="group relative flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border border-border bg-muted"
             >
               <img src={preview} alt="Preview" className="max-h-full max-w-full object-contain" />
@@ -120,14 +120,15 @@ export function ImageUploader({
       )}
 
       {values.length < maxFiles && (
-        <div
+        <button
+          type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="cursor-pointer rounded-lg border-2 border-border border-dashed p-6 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
+          className="w-full cursor-pointer rounded-lg border-2 border-border border-dashed p-6 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
         >
           <Upload className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
           <p className="font-medium text-sm">Click to upload</p>
           <p className="text-muted-foreground text-xs">PNG files only</p>
-        </div>
+        </button>
       )}
 
       {/* Info hint */}
