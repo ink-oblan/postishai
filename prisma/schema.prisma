@@ -7,22 +7,23 @@ datasource db {
 }
 
 model User {
-  id                 String    @id @default(cuid())
+  id                 String         @id @default(cuid())
   name               String?
-  email              String    @unique
+  email              String         @unique
   passwordHash       String?
   avatarUrl          String?
-  role               Role      @default(USER)
+  role               Role           @default(USER)
   approvedAt         DateTime?
-  approvalToken      String?   @unique
+  approvalToken      String?        @unique
   approvalDetails    String?
   approvalNotifiedAt DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
   accounts           Account[]
   sessions           Session[]
   avatars            Avatar[]
   posts              Post[]
+  brandProfiles      BrandProfile[]
 }
 
 model Account {
@@ -146,6 +147,8 @@ model Post {
   media                PostMedia[]
   userId               String?
   user                 User?            @relation(fields: [userId], references: [id])
+  brandProfileId       String?
+  brandProfile         BrandProfile?    @relation(fields: [brandProfileId], references: [id])
   llmModelId           String           @default("gemini-2.0-flash")
   status               String           @default("DRAFT")
   generationStartedAt  DateTime?
@@ -193,4 +196,37 @@ model WaitlistEntry {
   id        String   @id @default(cuid())
   email     String   @unique
   createdAt DateTime @default(now())
+}
+
+model BrandProfile {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts  Post[]
+
+  // Step 1: Required Info
+  brandName      String
+  topic          String
+  targetAudience String
+  mission        String?
+
+  // Step 2: Visual Identity
+  colors     String? // JSON array: [{id, name, hex}, ...]
+  typography String? // JSON array: [{id, name, source}, ...]
+  logoPath   String? // JSON array: [base64, ...]
+  patterns   String? // JSON array: [base64, ...]
+  photoStyle String?
+
+  // Step 3: Tone of Voice
+  youFormality    Boolean @default(false)
+  emojiLevel      Int     @default(0)
+  voiceStyle      String?
+  brandVocabulary String?
+
+  // Step 4: Video & Meaning
+  videoAnimations  String?
+  videoTransitions String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
