@@ -39,6 +39,7 @@ jobs:
           IMAGE_TAG: ${{ github.ref_name }}
           GIT_SHA: ${{ github.sha }}
         with:
+          source: .
           files: ./docker-bake.hcl
 
   deploy:
