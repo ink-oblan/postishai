@@ -50,7 +50,7 @@ export function ValidatedInput({
           }`}
         />
         {isTouched && (
-          <div className="absolute top-3 right-3 flex items-center">
+          <div className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center">
             {isValid ? (
               <CheckCircle2 className="h-5 w-5 text-green-500" />
             ) : (
