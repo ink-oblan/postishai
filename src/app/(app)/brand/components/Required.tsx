@@ -1,13 +1,15 @@
-import type { BrandFormData } from "../BrandSetupWizard";
-import { ValidatedInput } from "../ValidatedInput";
-import { ValidatedTextarea } from "../ValidatedTextarea";
+"use client";
 
-interface BrandStep1RequiredProps {
+import type { BrandFormData } from "./BrandSetupWizard";
+import { ValidatedInput } from "./ValidatedInput";
+import { ValidatedTextarea } from "./ValidatedTextarea";
+
+interface RequiredProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
 }
 
-export function BrandStep1Required({ formData, onUpdate }: BrandStep1RequiredProps) {
+export function Required({ formData, onUpdate }: RequiredProps) {
   return (
     <div className="space-y-6">
       <div>

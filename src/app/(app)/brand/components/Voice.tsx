@@ -1,13 +1,15 @@
-import { Label } from "@/components/ui/label";
-import type { BrandFormData } from "../BrandSetupWizard";
-import { ValidatedTextarea } from "../ValidatedTextarea";
+"use client";
 
-interface BrandStep3VoiceProps {
+import { Label } from "@/components/ui/label";
+import type { BrandFormData } from "./BrandSetupWizard";
+import { ValidatedTextarea } from "./ValidatedTextarea";
+
+interface VoiceProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
 }
 
-export function BrandStep3Voice({ formData, onUpdate }: BrandStep3VoiceProps) {
+export function Voice({ formData, onUpdate }: VoiceProps) {
   return (
     <div className="space-y-6">
       <div>

@@ -1,13 +1,15 @@
+"use client";
+
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { BrandFormData } from "../BrandSetupWizard";
+import type { BrandFormData } from "./BrandSetupWizard";
 
-interface BrandStep4VideoProps {
+interface VideoProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
 }
 
-export function BrandStep4Video({ formData, onUpdate }: BrandStep4VideoProps) {
+export function Video({ formData, onUpdate }: VideoProps) {
   return (
     <div className="space-y-6">
       <div>

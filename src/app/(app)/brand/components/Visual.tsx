@@ -1,17 +1,19 @@
+"use client";
+
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { BrandFormData } from "../BrandSetupWizard";
-import { type ColorItem, ColorPalettePicker } from "../ColorPalettePicker";
-import { ImageUploader } from "../ImageUploader";
-import { type FontItem, TypographyPicker } from "../TypographyPicker";
+import type { BrandFormData } from "./BrandSetupWizard";
+import { type ColorItem, ColorPalettePicker } from "./ColorPalettePicker";
+import { ImageUploader } from "./ImageUploader";
+import { type FontItem, TypographyPicker } from "./TypographyPicker";
 
-interface BrandStep2VisualProps {
+interface VisualProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
 }
 
-export function BrandStep2Visual({ formData, onUpdate }: BrandStep2VisualProps) {
+export function Visual({ formData, onUpdate }: VisualProps) {
   const [colors, setColors] = useState<ColorItem[]>(() => {
     if (!formData.colors) return [];
     try {
