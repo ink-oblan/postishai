@@ -204,26 +204,26 @@ model BrandProfile {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   posts  Post[]
 
-  // Step 1: Required Info
+  // Required Info
   brandName      String
   topic          String
   targetAudience String
   mission        String?
 
-  // Step 2: Visual Identity
-  colors     String? // JSON array: [{id, name, source: builtin|uploaded, data: base64 for uploaded}]
-  typography String? // JSON array: [{id, name, source: builtin|uploaded, data: base64 for uploaded}]
-  logoPath   String? // JSON array: [{id, name, source: builtin|uploaded, data: base64 for uploaded}]
-  patterns   String? // JSON array: [{id, name, source: builtin|uploaded, data: base64 for uploaded}]
+  // Visual Identity
+  colors     Json?
+  typography Json?
+  logoPath   Json?
+  patterns   Json?
   photoStyle String?
 
-  // Step 3: Tone of Voice
+  // Tone of Voice
   youFormality    Boolean @default(false)
   emojiLevel      Int     @default(0)
   voiceStyle      String?
   brandVocabulary String?
 
-  // Step 4: Video & Meaning
+  // Video & Meaning
   videoAnimations  String?
   videoTransitions String?
 

@@ -82,14 +82,16 @@ export default async function BrandPage() {
                     <div>
                       <h3 className="mb-2 font-semibold text-muted-foreground text-sm">Colors</h3>
                       <div className="flex gap-2">
-                        {(JSON.parse(brandProfile.colors) as Color[]).map((color) => (
-                          <div
-                            key={color.id}
-                            className="h-8 w-8 rounded border border-border"
-                            style={{ backgroundColor: color.hex }}
-                            title={color.hex}
-                          />
-                        ))}
+                        {(Array.isArray(brandProfile.colors) ? brandProfile.colors : []).map(
+                          (color) => (
+                            <div
+                              key={(color as Color).id}
+                              className="h-8 w-8 rounded border border-border"
+                              style={{ backgroundColor: (color as Color).hex }}
+                              title={(color as Color).hex}
+                            />
+                          ),
+                        )}
                       </div>
                     </div>
                   )}
@@ -100,12 +102,15 @@ export default async function BrandPage() {
                         Typefaces
                       </h3>
                       <div className="flex flex-wrap gap-2">
-                        {(JSON.parse(brandProfile.typography) as Font[]).map((font) => (
+                        {(Array.isArray(brandProfile.typography)
+                          ? brandProfile.typography
+                          : []
+                        ).map((font) => (
                           <span
-                            key={font.id}
+                            key={(font as Font).id}
                             className="inline-block rounded bg-muted px-2 py-1 text-xs"
                           >
-                            {font.name}
+                            {(font as Font).name}
                           </span>
                         ))}
                       </div>
