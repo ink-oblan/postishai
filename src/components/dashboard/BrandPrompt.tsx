@@ -2,17 +2,42 @@
 
 import { AlertCircle, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface BrandPromptProps {
   hasBrandProfile: boolean;
 }
 
+const DISMISS_KEY = "brand-prompt-dismissed";
+
 export function BrandPrompt({ hasBrandProfile }: BrandPromptProps) {
   const [dismissed, setDismissed] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (hasBrandProfile || dismissed) {
+  useEffect(() => {
+    setMounted(true);
+    const savedDismissed = localStorage.getItem(DISMISS_KEY) === "true";
+    setDismissed(savedDismissed);
+  }, []);
+
+  const handleDismiss = () => {
+    localStorage.setItem(DISMISS_KEY, "true");
+    setDismissed(true);
+  };
+
+  // Don't render until hydrated to avoid hydration mismatch
+  if (!mounted) {
+    return null;
+  }
+
+  // Hide if brand profile exists (clear dismiss flag) or if user dismissed it
+  if (hasBrandProfile) {
+    localStorage.removeItem(DISMISS_KEY);
+    return null;
+  }
+
+  if (dismissed) {
     return null;
   }
 
@@ -38,7 +63,7 @@ export function BrandPrompt({ hasBrandProfile }: BrandPromptProps) {
         </div>
         <button
           type="button"
-          onClick={() => setDismissed(true)}
+          onClick={handleDismiss}
           className="mt-1 flex-shrink-0 text-amber-600/60 transition-colors hover:text-amber-700"
           aria-label="Dismiss"
         >
