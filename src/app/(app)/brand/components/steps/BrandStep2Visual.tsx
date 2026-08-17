@@ -15,7 +15,9 @@ export function BrandStep2Visual({ formData, onUpdate }: BrandStep2VisualProps) 
   const [colors, setColors] = useState<ColorItem[]>(() => {
     if (!formData.colors) return [];
     try {
-      return JSON.parse(formData.colors);
+      return typeof formData.colors === "string"
+        ? JSON.parse(formData.colors as string)
+        : (formData.colors as unknown);
     } catch {
       return [];
     }
@@ -24,7 +26,10 @@ export function BrandStep2Visual({ formData, onUpdate }: BrandStep2VisualProps) 
   const [fonts, setFonts] = useState<FontItem[]>(() => {
     if (!formData.typography) return [];
     try {
-      const parsed = JSON.parse(formData.typography);
+      const parsed =
+        typeof formData.typography === "string"
+          ? JSON.parse(formData.typography as string)
+          : (formData.typography as unknown);
       // Filter out file objects since they can't be serialized
       return parsed.map((f: FontItem) => ({
         ...f,
@@ -38,7 +43,10 @@ export function BrandStep2Visual({ formData, onUpdate }: BrandStep2VisualProps) 
   const [patterns, setPatterns] = useState<string[]>(() => {
     if (!formData.patterns) return [];
     try {
-      const parsed = JSON.parse(formData.patterns);
+      const parsed =
+        typeof formData.patterns === "string"
+          ? JSON.parse(formData.patterns as string)
+          : (formData.patterns as unknown);
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
@@ -48,7 +56,10 @@ export function BrandStep2Visual({ formData, onUpdate }: BrandStep2VisualProps) 
   const [logos, setLogos] = useState<string[]>(() => {
     if (!formData.logoPath) return [];
     try {
-      const parsed = JSON.parse(formData.logoPath);
+      const parsed =
+        typeof formData.logoPath === "string"
+          ? JSON.parse(formData.logoPath as string)
+          : (formData.logoPath as unknown);
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];

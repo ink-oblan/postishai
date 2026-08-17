@@ -82,16 +82,17 @@ export default async function BrandPage() {
                     <div>
                       <h3 className="mb-2 font-semibold text-muted-foreground text-sm">Colors</h3>
                       <div className="flex gap-2">
-                        {(Array.isArray(brandProfile.colors) ? brandProfile.colors : []).map(
-                          (color) => (
-                            <div
-                              key={(color as Color).id}
-                              className="h-8 w-8 rounded border border-border"
-                              style={{ backgroundColor: (color as Color).hex }}
-                              title={(color as Color).hex}
-                            />
-                          ),
-                        )}
+                        {(Array.isArray(brandProfile.colors)
+                          ? (brandProfile.colors as unknown as Color[])
+                          : []
+                        ).map((color: Color) => (
+                          <div
+                            key={color.id}
+                            className="h-8 w-8 rounded border border-border"
+                            style={{ backgroundColor: color.hex }}
+                            title={color.hex}
+                          />
+                        ))}
                       </div>
                     </div>
                   )}
@@ -103,14 +104,14 @@ export default async function BrandPage() {
                       </h3>
                       <div className="flex flex-wrap gap-2">
                         {(Array.isArray(brandProfile.typography)
-                          ? brandProfile.typography
+                          ? (brandProfile.typography as unknown as Font[])
                           : []
-                        ).map((font) => (
+                        ).map((font: Font) => (
                           <span
-                            key={(font as Font).id}
+                            key={font.id}
                             className="inline-block rounded bg-muted px-2 py-1 text-xs"
                           >
-                            {(font as Font).name}
+                            {font.name}
                           </span>
                         ))}
                       </div>
