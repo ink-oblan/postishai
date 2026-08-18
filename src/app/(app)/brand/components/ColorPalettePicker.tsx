@@ -1,7 +1,18 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Pipette, Plus } from "lucide-react";
 import { useRef, useState } from "react";
+
+declare global {
+  interface Window {
+    EyeDropper?: {
+      new (): {
+        open: () => Promise<{ sRGBHex: string }>;
+      };
+    };
+  }
+}
+
 import { Button } from "@/components/ui/button";
 import { RemoveButton } from "@/components/ui/cross-remove-button";
 import { Input } from "@/components/ui/input";
@@ -124,17 +135,17 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
       </div>
 
       <div className="space-y-2">
-        {colors.map((color, index) => (
-          <div
+        {colors.map((color, _index) => (
+          <button
             key={color.id}
-            className="space-y-2 rounded-lg border border-border bg-muted/30 p-3 transition-all"
+            type="button"
+            onClick={() => setExpandedColorId(expandedColorId === color.id ? null : color.id)}
+            className="w-full space-y-2 rounded-lg border border-border bg-muted/30 p-3 text-left transition-all hover:bg-muted/60"
           >
             {/* Color header */}
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setExpandedColorId(expandedColorId === color.id ? null : color.id)}
-                className="h-10 w-10 flex-shrink-0 rounded-md border-2 border-border transition-colors hover:border-primary"
+              <div
+                className="h-10 w-10 flex-shrink-0 rounded-md border-2 border-border"
                 style={{ backgroundColor: color.hex }}
                 title={color.hex}
               />
@@ -142,26 +153,51 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
               <Input
                 type="text"
                 value={color.hex}
-                onChange={(e) => updateColor(color.id, e.target.value)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  updateColor(color.id, e.target.value);
+                }}
                 placeholder="#000000"
                 className="h-10 flex-1 font-mono text-sm uppercase"
                 maxLength={7}
+                onClick={(e) => e.stopPropagation()}
               />
 
+              <button
+                type="button"
+                title="Pick color from screen"
+                className="flex-shrink-0 rounded border border-border bg-muted px-2 py-2 transition-colors hover:bg-muted/80"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.EyeDropper) {
+                    new window.EyeDropper()
+                      .open()
+                      .then((result: { sRGBHex: string }) => {
+                        updateColor(color.id, result.sRGBHex);
+                      })
+                      .catch(() => {});
+                  }
+                }}
+              >
+                <Pipette className="h-4 w-4" />
+              </button>
+
               <RemoveButton
-                onClick={() => removeColor(color.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeColor(color.id);
+                }}
                 aria-label="Delete this color"
                 className="flex-shrink-0"
               />
             </div>
 
             {/* Expanded color picker */}
-            {expandedColorId === color.id && colors.length < 5 && (
+            {expandedColorId === color.id && (
               <div className="border-border border-t pt-3">
                 <ColorPickerAdvanced
                   value={color.hex}
                   onChange={(hex) => updateColor(color.id, hex)}
-                  label={`${index === 0 ? "Primary" : index === 1 ? "Secondary" : `Color ${index + 1}`} Color`}
                   onAddColor={(hex) => {
                     const newColor: ColorItem = {
                       id: generateColorId(),
@@ -174,7 +210,7 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
                 />
               </div>
             )}
-          </div>
+          </button>
         ))}
       </div>
 
