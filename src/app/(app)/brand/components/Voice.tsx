@@ -4,6 +4,8 @@ import { Label } from "@/components/ui/label";
 import type { BrandFormData } from "./BrandSetupWizard";
 import { ValidatedTextarea } from "./ValidatedTextarea";
 
+const EMOJI_LEVEL_LABELS = ["None", "Moderate", "High", "Very High"] as const;
+
 interface VoiceProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
@@ -49,13 +51,7 @@ export function Voice({ formData, onUpdate }: VoiceProps) {
                 className="flex-1"
               />
               <span className="min-w-12 font-medium text-muted-foreground text-xs">
-                {formData.emojiLevel === 0
-                  ? "None"
-                  : formData.emojiLevel === 1
-                    ? "Moderate"
-                    : formData.emojiLevel === 2
-                      ? "High"
-                      : "Very High"}
+                {EMOJI_LEVEL_LABELS[formData.emojiLevel || 0]}
               </span>
             </div>
             {(() => {
