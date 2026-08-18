@@ -3,7 +3,13 @@
 import { Trash2, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+} from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 
 export interface FontItem {
@@ -84,7 +90,6 @@ function getFontIdByName(fontName: string): string {
 
 export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPickerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [_selectedBuiltin, setSelectedBuiltin] = useState<string>("");
   const [fontSearch, setFontSearch] = useState<string>("");
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,7 +110,6 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
           source: "builtin",
         };
         onChange([...fonts, newFont]);
-        setSelectedBuiltin("");
       }
     }
   };
@@ -212,43 +216,34 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
         <div className="space-y-3 border-t pt-4">
           {/* Built-in fonts with search and selection */}
           <div className="space-y-2">
-            <Label htmlFor="font-search" className="text-sm">
-              Add from library
-            </Label>
-            <div className="relative">
-              <Input
-                id="font-search"
-                type="text"
-                placeholder="Search or select font..."
-                value={fontSearch}
-                onChange={(e) => {
-                  setFontSearch(e.target.value);
-                  setSelectedBuiltin("");
-                }}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-                className="flex-1 text-sm"
-              />
-              {isFocused && filteredBuiltins.length > 0 && (
-                <div className="absolute top-full right-0 left-0 z-10 mt-1 max-h-64 overflow-y-auto rounded-md border border-input bg-background shadow-lg">
-                  {filteredBuiltins.map((font) => (
-                    <button
-                      key={font.id}
-                      type="button"
-                      onClick={() => {
-                        addBuiltinFont(font.id);
-                        setFontSearch("");
-                        setIsFocused(false);
-                      }}
-                      className="w-full border-b px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-muted"
-                      style={{ fontFamily: getFontFamily(font.id) }}
-                    >
-                      <div className="text-sm">{font.name}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Label className="text-sm">Add from library</Label>
+            <Combobox
+              inputValue={fontSearch}
+              onInputValueChange={(val) => {
+                setFontSearch(val);
+              }}
+              onOpenChange={setIsFocused}
+              open={isFocused}
+            >
+              <ComboboxInputGroup>
+                <ComboboxInput placeholder="Search or select font..." />
+              </ComboboxInputGroup>
+              <ComboboxContent>
+                {filteredBuiltins.map((font) => (
+                  <ComboboxItem
+                    key={font.id}
+                    value={font.id}
+                    onSelect={() => {
+                      addBuiltinFont(font.id);
+                      setFontSearch("");
+                      setIsFocused(false);
+                    }}
+                  >
+                    <span style={{ fontFamily: getFontFamily(font.id) }}>{font.name}</span>
+                  </ComboboxItem>
+                ))}
+              </ComboboxContent>
+            </Combobox>
           </div>
 
           {/* Upload custom font */}
