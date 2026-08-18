@@ -4,12 +4,12 @@ import type { BrandFormData } from "./BrandSetupWizard";
 import { ValidatedInput } from "./ValidatedInput";
 import { ValidatedTextarea } from "./ValidatedTextarea";
 
-interface RequiredProps {
+interface CoreBrandProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
 }
 
-export function Required({ formData, onUpdate }: RequiredProps) {
+export function CoreBrand({ formData, onUpdate }: CoreBrandProps) {
   return (
     <div className="space-y-6">
       <div>

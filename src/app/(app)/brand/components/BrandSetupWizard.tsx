@@ -4,7 +4,7 @@ import type { BrandProfile } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { isStepValid } from "../lib/validation";
-import { Required } from "./Required";
+import { CoreBrand } from "./CoreBrand";
 import { Video } from "./Video";
 import { Visual } from "./Visual";
 import { Voice } from "./Voice";
@@ -20,7 +20,7 @@ export type BrandFormData = Partial<
   Omit<BrandProfile, "id" | "userId" | "createdAt" | "updatedAt">
 >;
 
-const STEPS = ["Required Info", "Visual Identity", "Tone of Voice", "Video & Meaning"];
+const STEPS = ["Core Brand", "Visual Identity", "Tone of Voice", "Video & Meaning"];
 
 export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps) {
   const router = useRouter();
@@ -95,7 +95,7 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
       <WizardProgress currentStep={currentStep} steps={STEPS} />
 
       <div className="mt-8 min-h-96 rounded-lg border border-border bg-card p-8">
-        {currentStep === 0 && <Required formData={formData} onUpdate={handleUpdateFormData} />}
+        {currentStep === 0 && <CoreBrand formData={formData} onUpdate={handleUpdateFormData} />}
         {currentStep === 1 && <Visual formData={formData} onUpdate={handleUpdateFormData} />}
         {currentStep === 2 && <Voice formData={formData} onUpdate={handleUpdateFormData} />}
         {currentStep === 3 && <Video formData={formData} onUpdate={handleUpdateFormData} />}
