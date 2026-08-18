@@ -86,11 +86,12 @@ export function Visual({ formData, onUpdate }: VisualProps) {
 
   const handleFontsChange = (newFonts: FontItem[]) => {
     setFonts(newFonts);
-    // Store font metadata (name, source) but not File objects
+    // Store font metadata including data for uploaded fonts
     const serializable = newFonts.map((f) => ({
       id: f.id,
       name: f.name,
       source: f.source,
+      ...(f.data && { data: f.data }),
     }));
     onUpdate({ typography: JSON.stringify(serializable) });
   };
