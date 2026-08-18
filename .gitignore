@@ -62,3 +62,7 @@ backups/
 
 # Local Claude Code instructions (not committed)
 .claude/
+
+# Local-only experimental dev tooling and compose setup
+docker-compose.override.yml
+.local/
