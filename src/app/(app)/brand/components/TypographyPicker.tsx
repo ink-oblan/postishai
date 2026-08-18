@@ -1,8 +1,7 @@
 "use client";
 
-import { Trash2, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -10,6 +9,7 @@ import {
   ComboboxInputGroup,
   ComboboxItem,
 } from "@/components/ui/combobox";
+import { RemoveButton } from "@/components/ui/cross-remove-button";
 import { Label } from "@/components/ui/label";
 
 export interface FontItem {
@@ -198,15 +198,7 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
                   {font.source === "builtin" ? "From library" : "Custom font"}
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeFont(font.id)}
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <RemoveButton onClick={() => removeFont(font.id)} aria-label="Remove this font" />
             </div>
           ))
         )}

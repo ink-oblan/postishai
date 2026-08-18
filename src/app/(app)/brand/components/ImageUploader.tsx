@@ -1,7 +1,8 @@
 "use client";
 
-import { Upload, X } from "lucide-react";
+import { Upload } from "lucide-react";
 import { useRef, useState } from "react";
+import { RemoveButton } from "@/components/ui/cross-remove-button";
 import { Label } from "@/components/ui/label";
 
 interface ImageUploaderProps {
@@ -106,14 +107,13 @@ export function ImageUploader({
               key={preview.slice(0, 50)}
               className="group relative flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border border-border bg-muted"
             >
+              {/* biome-ignore lint/performance/noImgElement: base64 preview requires img tag */}
               <img src={preview} alt="Preview" className="max-h-full max-w-full object-contain" />
-              <button
-                type="button"
+              <RemoveButton
                 onClick={() => removeImage(index)}
-                className="absolute top-1 right-1 rounded bg-background/80 p-1 opacity-0 transition-colors hover:bg-destructive hover:text-white group-hover:opacity-100"
-              >
-                <X className="h-3 w-3" />
-              </button>
+                aria-label="Remove image"
+                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100"
+              />
             </div>
           ))}
         </div>

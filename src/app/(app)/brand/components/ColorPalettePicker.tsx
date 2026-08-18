@@ -1,8 +1,9 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { RemoveButton } from "@/components/ui/cross-remove-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ColorPickerAdvanced } from "./ColorPickerAdvanced";
@@ -147,16 +148,11 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
                 maxLength={7}
               />
 
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
+              <RemoveButton
                 onClick={() => removeColor(color.id)}
-                className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                title="Delete this color"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+                aria-label="Delete this color"
+                className="flex-shrink-0"
+              />
             </div>
 
             {/* Expanded color picker */}
