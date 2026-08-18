@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { BrandFormData } from "./BrandSetupWizard";
@@ -14,12 +14,23 @@ interface VisualProps {
 }
 
 export function Visual({ formData, onUpdate }: VisualProps) {
+  const colorIdCounter = useRef(0);
+
+  const normalizeColors = (parsed: ColorItem[]) => {
+    return parsed.map((color) => ({
+      ...color,
+      id: color.id || `color-${++colorIdCounter.current}-${Date.now()}`,
+    }));
+  };
+
   const [colors, setColors] = useState<ColorItem[]>(() => {
     if (!formData.colors) return [];
     try {
-      return typeof formData.colors === "string"
-        ? JSON.parse(formData.colors as string)
-        : (formData.colors as unknown);
+      const parsed =
+        typeof formData.colors === "string"
+          ? JSON.parse(formData.colors as string)
+          : (formData.colors as unknown);
+      return normalizeColors(parsed as ColorItem[]);
     } catch {
       return [];
     }

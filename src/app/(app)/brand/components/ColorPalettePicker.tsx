@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,11 +54,16 @@ interface ColorPalettePickerProps {
 
 export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPalettePickerProps) {
   const [expandedColorId, setExpandedColorId] = useState<string | null>(null);
+  const colorIdCounter = useRef(0);
+
+  const generateColorId = () => {
+    return `color-${++colorIdCounter.current}-${Date.now()}`;
+  };
 
   const addColor = () => {
     if (colors.length < maxColors) {
       const newColor: ColorItem = {
-        id: Math.random().toString(36).slice(2),
+        id: generateColorId(),
         name: `Color ${colors.length + 1}`,
         hex: "#000000",
       };
@@ -100,7 +105,7 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
               type="button"
               onClick={() => {
                 const newColor: ColorItem = {
-                  id: Math.random().toString(36).slice(2),
+                  id: generateColorId(),
                   name: `Color ${colors.length + 1}`,
                   hex: preset,
                 };
@@ -163,7 +168,7 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
                   label={`${index === 0 ? "Primary" : index === 1 ? "Secondary" : `Color ${index + 1}`} Color`}
                   onAddColor={(hex) => {
                     const newColor: ColorItem = {
-                      id: Math.random().toString(36).slice(2),
+                      id: generateColorId(),
                       name: `Color ${colors.length + 1}`,
                       hex,
                     };

@@ -164,7 +164,7 @@ export function validateStep(
     const optionalFields: (keyof typeof VALIDATION_RULES)[] = ["voiceStyle", "brandVocabulary"];
 
     optionalFields.forEach((field) => {
-      if (formData[field] && formData[field]!.trim().length > 0) {
+      if (formData[field] && formData[field]?.trim().length > 0) {
         const error = validateField(field, formData[field]);
         if (error) errors.push(error);
       }

@@ -20,6 +20,34 @@ interface Font {
   name: string;
 }
 
+function normalizeColors(colors: unknown): Color[] {
+  if (!colors) return [];
+  try {
+    const parsed = typeof colors === "string" ? JSON.parse(colors) : colors;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((color, idx) => ({
+      id: color.id || `color-${idx}-${Date.now()}`,
+      hex: color.hex,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function normalizeFonts(fonts: unknown): Font[] {
+  if (!fonts) return [];
+  try {
+    const parsed = typeof fonts === "string" ? JSON.parse(fonts) : fonts;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((font, idx) => ({
+      id: font.id || `font-${idx}-${Date.now()}`,
+      name: font.name,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export default async function BrandPage() {
   const session = await requireSession();
 
@@ -82,10 +110,7 @@ export default async function BrandPage() {
                     <div>
                       <h3 className="mb-2 font-semibold text-muted-foreground text-sm">Colors</h3>
                       <div className="flex gap-2">
-                        {(Array.isArray(brandProfile.colors)
-                          ? (brandProfile.colors as unknown as Color[])
-                          : []
-                        ).map((color: Color) => (
+                        {normalizeColors(brandProfile.colors).map((color: Color) => (
                           <div
                             key={color.id}
                             className="h-8 w-8 rounded border border-border"
@@ -103,10 +128,7 @@ export default async function BrandPage() {
                         Typefaces
                       </h3>
                       <div className="flex flex-wrap gap-2">
-                        {(Array.isArray(brandProfile.typography)
-                          ? (brandProfile.typography as unknown as Font[])
-                          : []
-                        ).map((font: Font) => (
+                        {normalizeFonts(brandProfile.typography).map((font: Font) => (
                           <span
                             key={font.id}
                             className="inline-block rounded bg-muted px-2 py-1 text-xs"
