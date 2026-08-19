@@ -116,10 +116,10 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto max-w-4xl px-4 py-8" style={{ minHeight: "100vh", overflow: "hidden" }}>
       <WizardProgress currentStep={currentStep} steps={STEPS} />
 
-      <div className="mt-8 min-h-96 rounded-lg border border-border bg-card p-8">
+      <div className="mt-8 rounded-lg border border-border bg-card p-8">
         {currentStep === 0 && <CoreBrand formData={formData} onUpdate={handleUpdateFormData} />}
         {currentStep === 1 && <Visual formData={formData} onUpdate={handleUpdateFormData} />}
         {currentStep === 2 && <Voice formData={formData} onUpdate={handleUpdateFormData} />}

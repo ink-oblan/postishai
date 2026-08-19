@@ -7,6 +7,7 @@ interface ColorPickerAdvancedProps {
   value: string;
   onChange: (hex: string) => void;
   onAddColor?: (hex: string) => void;
+  isMaxReached?: boolean;
 }
 
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
@@ -137,8 +138,14 @@ function getContrastColor(hex: string): string {
   return luminance > 0.5 ? "#000000" : "#FFFFFF";
 }
 
-export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPickerAdvancedProps) {
+export function ColorPickerAdvanced({
+  value,
+  onChange,
+  onAddColor,
+  isMaxReached,
+}: ColorPickerAdvancedProps) {
   const styleRef = useRef<HTMLStyleElement>(null);
+  const keyCounterRef = useRef(0);
   const { h, s, l } = hexToHsl(value);
   const { r, g, b } = hexToRgb(value);
 
@@ -152,6 +159,28 @@ export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPicker
       document.head.appendChild(style);
     }
     styleRef.current.textContent = `
+      input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid white;
+        cursor: pointer;
+        box-shadow: 0 0 2px rgba(0,0,0,0.3);
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid white;
+        cursor: pointer;
+        box-shadow: 0 0 2px rgba(0,0,0,0.3);
+      }
+      input[type="range"]::-moz-range-track {
+        background: transparent;
+        border: none;
+      }
+
       .slider-r::-webkit-slider-runnable-track {
         background: linear-gradient(90deg, rgb(0, ${g}, ${b}), rgb(255, ${g}, ${b}));
       }
@@ -159,10 +188,23 @@ export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPicker
         background: linear-gradient(90deg, rgb(0, ${g}, ${b}), rgb(255, ${g}, ${b}));
       }
       .slider-r::-webkit-slider-thumb {
+        appearance: none;
         background: rgb(${r}, ${g}, ${b});
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid white;
+        cursor: pointer;
+        box-shadow: 0 0 2px rgba(0,0,0,0.3);
       }
       .slider-r::-moz-range-thumb {
         background: rgb(${r}, ${g}, ${b});
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid white;
+        cursor: pointer;
+        box-shadow: 0 0 2px rgba(0,0,0,0.3);
       }
 
       .slider-g::-webkit-slider-runnable-track {
@@ -401,11 +443,12 @@ export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPicker
           <Label className="mb-2 block font-semibold text-xs">Complementary</Label>
           <button
             type="button"
+            disabled={isMaxReached}
             onClick={(e) => {
               e.stopPropagation();
               onAddColor?.(getComplementaryColor(value));
             }}
-            className="h-8 w-full rounded border-2 border-border transition-all hover:scale-105"
+            className={`h-8 w-full rounded border-2 border-border transition-all ${isMaxReached ? "cursor-not-allowed opacity-50" : "hover:scale-105"}`}
             style={{ backgroundColor: getComplementaryColor(value) }}
             title={getComplementaryColor(value)}
           />
@@ -417,13 +460,14 @@ export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPicker
           <div className="grid grid-cols-2 gap-2">
             {getTriadicColors(value).map((color) => (
               <button
-                key={`triadic-${value}-${color}`}
+                key={`triadic-${color}-${++keyCounterRef.current}`}
                 type="button"
+                disabled={isMaxReached}
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddColor?.(color);
                 }}
-                className="h-8 rounded border-2 border-border transition-all hover:scale-105"
+                className={`h-8 rounded border-2 border-border transition-all ${isMaxReached ? "cursor-not-allowed opacity-50" : "hover:scale-105"}`}
                 style={{ backgroundColor: color }}
                 title={color}
               />
@@ -437,13 +481,14 @@ export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPicker
           <div className="grid grid-cols-2 gap-2">
             {getAnalogousColors(value).map((color) => (
               <button
-                key={`analogous-${value}-${color}`}
+                key={`analogous-${color}-${++keyCounterRef.current}`}
                 type="button"
+                disabled={isMaxReached}
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddColor?.(color);
                 }}
-                className="h-8 rounded border-2 border-border transition-all hover:scale-105"
+                className={`h-8 rounded border-2 border-border transition-all ${isMaxReached ? "cursor-not-allowed opacity-50" : "hover:scale-105"}`}
                 style={{ backgroundColor: color }}
                 title={color}
               />

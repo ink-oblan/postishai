@@ -115,18 +115,19 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
             <button
               key={preset}
               type="button"
+              disabled={colors.length >= maxColors}
               onClick={() => {
                 const newColor: ColorItem = {
                   id: generateColorId(),
                   name: `Color ${colors.length + 1}`,
                   hex: preset,
                 };
-                if (colors.length < 5) {
+                if (colors.length < maxColors) {
                   onChange([...colors, newColor]);
                   setExpandedColorId(newColor.id);
                 }
               }}
-              className="h-8 rounded border-2 border-border transition-all hover:scale-110"
+              className={`h-8 rounded border-2 border-border transition-all ${colors.length >= maxColors ? "cursor-not-allowed opacity-50" : "hover:scale-110"}`}
               style={{ backgroundColor: preset }}
               title={`Add ${preset}`}
             />
@@ -206,6 +207,7 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
                 <ColorPickerAdvanced
                   value={color.hex}
                   onChange={(hex) => updateColor(color.id, hex)}
+                  isMaxReached={colors.length >= maxColors}
                   onAddColor={(hex) => {
                     const newColor: ColorItem = {
                       id: generateColorId(),

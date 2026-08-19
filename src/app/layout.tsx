@@ -26,8 +26,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   await connection();
 
   return (
-    <html lang="en" className={`${plusJakarta.variable} h-full`} suppressHydrationWarning>
-      <body className="h-full bg-background text-foreground">
+    <html
+      lang="en"
+      className={`${plusJakarta.variable} h-full overflow-hidden`}
+      suppressHydrationWarning
+    >
+      <body className="h-full overflow-hidden bg-background text-foreground">
         <AppConfigProvider
           config={{
             selfDeployment: config.selfDeployment,

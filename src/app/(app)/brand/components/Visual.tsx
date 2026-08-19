@@ -130,7 +130,7 @@ export function Visual({ formData, onUpdate }: VisualProps) {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h2 className="mb-2 font-bold text-2xl">Visual Identity</h2>
         <p className="text-muted-foreground">
@@ -138,7 +138,7 @@ export function Visual({ formData, onUpdate }: VisualProps) {
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Color Palette */}
         <div className="rounded-lg border border-border bg-card p-4">
           <ColorPalettePicker colors={colors} onChange={handleColorsChange} />
