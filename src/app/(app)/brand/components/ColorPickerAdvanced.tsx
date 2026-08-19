@@ -1,7 +1,6 @@
 "use client";
 
-import { Palette } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Label } from "@/components/ui/label";
 
 interface ColorPickerAdvancedProps {
@@ -138,54 +137,106 @@ function getContrastColor(hex: string): string {
   return luminance > 0.5 ? "#000000" : "#FFFFFF";
 }
 
-const sliderCss = `
-  input[type="range"] {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 100%;
-    height: 12px;
-    border-radius: 12px;
-    outline: none;
-  }
-
-  input[type="range"]::-webkit-slider-runnable-track {
-    border-radius: 12px;
-  }
-
-  input[type="range"]::-moz-range-track {
-    border-radius: 12px;
-  }
-
-  input[type="range"]::-webkit-slider-thumb {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  input[type="range"]::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  input[type="range"]::-moz-range-track {
-    background: transparent;
-    border: none;
-  }
-`;
-
 export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPickerAdvancedProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const styleRef = useRef<HTMLStyleElement>(null);
   const { h, s, l } = hexToHsl(value);
   const { r, g, b } = hexToRgb(value);
+
+  const [mounted, setMounted] = useState(false);
+
+  useLayoutEffect(() => {
+    setMounted(true);
+    if (!styleRef.current) {
+      const style = document.createElement("style");
+      styleRef.current = style;
+      document.head.appendChild(style);
+    }
+    styleRef.current.textContent = `
+      .slider-r::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, rgb(0, ${g}, ${b}), rgb(255, ${g}, ${b}));
+      }
+      .slider-r::-moz-range-track {
+        background: linear-gradient(90deg, rgb(0, ${g}, ${b}), rgb(255, ${g}, ${b}));
+      }
+      .slider-r::-webkit-slider-thumb {
+        background: rgb(${r}, ${g}, ${b});
+      }
+      .slider-r::-moz-range-thumb {
+        background: rgb(${r}, ${g}, ${b});
+      }
+
+      .slider-g::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, rgb(${r}, 0, ${b}), rgb(${r}, 255, ${b}));
+      }
+      .slider-g::-moz-range-track {
+        background: linear-gradient(90deg, rgb(${r}, 0, ${b}), rgb(${r}, 255, ${b}));
+      }
+      .slider-g::-webkit-slider-thumb {
+        background: rgb(${r}, ${g}, ${b});
+      }
+      .slider-g::-moz-range-thumb {
+        background: rgb(${r}, ${g}, ${b});
+      }
+
+      .slider-b::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, rgb(${r}, ${g}, 0), rgb(${r}, ${g}, 255));
+      }
+      .slider-b::-moz-range-track {
+        background: linear-gradient(90deg, rgb(${r}, ${g}, 0), rgb(${r}, ${g}, 255));
+      }
+      .slider-b::-webkit-slider-thumb {
+        background: rgb(${r}, ${g}, ${b});
+      }
+      .slider-b::-moz-range-thumb {
+        background: rgb(${r}, ${g}, ${b});
+      }
+
+      .slider-h::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, hsl(0, ${s}%, ${l}%), hsl(60, ${s}%, ${l}%), hsl(120, ${s}%, ${l}%), hsl(180, ${s}%, ${l}%), hsl(240, ${s}%, ${l}%), hsl(300, ${s}%, ${l}%), hsl(360, ${s}%, ${l}%));
+      }
+      .slider-h::-moz-range-track {
+        background: linear-gradient(90deg, hsl(0, ${s}%, ${l}%), hsl(60, ${s}%, ${l}%), hsl(120, ${s}%, ${l}%), hsl(180, ${s}%, ${l}%), hsl(240, ${s}%, ${l}%), hsl(300, ${s}%, ${l}%), hsl(360, ${s}%, ${l}%));
+      }
+      .slider-h::-webkit-slider-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+      .slider-h::-moz-range-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+
+      .slider-s::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, hsl(${h}, 0%, ${l}%), hsl(${h}, 100%, ${l}%));
+      }
+      .slider-s::-moz-range-track {
+        background: linear-gradient(90deg, hsl(${h}, 0%, ${l}%), hsl(${h}, 100%, ${l}%));
+      }
+      .slider-s::-webkit-slider-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+      .slider-s::-moz-range-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+
+      .slider-l::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, hsl(${h}, ${s}%, 0%), hsl(${h}, ${s}%, 50%), hsl(${h}, ${s}%, 100%));
+      }
+      .slider-l::-moz-range-track {
+        background: linear-gradient(90deg, hsl(${h}, ${s}%, 0%), hsl(${h}, ${s}%, 50%), hsl(${h}, ${s}%, 100%));
+      }
+      .slider-l::-webkit-slider-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+      .slider-l::-moz-range-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+    `;
+    return () => {
+      if (styleRef.current?.parentNode) {
+        styleRef.current.parentNode.removeChild(styleRef.current);
+        styleRef.current = null;
+      }
+    };
+  }, [r, g, b, h, s, l]);
 
   const handleRgbChange = (newR: number, newG: number, newB: number) => {
     onChange(rgbToHex(newR, newG, newB));
@@ -195,94 +246,22 @@ export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPicker
     onChange(hslToHex(newH, newS, newL));
   };
 
+  if (!mounted) {
+    return (
+      <div className="space-y-3">
+        <div className="space-y-3 rounded-lg border border-border bg-muted p-4" />
+      </div>
+    );
+  }
+
   return (
     <div
       className="space-y-3"
       role="none"
       onMouseDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
+      suppressHydrationWarning
     >
-      <style>{sliderCss}</style>
-      <style>{`
-        .slider-r::-webkit-slider-runnable-track {
-          background: linear-gradient(90deg, rgb(0, ${g}, ${b}), rgb(255, ${g}, ${b}));
-        }
-        .slider-r::-moz-range-track {
-          background: linear-gradient(90deg, rgb(0, ${g}, ${b}), rgb(255, ${g}, ${b}));
-        }
-        .slider-r::-webkit-slider-thumb {
-          background: rgb(${r}, ${g}, ${b});
-        }
-        .slider-r::-moz-range-thumb {
-          background: rgb(${r}, ${g}, ${b});
-        }
-
-        .slider-g::-webkit-slider-runnable-track {
-          background: linear-gradient(90deg, rgb(${r}, 0, ${b}), rgb(${r}, 255, ${b}));
-        }
-        .slider-g::-moz-range-track {
-          background: linear-gradient(90deg, rgb(${r}, 0, ${b}), rgb(${r}, 255, ${b}));
-        }
-        .slider-g::-webkit-slider-thumb {
-          background: rgb(${r}, ${g}, ${b});
-        }
-        .slider-g::-moz-range-thumb {
-          background: rgb(${r}, ${g}, ${b});
-        }
-
-        .slider-b::-webkit-slider-runnable-track {
-          background: linear-gradient(90deg, rgb(${r}, ${g}, 0), rgb(${r}, ${g}, 255));
-        }
-        .slider-b::-moz-range-track {
-          background: linear-gradient(90deg, rgb(${r}, ${g}, 0), rgb(${r}, ${g}, 255));
-        }
-        .slider-b::-webkit-slider-thumb {
-          background: rgb(${r}, ${g}, ${b});
-        }
-        .slider-b::-moz-range-thumb {
-          background: rgb(${r}, ${g}, ${b});
-        }
-
-        .slider-h::-webkit-slider-runnable-track {
-          background: linear-gradient(90deg, hsl(0, ${s}%, ${l}%), hsl(60, ${s}%, ${l}%), hsl(120, ${s}%, ${l}%), hsl(180, ${s}%, ${l}%), hsl(240, ${s}%, ${l}%), hsl(300, ${s}%, ${l}%), hsl(360, ${s}%, ${l}%));
-        }
-        .slider-h::-moz-range-track {
-          background: linear-gradient(90deg, hsl(0, ${s}%, ${l}%), hsl(60, ${s}%, ${l}%), hsl(120, ${s}%, ${l}%), hsl(180, ${s}%, ${l}%), hsl(240, ${s}%, ${l}%), hsl(300, ${s}%, ${l}%), hsl(360, ${s}%, ${l}%));
-        }
-        .slider-h::-webkit-slider-thumb {
-          background: hsl(${h}, ${s}%, ${l}%);
-        }
-        .slider-h::-moz-range-thumb {
-          background: hsl(${h}, ${s}%, ${l}%);
-        }
-
-        .slider-s::-webkit-slider-runnable-track {
-          background: linear-gradient(90deg, hsl(${h}, 0%, ${l}%), hsl(${h}, 100%, ${l}%));
-        }
-        .slider-s::-moz-range-track {
-          background: linear-gradient(90deg, hsl(${h}, 0%, ${l}%), hsl(${h}, 100%, ${l}%));
-        }
-        .slider-s::-webkit-slider-thumb {
-          background: hsl(${h}, ${s}%, ${l}%);
-        }
-        .slider-s::-moz-range-thumb {
-          background: hsl(${h}, ${s}%, ${l}%);
-        }
-
-        .slider-l::-webkit-slider-runnable-track {
-          background: linear-gradient(90deg, hsl(${h}, ${s}%, 0%), hsl(${h}, ${s}%, 50%), hsl(${h}, ${s}%, 100%));
-        }
-        .slider-l::-moz-range-track {
-          background: linear-gradient(90deg, hsl(${h}, ${s}%, 0%), hsl(${h}, ${s}%, 50%), hsl(${h}, ${s}%, 100%));
-        }
-        .slider-l::-webkit-slider-thumb {
-          background: hsl(${h}, ${s}%, ${l}%);
-        }
-        .slider-l::-moz-range-thumb {
-          background: hsl(${h}, ${s}%, ${l}%);
-        }
-      `}</style>
-
       {/* Color preview block */}
       <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
         {/* Text preview on color background */}
@@ -415,69 +394,63 @@ export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPicker
         </div>
       </div>
 
-      {/* Toggle button */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        className="flex w-full items-center gap-2 rounded-lg border border-border bg-muted p-3 text-left text-sm transition-colors hover:bg-muted"
-      >
-        <Palette className="h-4 w-4" />
-        {isOpen ? "Hide" : "Show"} Harmony Colors
-      </button>
+      {/* Harmony colors */}
+      <div className="space-y-4 rounded-lg border border-border bg-muted p-4">
+        {/* Complementary */}
+        <div>
+          <Label className="mb-2 block font-semibold text-xs">Complementary</Label>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddColor?.(getComplementaryColor(value));
+            }}
+            className="h-8 w-full rounded border-2 border-border transition-all hover:scale-105"
+            style={{ backgroundColor: getComplementaryColor(value) }}
+            title={getComplementaryColor(value)}
+          />
+        </div>
 
-      {/* Harmony colors - only in advanced mode */}
-      {isOpen && (
-        <div className="space-y-4 rounded-lg border border-border bg-muted p-4">
-          {/* Complementary */}
-          <div>
-            <Label className="mb-2 block font-semibold text-xs">Complementary</Label>
-            <button
-              type="button"
-              onClick={() => onAddColor?.(getComplementaryColor(value))}
-              className="h-8 w-full rounded border-2 border-border transition-all hover:scale-105"
-              style={{ backgroundColor: getComplementaryColor(value) }}
-              title={getComplementaryColor(value)}
-            />
-          </div>
-
-          {/* Triadic */}
-          <div>
-            <Label className="mb-2 block font-semibold text-xs">Triadic</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {getTriadicColors(value).map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => onAddColor?.(color)}
-                  className="h-8 rounded border-2 border-border transition-all hover:scale-105"
-                  style={{ backgroundColor: color }}
-                  title={color}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Analogous */}
-          <div>
-            <Label className="mb-2 block font-semibold text-xs">Analogous</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {getAnalogousColors(value).map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => onAddColor?.(color)}
-                  className="h-8 rounded border-2 border-border transition-all hover:scale-105"
-                  style={{ backgroundColor: color }}
-                  title={color}
-                />
-              ))}
-            </div>
+        {/* Triadic */}
+        <div>
+          <Label className="mb-2 block font-semibold text-xs">Triadic</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {getTriadicColors(value).map((color) => (
+              <button
+                key={`triadic-${value}-${color}`}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddColor?.(color);
+                }}
+                className="h-8 rounded border-2 border-border transition-all hover:scale-105"
+                style={{ backgroundColor: color }}
+                title={color}
+              />
+            ))}
           </div>
         </div>
-      )}
+
+        {/* Analogous */}
+        <div>
+          <Label className="mb-2 block font-semibold text-xs">Analogous</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {getAnalogousColors(value).map((color) => (
+              <button
+                key={`analogous-${value}-${color}`}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddColor?.(color);
+                }}
+                className="h-8 rounded border-2 border-border transition-all hover:scale-105"
+                style={{ backgroundColor: color }}
+                title={color}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

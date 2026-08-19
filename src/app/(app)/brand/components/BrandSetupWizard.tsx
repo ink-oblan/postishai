@@ -2,7 +2,7 @@
 
 import type { BrandProfile } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { isStepValid } from "../lib/validation";
 import { CoreBrand } from "./CoreBrand";
 import { Video } from "./Video";
@@ -25,6 +25,7 @@ const STEPS = ["Core Brand", "Visual Identity", "Tone of Voice", "Video & Meanin
 export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [formData, setFormData] = useState<BrandFormData>({
     brandName: initialData?.brandName || "",
     mission: initialData?.mission || "",
@@ -43,6 +44,18 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
     videoTransitions: initialData?.videoTransitions || "",
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("brandWizardStep");
+    if (saved) {
+      setCurrentStep(Math.min(parseInt(saved, 10), STEPS.length - 1));
+    }
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("brandWizardStep", String(currentStep));
+  }, [currentStep]);
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -77,6 +90,7 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
         throw new Error("Failed to save brand profile");
       }
 
+      localStorage.removeItem("brandWizardStep");
       router.push("/brand");
     } catch (error) {
       console.error("Error saving brand profile:", error);
@@ -89,6 +103,17 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
     currentStep,
     formData as Record<string, string | undefined>,
   );
+
+  if (!isHydrated) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <div className="space-y-4">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted" />
+          <div className="h-96 rounded-lg border border-border bg-card p-8" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">

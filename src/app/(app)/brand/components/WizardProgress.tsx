@@ -5,14 +5,15 @@ interface WizardProgressProps {
 
 export function WizardProgress({ currentStep, steps }: WizardProgressProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" suppressHydrationWarning>
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
           className="h-full bg-primary transition-all duration-300"
           style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+          suppressHydrationWarning
         />
       </div>
-      <div className="flex justify-between text-sm">
+      <div className="flex justify-between text-sm" suppressHydrationWarning>
         <span className="text-muted-foreground">
           Step {currentStep + 1} of {steps.length}
         </span>

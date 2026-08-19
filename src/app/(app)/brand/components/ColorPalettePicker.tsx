@@ -1,6 +1,6 @@
 "use client";
 
-import { Pipette, Plus } from "lucide-react";
+import { ChevronDown, Pipette, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 
 declare global {
@@ -136,14 +136,22 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
 
       <div className="space-y-2">
         {colors.map((color) => (
-          <button
-            key={color.id}
-            type="button"
-            onClick={() => setExpandedColorId(expandedColorId === color.id ? null : color.id)}
-            className="w-full cursor-pointer space-y-2 rounded-lg border border-border bg-muted/30 p-3 text-left transition-all hover:bg-muted/60"
-          >
+          <div key={color.id} className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
             {/* Color header */}
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setExpandedColorId(expandedColorId === color.id ? null : color.id)}
+                className="flex-shrink-0 p-0 transition-opacity hover:opacity-80"
+              >
+                <ChevronDown
+                  className="h-5 w-5 transition-transform"
+                  style={{
+                    transform: expandedColorId === color.id ? "rotate(0deg)" : "rotate(-90deg)",
+                  }}
+                />
+              </button>
+
               <div
                 className="h-10 w-10 flex-shrink-0 rounded-md border-2 border-border"
                 style={{ backgroundColor: color.hex }}
@@ -194,11 +202,7 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
 
             {/* Expanded color picker */}
             {expandedColorId === color.id && (
-              <div
-                className="border-border border-t pt-3"
-                role="none"
-                onClick={(e) => e.stopPropagation()}
-              >
+              <div className="border-border border-t pt-3">
                 <ColorPickerAdvanced
                   value={color.hex}
                   onChange={(hex) => updateColor(color.id, hex)}
@@ -214,7 +218,7 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
                 />
               </div>
             )}
-          </button>
+          </div>
         ))}
       </div>
 
