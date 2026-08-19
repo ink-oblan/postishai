@@ -143,9 +143,17 @@ const sliderCss = `
     appearance: none;
     -webkit-appearance: none;
     width: 100%;
-    height: 8px;
-    border-radius: 4px;
+    height: 12px;
+    border-radius: 12px;
     outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    border-radius: 12px;
+  }
+
+  input[type="range"]::-moz-range-track {
+    border-radius: 12px;
   }
 
   input[type="range"]::-webkit-slider-thumb {
@@ -188,7 +196,12 @@ export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPicker
   };
 
   return (
-    <div className="space-y-3">
+    <div
+      className="space-y-3"
+      role="none"
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
       <style>{sliderCss}</style>
       <style>{`
         .slider-r::-webkit-slider-runnable-track {
@@ -287,7 +300,7 @@ export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPicker
         <div className="space-y-2">
           <Label className="text-muted-foreground text-xs">RGB</Label>
           <div className="space-y-2">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label htmlFor="slider-r" className="text-muted-foreground text-xs">
                   R (Red)
@@ -301,6 +314,8 @@ export function ColorPickerAdvanced({ value, onChange, onAddColor }: ColorPicker
                 max="255"
                 value={r}
                 onChange={(e) => handleRgbChange(parseInt(e.target.value, 10), g, b)}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 className="slider-r w-full"
               />
             </div>

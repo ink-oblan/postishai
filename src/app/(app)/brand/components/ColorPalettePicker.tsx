@@ -194,7 +194,11 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
 
             {/* Expanded color picker */}
             {expandedColorId === color.id && (
-              <div className="border-border border-t pt-3">
+              <div
+                className="border-border border-t pt-3"
+                role="none"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <ColorPickerAdvanced
                   value={color.hex}
                   onChange={(hex) => updateColor(color.id, hex)}
