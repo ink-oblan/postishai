@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { MediaUploader } from "@/components/posts/MediaUploader";
 import { Button } from "@/components/ui/button";
+import { FileUploader, type UploadedFile } from "@/components/ui/file-uploader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
-import type { MediaFile } from "@/lib/types/media";
+import { ASPECT_RATIO_MULTI_MEDIA, ASPECT_RATIO_SINGLE_VIDEO } from "@/lib/media-constants";
+import { needsCrop } from "@/lib/media-utils";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
 interface LLMModel {
@@ -37,7 +38,19 @@ export function CaptionGenerator() {
   const [llmModelId, setLlmModelId] = useState(DEFAULT_LLM_MODEL_ID);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
   const [loading, setLoading] = useState(false);
-  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+  const [mediaFiles, setMediaFiles] = useState<UploadedFile[]>([]);
+
+  const computeMediaCropFlags = (files: UploadedFile[]): UploadedFile[] => {
+    return files.map((f) => {
+      const isMedia = f.file.type.startsWith("video/") || f.file.type.startsWith("image/");
+      if (!isMedia) return f;
+      const ratio = files.length === 1 ? ASPECT_RATIO_SINGLE_VIDEO : ASPECT_RATIO_MULTI_MEDIA;
+      const [targetW, targetH] = [ratio.width, ratio.height];
+      const willCrop = f.width && f.height ? needsCrop(f.width, f.height, targetW, targetH) : false;
+      if (f.willCrop === willCrop) return f;
+      return { ...f, willCrop };
+    });
+  };
 
   useEffect(() => {
     fetch("/api/llm-models")
@@ -87,7 +100,17 @@ export function CaptionGenerator() {
 
   return (
     <div className="space-y-4">
-      <MediaUploader mediaFiles={mediaFiles} onMediaChange={setMediaFiles} processingCount={0} />
+      <FileUploader
+        files={mediaFiles}
+        onFilesChange={setMediaFiles}
+        label="Media"
+        description="Add images and videos for AI to analyze and generate captions."
+        acceptedExtensions={[".png", ".jpg", ".jpeg", ".webp", ".mp4", ".mov", ".webm"]}
+        maxFiles={10}
+        maxFileSizeBytes={100 * 1024 * 1024}
+        required={true}
+        computeCropFlags={computeMediaCropFlags}
+      />
 
       <div className="space-y-2">
         <Label htmlFor="title">

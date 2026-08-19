@@ -135,12 +135,12 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
       </div>
 
       <div className="space-y-2">
-        {colors.map((color, _index) => (
+        {colors.map((color) => (
           <button
             key={color.id}
             type="button"
             onClick={() => setExpandedColorId(expandedColorId === color.id ? null : color.id)}
-            className="w-full space-y-2 rounded-lg border border-border bg-muted/30 p-3 text-left transition-all hover:bg-muted/60"
+            className="w-full cursor-pointer space-y-2 rounded-lg border border-border bg-muted/30 p-3 text-left transition-all hover:bg-muted/60"
           >
             {/* Color header */}
             <div className="flex items-center gap-2">

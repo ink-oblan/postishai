@@ -1,11 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { FileUploader, type UploadedFile } from "@/components/ui/file-uploader";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { BrandFormData } from "./BrandSetupWizard";
 import { type ColorItem, ColorPalettePicker } from "./ColorPalettePicker";
-import { ImageUploader } from "./ImageUploader";
 import { type FontItem, TypographyPicker } from "./TypographyPicker";
 
 interface VisualProps {
@@ -53,7 +53,7 @@ export function Visual({ formData, onUpdate }: VisualProps) {
     }
   });
 
-  const [patterns, setPatterns] = useState<string[]>(() => {
+  const [patternFiles, setPatternFiles] = useState<UploadedFile[]>(() => {
     if (!formData.patterns) return [];
     try {
       const parsed =
@@ -66,7 +66,7 @@ export function Visual({ formData, onUpdate }: VisualProps) {
     }
   });
 
-  const [logos, setLogos] = useState<string[]>(() => {
+  const [logoFiles, setLogoFiles] = useState<UploadedFile[]>(() => {
     if (!formData.logoPath) return [];
     try {
       const parsed =
@@ -86,7 +86,6 @@ export function Visual({ formData, onUpdate }: VisualProps) {
 
   const handleFontsChange = (newFonts: FontItem[]) => {
     setFonts(newFonts);
-    // Store font metadata including data for uploaded fonts
     const serializable = newFonts.map((f) => ({
       id: f.id,
       name: f.name,
@@ -96,13 +95,13 @@ export function Visual({ formData, onUpdate }: VisualProps) {
     onUpdate({ typography: JSON.stringify(serializable) });
   };
 
-  const handlePatternsChange = (newPatterns: string[]) => {
-    setPatterns(newPatterns);
+  const handlePatternChange = (newPatterns: UploadedFile[]) => {
+    setPatternFiles(newPatterns);
     onUpdate({ patterns: JSON.stringify(newPatterns) });
   };
 
-  const handleLogosChange = (newLogos: string[]) => {
-    setLogos(newLogos);
+  const handleLogoChange = (newLogos: UploadedFile[]) => {
+    setLogoFiles(newLogos);
     onUpdate({ logoPath: JSON.stringify(newLogos) });
   };
 
@@ -121,7 +120,7 @@ export function Visual({ formData, onUpdate }: VisualProps) {
           <ColorPalettePicker colors={colors} onChange={handleColorsChange} />
         </div>
 
-        {/* Typography */}
+        {/* Typography - Built-in fonts and custom font upload */}
         <div className="rounded-lg border border-border bg-card p-4">
           <TypographyPicker fonts={fonts} onChange={handleFontsChange} />
         </div>
@@ -139,22 +138,28 @@ export function Visual({ formData, onUpdate }: VisualProps) {
           />
         </div>
 
-        {/* Patterns */}
-        <ImageUploader
-          label="Patterns & Decorative Elements"
-          values={patterns}
-          onChange={handlePatternsChange}
-          accept=".png"
-          maxFiles={5}
+        {/* Logo */}
+        <FileUploader
+          files={logoFiles}
+          onFilesChange={handleLogoChange}
+          label="Logo"
+          description="Upload PNG logos that represent your brand. These will be used in generated content."
+          acceptedExtensions={[".png"]}
+          maxFiles={10}
+          maxFileSizeBytes={50 * 1024 * 1024}
+          required={false}
         />
 
-        {/* Logo */}
-        <ImageUploader
-          label="Logo"
-          values={logos}
-          onChange={handleLogosChange}
-          accept=".png"
-          maxFiles={5}
+        {/* Patterns */}
+        <FileUploader
+          files={patternFiles}
+          onFilesChange={handlePatternChange}
+          label="Patterns & Decorative Elements"
+          description="Upload PNG patterns and decorative elements to enhance your brand's visual identity."
+          acceptedExtensions={[".png"]}
+          maxFiles={10}
+          maxFileSizeBytes={50 * 1024 * 1024}
+          required={false}
         />
       </div>
     </div>
