@@ -46,16 +46,32 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("brandWizardStep");
-    if (saved) {
-      setCurrentStep(Math.min(parseInt(saved, 10), STEPS.length - 1));
+    const savedStep = localStorage.getItem("brandWizardStep");
+    const savedFormData = localStorage.getItem("brandWizardFormData");
+
+    if (savedStep) {
+      setCurrentStep(Math.min(parseInt(savedStep, 10), STEPS.length - 1));
     }
+
+    if (savedFormData) {
+      try {
+        const parsed = JSON.parse(savedFormData);
+        setFormData((prev) => ({ ...prev, ...parsed }));
+      } catch (e) {
+        console.error("Failed to parse saved form data:", e);
+      }
+    }
+
     setIsHydrated(true);
   }, []);
 
   useEffect(() => {
     localStorage.setItem("brandWizardStep", String(currentStep));
   }, [currentStep]);
+
+  useEffect(() => {
+    localStorage.setItem("brandWizardFormData", JSON.stringify(formData));
+  }, [formData]);
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -91,6 +107,7 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
       }
 
       localStorage.removeItem("brandWizardStep");
+      localStorage.removeItem("brandWizardFormData");
       router.push("/brand");
     } catch (error) {
       console.error("Error saving brand profile:", error);
