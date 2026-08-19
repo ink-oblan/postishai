@@ -1,7 +1,6 @@
-import { jwtVerify } from "jose";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getSessionSecret } from "@/lib/auth/secret";
+import { getValidSession, SESSION_COOKIE } from "@/lib/auth/session";
 
 const PUBLIC_PATHS = [
   "/",
@@ -25,24 +24,26 @@ function isPublicPath(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+
   if (isPublicPath(pathname)) {
     // If user is authenticated and on login page, redirect to dashboard
-    if (pathname === "/login") {
-      const token = request.cookies.get("session")?.value;
-      if (token) {
-        try {
-          await jwtVerify(token, getSessionSecret());
-          return NextResponse.redirect(new URL("/dashboard", request.url));
-        } catch {
-          // Invalid token, let them see login page
-        }
+    if (pathname === "/login" && token) {
+      const session = await getValidSession(token);
+      if (session) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
       }
+      // Cookie is present but doesn't back a live DB session (expired,
+      // revoked, or from another database) — clear it so it can't keep
+      // bouncing this request between /login and a protected route.
+      const response = NextResponse.next();
+      response.cookies.delete(SESSION_COOKIE);
+      return response;
     }
     return NextResponse.next();
   }
 
-  // Protected routes — check for valid session cookie
-  const token = request.cookies.get("session")?.value;
+  // Protected routes — check for a valid, DB-backed session
   const isApi = pathname.startsWith("/api/");
 
   if (!token) {
@@ -50,13 +51,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  try {
-    await jwtVerify(token, getSessionSecret());
-    return NextResponse.next();
-  } catch {
-    if (isApi) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    return NextResponse.redirect(new URL("/login", request.url));
+  const session = await getValidSession(token);
+  if (!session) {
+    const response = isApi
+      ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      : NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.delete(SESSION_COOKIE);
+    return response;
   }
+
+  return NextResponse.next();
 }
 
 export const config = {
