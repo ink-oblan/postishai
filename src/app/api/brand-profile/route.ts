@@ -14,6 +14,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userId, brandProfileId, brandName, mission, targetAudience, topic, ...rest } = body;
 
+    console.log("[brand-profile POST] Received data for user:", userId);
+    console.log("[brand-profile POST] logoPath:", rest.logoPath);
+    console.log("[brand-profile POST] patterns:", rest.patterns);
+
     // Validate required fields
     if (!brandName || !targetAudience || !topic) {
       return NextResponse.json(

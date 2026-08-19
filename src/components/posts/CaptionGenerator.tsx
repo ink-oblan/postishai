@@ -42,6 +42,7 @@ export function CaptionGenerator() {
 
   const computeMediaCropFlags = (files: UploadedFile[]): UploadedFile[] => {
     return files.map((f) => {
+      if (!f.file) return f;
       const isMedia = f.file.type.startsWith("video/") || f.file.type.startsWith("image/");
       if (!isMedia) return f;
       const ratio = files.length === 1 ? ASPECT_RATIO_SINGLE_VIDEO : ASPECT_RATIO_MULTI_MEDIA;
@@ -74,7 +75,9 @@ export function CaptionGenerator() {
       formData.set("platform", platform);
       if (details.trim()) formData.set("details", details.trim());
       formData.set("llmModelId", llmModelId);
-      for (const f of mediaFiles) formData.append("media", f.file, f.name);
+      for (const f of mediaFiles) {
+        if (f.file) formData.append("media", f.file, f.name || f.file.name);
+      }
 
       const res = await fetch("/api/posts/generate-caption", {
         method: "POST",

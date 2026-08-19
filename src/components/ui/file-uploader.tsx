@@ -45,8 +45,9 @@ async function getMediaDimensions(file: File): Promise<{ width: number; height: 
 export interface UploadedFile {
   id: string;
   name: string;
-  file: File;
-  previewUrl: string;
+  file?: File;
+  previewUrl?: string;
+  storagePath?: string;
   width?: number;
   height?: number;
   willCrop?: boolean;
@@ -63,6 +64,7 @@ interface FileUploaderProps {
   maxFileSizeBytes?: number;
   required?: boolean;
   computeCropFlags?: (files: UploadedFile[]) => UploadedFile[]; // Optional callback to compute willCrop flags
+  fileType?: "logo" | "pattern" | "font"; // For server-side upload organization
 }
 
 export function FileUploader({
@@ -76,17 +78,74 @@ export function FileUploader({
   maxFileSizeBytes = 50 * 1024 * 1024,
   required = false,
   computeCropFlags,
+  fileType,
 }: FileUploaderProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const filesRef = useRef<UploadedFile[]>(files);
   filesRef.current = files;
+  const loadedStoragePathsRef = useRef<Set<string>>(new Set());
   const [localProcessingCount, setLocalProcessingCount] = useState(0);
 
   useEffect(() => {
     return () => {
-      for (const f of filesRef.current) URL.revokeObjectURL(f.previewUrl);
+      for (const f of filesRef.current) {
+        if (f.previewUrl?.startsWith("blob:")) {
+          URL.revokeObjectURL(f.previewUrl);
+        }
+      }
     };
   }, []);
+
+  useEffect(() => {
+    // Load preview URLs for files stored on server (those with storagePath but no previewUrl)
+    const filesToLoad = files.filter(
+      (f) => f.storagePath && !f.previewUrl && !loadedStoragePathsRef.current.has(f.storagePath),
+    );
+    if (filesToLoad.length === 0) return;
+
+    // Mark as loading
+    filesToLoad.forEach((f) => {
+      if (f.storagePath) loadedStoragePathsRef.current.add(f.storagePath);
+    });
+
+    (async () => {
+      const updates: Record<string, string> = {};
+      await Promise.all(
+        filesToLoad.map(async (f) => {
+          try {
+            if (!f.storagePath) return;
+            console.log(`[FileUploader] Loading preview for ${f.name} from ${f.storagePath}`);
+            const response = await fetch(
+              `/api/brand-profile/file?path=${encodeURIComponent(f.storagePath)}`,
+              { credentials: "include" },
+            );
+            if (response.ok) {
+              const blob = await response.blob();
+              const previewUrl = URL.createObjectURL(blob);
+              updates[f.id] = previewUrl;
+              console.log(`[FileUploader] Successfully loaded preview for ${f.name}`);
+            } else {
+              console.error(
+                `[FileUploader] Failed to load preview for ${f.name}: ${response.status} ${response.statusText}`,
+              );
+            }
+          } catch (error) {
+            console.error(`[FileUploader] Error loading preview for ${f.name}:`, error);
+          }
+        }),
+      );
+      if (Object.keys(updates).length > 0) {
+        console.log(
+          `[FileUploader] Updating ${Object.keys(updates).length} file(s) with preview URLs`,
+        );
+        onFilesChange(
+          files.map((file) =>
+            updates[file.id] ? { ...file, previewUrl: updates[file.id] } : file,
+          ),
+        );
+      }
+    })();
+  }, [files, onFilesChange]);
 
   async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
     let selectedFiles = Array.from(e.target.files ?? []);
@@ -136,11 +195,18 @@ export function FileUploader({
 
     setLocalProcessingCount(selectedFiles.length);
 
+    // First, create preview URLs and get dimensions for all files
+    const filesWithPreviews = selectedFiles.map((file) => {
+      const previewUrl = URL.createObjectURL(file);
+      return { file, previewUrl };
+    });
+
+    // Then upload files in parallel
     const results = await Promise.allSettled(
-      selectedFiles.map(async (file) => {
+      filesWithPreviews.map(async ({ file, previewUrl }) => {
         try {
-          const previewUrl = URL.createObjectURL(file);
           let dimensions: { width?: number; height?: number } = {};
+          let storagePath: string | undefined;
 
           // Get dimensions for media files if computeCropFlags is provided
           if (
@@ -154,11 +220,33 @@ export function FileUploader({
             }
           }
 
+          // Upload file to server if fileType is specified
+          if (fileType) {
+            const formData = new FormData();
+            formData.append("files", file);
+            formData.append("fileType", fileType);
+
+            const uploadResponse = await fetch("/api/brand-profile/upload", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+              throw new Error("Failed to upload file to server");
+            }
+
+            const uploadedData = await uploadResponse.json();
+            if (uploadedData.files?.[0]?.storagePath) {
+              storagePath = uploadedData.files[0].storagePath;
+            }
+          }
+
           return {
             id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
             name: file.name,
             file,
             previewUrl,
+            storagePath,
             ...dimensions,
           };
         } catch (error) {
@@ -179,6 +267,7 @@ export function FileUploader({
     if (newFiles.length > 0) {
       const allFiles = [...files, ...newFiles];
       const finalFiles = computeCropFlags ? computeCropFlags(allFiles) : allFiles;
+      console.log("[FileUploader] Files after upload:", finalFiles);
       onFilesChange(finalFiles);
       const totalNow = files.length + newFiles.length;
       toast.success(`${newFiles.length} file(s) added (${totalNow}/${maxFiles})`);
@@ -189,7 +278,7 @@ export function FileUploader({
   function handleRemoveFile(id: string) {
     const filtered = files
       .map((f) => {
-        if (f.id === id) URL.revokeObjectURL(f.previewUrl);
+        if (f.id === id && f.previewUrl) URL.revokeObjectURL(f.previewUrl);
         return f;
       })
       .filter((f) => f.id !== id);

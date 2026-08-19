@@ -221,6 +221,7 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
             maxFiles={maxFonts - fonts.length}
             maxFileSizeBytes={50 * 1024 * 1024}
             required={false}
+            fileType="font"
           />
         </div>
       )}
