@@ -89,6 +89,8 @@ export const PATCH = withAuth(async function PATCH(
     archive,
     regenerateMetadata,
     caption,
+    hashtags,
+    tags,
   } = body as {
     title?: string;
     script?: string;
@@ -99,6 +101,8 @@ export const PATCH = withAuth(async function PATCH(
     archive?: boolean;
     regenerateMetadata?: boolean;
     caption?: string;
+    hashtags?: unknown;
+    tags?: unknown;
   };
 
   if (archive) {
@@ -137,14 +141,19 @@ export const PATCH = withAuth(async function PATCH(
     }
     const currentMetadata = post.metadata as Record<string, unknown> | null;
     const trimmedCaption = caption?.trim();
-    // On YouTube Shorts the editable caption text is the `description` field; elsewhere it's `caption`.
+    // On YouTube Shorts the editable caption text is the `description` field and tag list is
+    // `tags`; elsewhere they're `caption` and `hashtags`.
     const isYouTube = post.platform === "YOUTUBE_SHORTS";
+    const tagFieldName = isYouTube ? "tags" : "hashtags";
+    const rawTags = isYouTube ? tags : hashtags;
+    const nextTagList = rawTags !== undefined ? normalizeTagList(rawTags) : undefined;
     let updatedMetadata: Record<string, unknown> | null = currentMetadata;
-    if (trimmedCaption) {
+    if (trimmedCaption || nextTagList !== undefined) {
       if (currentMetadata) {
         updatedMetadata = {
           ...currentMetadata,
-          [isYouTube ? "description" : "caption"]: trimmedCaption,
+          ...(trimmedCaption ? { [isYouTube ? "description" : "caption"]: trimmedCaption } : {}),
+          ...(nextTagList !== undefined ? { [tagFieldName]: nextTagList } : {}),
         };
       } else {
         // Metadata not generated yet (e.g. generation failed) — seed a minimal object so the
@@ -153,10 +162,14 @@ export const PATCH = withAuth(async function PATCH(
           ? {
               platform: "YOUTUBE_SHORTS",
               title: title.trim(),
-              description: trimmedCaption,
-              tags: [],
+              description: trimmedCaption ?? "",
+              tags: nextTagList ?? [],
             }
-          : { platform: post.platform, caption: trimmedCaption, hashtags: [] };
+          : {
+              platform: post.platform,
+              caption: trimmedCaption ?? "",
+              hashtags: nextTagList ?? [],
+            };
       }
     }
     const updated = await prisma.post.update({
