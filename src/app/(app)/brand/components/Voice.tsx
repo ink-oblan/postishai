@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+} from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import type { BrandFormData } from "./BrandSetupWizard";
 import { ValidatedTextarea } from "./ValidatedTextarea";
@@ -20,39 +27,49 @@ export function Voice({ formData, onUpdate }: VoiceProps) {
       </div>
 
       <div className="space-y-5">
-        <div>
-          <Label htmlFor="formality">
+        <div style={{ marginTop: "1.5rem" }}>
+          <Label htmlFor="formality" style={{ marginBottom: "0.5rem", display: "block" }}>
             Formality Level <span className="text-destructive">*</span>
           </Label>
-          <select
-            id="formality"
+          <Combobox
             value={formData.youFormality ? "casual" : "formal"}
-            onChange={(e) => onUpdate({ youFormality: e.target.value === "casual" })}
-            className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-foreground"
+            onValueChange={(value) => onUpdate({ youFormality: value === "casual" })}
           >
-            <option value="formal">Formal — Professional, respectful</option>
-            <option value="casual">Casual — Friendly, intimate</option>
-          </select>
+            <ComboboxInputGroup>
+              <ComboboxInput
+                id="formality"
+                placeholder="Select formality level..."
+                readOnly
+                value={formData.youFormality ? "Casual" : "Formal"}
+              />
+            </ComboboxInputGroup>
+            <ComboboxContent>
+              <ComboboxItem value="formal">Formal — Professional, respectful</ComboboxItem>
+              <ComboboxItem value="casual">Casual — Friendly, intimate</ComboboxItem>
+            </ComboboxContent>
+          </Combobox>
         </div>
 
         <div>
           <Label htmlFor="emojiLevel">
             Emoji & Hashtag Level <span className="text-destructive">*</span>
           </Label>
-          <div className="mt-2 space-y-3">
-            <div className="flex items-center gap-2">
-              <input
-                id="emojiLevel"
-                type="range"
-                min={0}
-                max={3}
-                value={formData.emojiLevel || 0}
-                onChange={(e) => onUpdate({ emojiLevel: parseInt(e.target.value, 10) })}
-                className="flex-1"
-              />
-              <span className="min-w-12 font-medium text-muted-foreground text-xs">
-                {EMOJI_LEVEL_LABELS[formData.emojiLevel || 0]}
-              </span>
+          <div className="mt-3 mb-4" style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+            <div className="flex gap-2">
+              {EMOJI_LEVEL_LABELS.map((label, idx) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => onUpdate({ emojiLevel: idx })}
+                  className={`rounded border px-2 py-1.5 font-medium text-xs transition-all ${
+                    (formData.emojiLevel || 0) === idx
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             {(() => {
               const examples = [
@@ -62,7 +79,20 @@ export function Voice({ formData, onUpdate }: VoiceProps) {
                 "🚀 CHECK THIS OUT 🚀\n\nOur new product is AMAZING 💯✨\n→ Delivers incredible results 🔥\n→ Transforms your workflow 💪\n→ Built just for you 💖\n\n#innovation #business #newlaunch #mustfollow #incredible #gamechanger",
               ];
               return (
-                <div className="whitespace-pre-wrap rounded border border-border/50 bg-muted/30 p-4 font-sans text-sm leading-relaxed">
+                <div
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    borderRadius: "0.5rem",
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--muted)",
+                    color: "var(--foreground)",
+                    padding: "1rem",
+                    fontFamily: "sans-serif",
+                    fontSize: "0.875rem",
+                    lineHeight: "1.5",
+                    marginTop: "1rem",
+                  }}
+                >
                   {examples[formData.emojiLevel || 0]}
                 </div>
               );
