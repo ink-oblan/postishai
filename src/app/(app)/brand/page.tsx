@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
@@ -51,14 +50,10 @@ function normalizeFonts(fonts: unknown): Font[] {
 export default async function BrandPage() {
   const session = await requireSession();
 
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findUniqueOrThrow({
     where: { id: session.userId },
     include: { brandProfiles: true },
   });
-
-  if (!user) {
-    redirect("/login");
-  }
 
   // If brand profiles exist, show them all; otherwise show the wizard
   const brandProfiles = user.brandProfiles || [];
