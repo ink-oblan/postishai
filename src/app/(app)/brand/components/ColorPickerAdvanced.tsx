@@ -11,9 +11,18 @@ interface ColorPickerAdvancedProps {
 }
 
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  if (!hex?.startsWith("#") || hex.length !== 7) {
+    return { h: 0, s: 0, l: 0 };
+  }
+  const rVal = parseInt(hex.slice(1, 3), 16);
+  const gVal = parseInt(hex.slice(3, 5), 16);
+  const bVal = parseInt(hex.slice(5, 7), 16);
+  if (Number.isNaN(rVal) || Number.isNaN(gVal) || Number.isNaN(bVal)) {
+    return { h: 0, s: 0, l: 0 };
+  }
+  const r = rVal / 255;
+  const g = gVal / 255;
+  const b = bVal / 255;
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -45,10 +54,13 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  if (!hex?.startsWith("#") || hex.length !== 7) {
+    return { r: 0, g: 0, b: 0 };
+  }
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  return { r, g, b };
+  return { r: Number.isNaN(r) ? 0 : r, g: Number.isNaN(g) ? 0 : g, b: Number.isNaN(b) ? 0 : b };
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
