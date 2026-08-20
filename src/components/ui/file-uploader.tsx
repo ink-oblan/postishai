@@ -292,9 +292,11 @@ export function FileUploader({
 
   return (
     <div className="space-y-2">
-      <Label>
-        {label} {required && <span className="text-destructive">*</span>}
-      </Label>
+      {label && (
+        <Label>
+          {label} {required && <span className="text-destructive">*</span>}
+        </Label>
+      )}
       {description && (
         <p className="text-muted-foreground text-xs">
           {description} Maximum {maxFiles} files. ({files.length}/{maxFiles})

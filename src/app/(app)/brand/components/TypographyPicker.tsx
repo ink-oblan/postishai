@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   Combobox,
@@ -135,107 +136,131 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
     }
   };
 
+  const isValid = fonts.length >= 1;
+
   return (
-    <div className="space-y-4">
-      <div>
-        <Label className="mb-3 block font-semibold text-base">
-          Typefaces <span className="text-destructive">*</span>
-        </Label>
-        <p className="mb-4 text-muted-foreground text-sm">
-          Select from our library or upload your own font files
-        </p>
-      </div>
+    <div className="space-y-2">
+      <Label>
+        Typefaces <span className="text-destructive">*</span>
+      </Label>
 
-      {/* Selected fonts */}
-      <div className="space-y-2">
-        {fonts.length === 0 ? (
-          <p className="text-muted-foreground text-sm italic">No fonts selected yet</p>
-        ) : (
-          fonts.map((font) => (
-            <div
-              key={font.id}
-              className="flex items-center justify-between rounded-md bg-muted p-3"
-              style={
-                font.source === "builtin"
-                  ? { fontFamily: getFontFamily(getFontIdByName(font.name)) }
-                  : undefined
-              }
-            >
-              <div className="flex-1">
-                <div className="font-medium">{font.name}</div>
-                <div className="text-muted-foreground text-xs">
-                  {font.source === "builtin" ? "From library" : "Custom font"}
-                </div>
-              </div>
-              <RemoveButton onClick={() => removeFont(font.id)} aria-label="Remove this font" />
-            </div>
-          ))
-        )}
-      </div>
-
-      {fonts.length < maxFonts && (
-        <div className="space-y-3 border-t pt-4">
-          {/* Built-in fonts with search and selection */}
+      <div
+        className={`rounded-lg border p-4 ${
+          isValid ? "border-green-500 bg-green-500/5" : "border-red-500 bg-red-500/5"
+        }`}
+      >
+        <div className="mb-4 flex items-start justify-between">
+          <p className="text-muted-foreground text-xs">
+            Select from our library or upload your own font files
+          </p>
+          {isValid ? (
+            <CheckCircle2
+              className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
+              aria-hidden="true"
+            />
+          ) : (
+            <AlertCircle className="ml-2 h-5 w-5 flex-shrink-0 text-red-500" aria-hidden="true" />
+          )}
+        </div>
+        <div className="space-y-4">
+          {/* Selected fonts */}
           <div className="space-y-2">
-            <Label className="text-sm">Add from library</Label>
-            <Combobox
-              inputValue={fontSearch}
-              onInputValueChange={setFontSearch}
-              open={isFocused}
-              onOpenChange={setIsFocused}
-            >
-              <ComboboxInputGroup>
-                <ComboboxInput placeholder="Search or select font..." />
-              </ComboboxInputGroup>
-              <ComboboxContent>
-                {filteredBuiltins.length > 0 ? (
-                  filteredBuiltins.map((font) => (
-                    <ComboboxItem
-                      key={font.id}
-                      value=""
-                      onClick={() => {
-                        addBuiltinFont(font.id);
-                        setFontSearch("");
-                        setIsFocused(false);
-                      }}
-                    >
-                      <span style={{ fontFamily: getFontFamily(font.id) }}>{font.name}</span>
-                    </ComboboxItem>
-                  ))
-                ) : (
-                  <div className="px-2 py-3 text-center text-muted-foreground text-sm">
-                    No fonts found
+            {fonts.length === 0 ? (
+              <p className="text-muted-foreground text-sm italic">No fonts selected yet</p>
+            ) : (
+              fonts.map((font) => (
+                <div
+                  key={font.id}
+                  className="flex items-center justify-between rounded-md bg-muted p-3"
+                  style={
+                    font.source === "builtin"
+                      ? { fontFamily: getFontFamily(getFontIdByName(font.name)) }
+                      : undefined
+                  }
+                >
+                  <div className="flex-1">
+                    <div className="font-medium">{font.name}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {font.source === "builtin" ? "From library" : "Custom font"}
+                    </div>
                   </div>
-                )}
-              </ComboboxContent>
-            </Combobox>
+                  <RemoveButton onClick={() => removeFont(font.id)} aria-label="Remove this font" />
+                </div>
+              ))
+            )}
           </div>
 
-          {/* Upload custom font using FileUploader */}
-          <FileUploader
-            files={customFontFiles}
-            onFilesChange={handleCustomFontFilesChange}
-            label="Upload custom font"
-            description="Upload TTF, OTF, WOFF, or WOFF2 font files"
-            acceptedExtensions={[".ttf", ".otf", ".woff", ".woff2"]}
-            maxFiles={maxFonts - fonts.length}
-            maxFileSizeBytes={50 * 1024 * 1024}
-            required={false}
-            fileType="font"
-          />
-        </div>
-      )}
+          {fonts.length < maxFonts && (
+            <div className="space-y-3 border-t pt-4">
+              {/* Built-in fonts with search and selection */}
+              <div className="space-y-2">
+                <Label className="text-sm">Add from library</Label>
+                <Combobox
+                  inputValue={fontSearch}
+                  onInputValueChange={setFontSearch}
+                  open={isFocused}
+                  onOpenChange={setIsFocused}
+                >
+                  <ComboboxInputGroup>
+                    <ComboboxInput placeholder="Search or select font..." />
+                  </ComboboxInputGroup>
+                  <ComboboxContent>
+                    {filteredBuiltins.length > 0 ? (
+                      filteredBuiltins.map((font) => (
+                        <ComboboxItem
+                          key={font.id}
+                          value=""
+                          onClick={() => {
+                            addBuiltinFont(font.id);
+                            setFontSearch("");
+                            setIsFocused(false);
+                          }}
+                        >
+                          <span style={{ fontFamily: getFontFamily(font.id) }}>{font.name}</span>
+                        </ComboboxItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-3 text-center text-muted-foreground text-sm">
+                        No fonts found
+                      </div>
+                    )}
+                  </ComboboxContent>
+                </Combobox>
+              </div>
 
-      {/* Info hint */}
-      <div className="space-y-1 pt-2 text-center text-muted-foreground text-xs">
-        <p>
-          Add{" "}
-          {1 - Math.min(fonts.length, 1) > 0
-            ? `${1 - Math.min(fonts.length, 1)} more typeface${1 - Math.min(fonts.length, 1) > 1 ? "s" : ""}`
-            : `up to ${maxFonts - fonts.length} more typeface${maxFonts - fonts.length > 1 ? "s" : ""}`}{" "}
-          (1–{maxFonts} total)
-        </p>
-        <p className="text-xs opacity-75">At least 1 typeface required</p>
+              {/* Upload custom font using FileUploader */}
+              <FileUploader
+                files={customFontFiles}
+                onFilesChange={handleCustomFontFilesChange}
+                label="Upload custom font"
+                description="Upload TTF, OTF, WOFF, or WOFF2 font files"
+                acceptedExtensions={[".ttf", ".otf", ".woff", ".woff2"]}
+                maxFiles={maxFonts - fonts.length}
+                maxFileSizeBytes={50 * 1024 * 1024}
+                required={false}
+                fileType="font"
+              />
+            </div>
+          )}
+
+          {/* Info hint */}
+          <div
+            className={`space-y-1 pt-2 text-center text-xs ${
+              isValid ? "text-muted-foreground" : "font-medium text-red-500"
+            }`}
+          >
+            <p>
+              Add{" "}
+              {1 - Math.min(fonts.length, 1) > 0
+                ? `${1 - Math.min(fonts.length, 1)} more typeface${1 - Math.min(fonts.length, 1) > 1 ? "s" : ""}`
+                : `up to ${maxFonts - fonts.length} more typeface${maxFonts - fonts.length > 1 ? "s" : ""}`}{" "}
+              (1–{maxFonts} total)
+            </p>
+            <p className={isValid ? "text-xs opacity-75" : "text-red-500 text-xs"}>
+              At least 1 typeface required
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckCircle2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { FileUploader, type UploadedFile } from "@/components/ui/file-uploader";
 import { Label } from "@/components/ui/label";
@@ -140,53 +141,105 @@ export function Visual({ formData, onUpdate }: VisualProps) {
 
       <div className="space-y-4">
         {/* Color Palette */}
-        <div className="rounded-lg border border-border bg-card p-4">
-          <ColorPalettePicker colors={colors} onChange={handleColorsChange} />
-        </div>
+        <ColorPalettePicker colors={colors} onChange={handleColorsChange} />
 
         {/* Typography - Built-in fonts and custom font upload */}
-        <div className="rounded-lg border border-border bg-card p-4">
-          <TypographyPicker fonts={fonts} onChange={handleFontsChange} />
-        </div>
+        <TypographyPicker fonts={fonts} onChange={handleFontsChange} />
 
         {/* Photo Style */}
-        <div>
-          <Label htmlFor="photoStyle">Photo Style</Label>
-          <Textarea
-            id="photoStyle"
-            placeholder="e.g., Bright and energetic, Minimalist, Dark and moody"
-            value={formData.photoStyle || ""}
-            onChange={(e) => onUpdate({ photoStyle: e.target.value })}
-            className="mt-2"
-            rows={2}
-          />
-        </div>
+        {(() => {
+          const hasText = (formData.photoStyle || "").trim().length > 0;
+          return (
+            <div className="space-y-2">
+              <Label htmlFor="photoStyle">Photo Style</Label>
+              <div className="relative">
+                <Textarea
+                  id="photoStyle"
+                  placeholder="e.g., Bright and energetic, Minimalist, Dark and moody"
+                  value={formData.photoStyle || ""}
+                  onChange={(e) => onUpdate({ photoStyle: e.target.value })}
+                  className={`pr-10 ${
+                    hasText
+                      ? "border-green-500 focus:ring-green-500"
+                      : "border-border focus:ring-ring"
+                  }`}
+                  rows={2}
+                />
+                {hasText && (
+                  <div className="absolute top-3 right-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" aria-hidden="true" />
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Logo */}
-        <FileUploader
-          files={logoFiles}
-          onFilesChange={handleLogoChange}
-          label="Logo"
-          description="Upload PNG logos that represent your brand. These will be used in generated content."
-          acceptedExtensions={[".png"]}
-          maxFiles={10}
-          maxFileSizeBytes={50 * 1024 * 1024}
-          required={false}
-          fileType="logo"
-        />
+        <div className="space-y-2">
+          <Label>Logo</Label>
+          <div
+            className={`rounded-lg border p-4 ${
+              logoFiles.length >= 1
+                ? "border-green-500 bg-green-500/5"
+                : "border-border bg-muted/20"
+            }`}
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <p className="flex-1 text-muted-foreground text-xs">
+                Upload PNG logos that represent your brand. These will be used in generated content.
+              </p>
+              {logoFiles.length >= 1 ? (
+                <CheckCircle2
+                  className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
+                  aria-hidden="true"
+                />
+              ) : null}
+            </div>
+            <FileUploader
+              files={logoFiles}
+              onFilesChange={handleLogoChange}
+              acceptedExtensions={[".png"]}
+              maxFiles={10}
+              maxFileSizeBytes={50 * 1024 * 1024}
+              required={false}
+              fileType="logo"
+            />
+          </div>
+        </div>
 
         {/* Patterns */}
-        <FileUploader
-          files={patternFiles}
-          onFilesChange={handlePatternChange}
-          label="Patterns & Decorative Elements"
-          description="Upload PNG patterns and decorative elements to enhance your brand's visual identity."
-          acceptedExtensions={[".png"]}
-          maxFiles={10}
-          maxFileSizeBytes={50 * 1024 * 1024}
-          required={false}
-          fileType="pattern"
-        />
+        <div className="space-y-2">
+          <Label>Patterns & Decorative Elements</Label>
+          <div
+            className={`rounded-lg border p-4 ${
+              patternFiles.length >= 1
+                ? "border-green-500 bg-green-500/5"
+                : "border-border bg-muted/20"
+            }`}
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <p className="flex-1 text-muted-foreground text-xs">
+                Upload PNG patterns and decorative elements to enhance your brand's visual identity.
+              </p>
+              {patternFiles.length >= 1 ? (
+                <CheckCircle2
+                  className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
+                  aria-hidden="true"
+                />
+              ) : null}
+            </div>
+            <FileUploader
+              files={patternFiles}
+              onFilesChange={handlePatternChange}
+              acceptedExtensions={[".png"]}
+              maxFiles={10}
+              maxFileSizeBytes={50 * 1024 * 1024}
+              required={false}
+              fileType="pattern"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

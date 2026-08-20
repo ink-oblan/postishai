@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   Combobox,
   ComboboxContent,
@@ -27,35 +28,85 @@ export function Voice({ formData, onUpdate }: VoiceProps) {
       </div>
 
       <div className="space-y-5">
-        <div style={{ marginTop: "1.5rem" }}>
-          <Label htmlFor="formality" style={{ marginBottom: "0.5rem", display: "block" }}>
+        <div className="space-y-2">
+          <Label htmlFor="formality">
             Formality Level <span className="text-destructive">*</span>
           </Label>
-          <Combobox
-            value={formData.youFormality ? "casual" : "formal"}
-            onValueChange={(value) => onUpdate({ youFormality: value === "casual" })}
+          <div
+            className={`rounded-lg border p-4 ${
+              formData.youFormality !== undefined && formData.youFormality !== null
+                ? "border-green-500 bg-green-500/5"
+                : "border-red-500 bg-red-500/5"
+            }`}
           >
-            <ComboboxInputGroup>
-              <ComboboxInput
-                id="formality"
-                placeholder="Select formality level..."
-                readOnly
-                value={formData.youFormality ? "Casual" : "Formal"}
-              />
-            </ComboboxInputGroup>
-            <ComboboxContent>
-              <ComboboxItem value="formal">Formal — Professional, respectful</ComboboxItem>
-              <ComboboxItem value="casual">Casual — Friendly, intimate</ComboboxItem>
-            </ComboboxContent>
-          </Combobox>
+            <div className="mb-4 flex items-start justify-between">
+              <p className="flex-1 text-muted-foreground text-xs">
+                Choose between formal and casual communication style
+              </p>
+              {formData.youFormality !== undefined && formData.youFormality !== null ? (
+                <CheckCircle2
+                  className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
+                  aria-hidden="true"
+                />
+              ) : (
+                <AlertCircle
+                  className="ml-2 h-5 w-5 flex-shrink-0 text-red-500"
+                  aria-hidden="true"
+                />
+              )}
+            </div>
+            <Combobox
+              value={formData.youFormality ? "casual" : "formal"}
+              onValueChange={(value) => onUpdate({ youFormality: value === "casual" })}
+            >
+              <ComboboxInputGroup>
+                <ComboboxInput
+                  id="formality"
+                  placeholder="Select formality level..."
+                  readOnly
+                  value={formData.youFormality ? "Casual" : "Formal"}
+                />
+              </ComboboxInputGroup>
+              <ComboboxContent>
+                <ComboboxItem value="formal">Formal — Professional, respectful</ComboboxItem>
+                <ComboboxItem value="casual">Casual — Friendly, intimate</ComboboxItem>
+              </ComboboxContent>
+            </Combobox>
+          </div>
         </div>
 
-        <div>
+        <div className="space-y-2">
           <Label htmlFor="emojiLevel">
             Emoji & Hashtag Level <span className="text-destructive">*</span>
           </Label>
-          <div className="mt-3 mb-4" style={{ marginTop: "1rem", marginBottom: "1rem" }}>
-            <div className="flex gap-2">
+          <div
+            className={`rounded-lg border p-4 ${
+              formData.emojiLevel !== undefined &&
+              formData.emojiLevel !== null &&
+              formData.emojiLevel >= 0
+                ? "border-green-500 bg-green-500/5"
+                : "border-red-500 bg-red-500/5"
+            }`}
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <p className="flex-1 text-muted-foreground text-xs">
+                Select how many emojis and hashtags to use
+              </p>
+              {formData.emojiLevel !== undefined &&
+              formData.emojiLevel !== null &&
+              formData.emojiLevel >= 0 ? (
+                <CheckCircle2
+                  className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
+                  aria-hidden="true"
+                />
+              ) : (
+                <AlertCircle
+                  className="ml-2 h-5 w-5 flex-shrink-0 text-red-500"
+                  aria-hidden="true"
+                />
+              )}
+            </div>
+            <div className="mb-4 flex gap-2">
               {EMOJI_LEVEL_LABELS.map((label, idx) => (
                 <button
                   key={label}
