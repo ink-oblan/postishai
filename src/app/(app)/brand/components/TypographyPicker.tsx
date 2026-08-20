@@ -126,7 +126,7 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
         id: f.id,
         name: f.name,
         source: "uploaded" as const,
-        data: f.previewUrl,
+        data: f.storagePath,
       }));
 
     if (newFonts.length > 0 && fonts.length + newFonts.length <= maxFonts) {
