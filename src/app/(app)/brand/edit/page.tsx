@@ -30,23 +30,13 @@ export default async function BrandEditPage(props: { searchParams: Promise<{ id?
   const searchParams = await props.searchParams;
   const brandId = searchParams.id;
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    include: { brandProfiles: true },
-  });
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  let brandProfile = user.brandProfiles?.[0];
-
-  if (brandId) {
-    const specificBrand = user.brandProfiles?.find((b) => b.id === brandId);
-    if (specificBrand) {
-      brandProfile = specificBrand;
-    }
-  }
+  // Scope the lookup to the session user so an id from another account resolves to nothing.
+  const brandProfile = brandId
+    ? await prisma.brandProfile.findFirst({ where: { id: brandId, userId: session.userId } })
+    : await prisma.brandProfile.findFirst({
+        where: { userId: session.userId },
+        orderBy: { createdAt: "asc" },
+      });
 
   if (!brandProfile) {
     redirect("/brand");
@@ -60,7 +50,7 @@ export default async function BrandEditPage(props: { searchParams: Promise<{ id?
 
   return (
     <div className="min-h-screen bg-background">
-      <BrandSetupWizard initialData={normalizedBrandProfile} userId={user.id} />
+      <BrandSetupWizard initialData={normalizedBrandProfile} userId={session.userId} />
     </div>
   );
 }

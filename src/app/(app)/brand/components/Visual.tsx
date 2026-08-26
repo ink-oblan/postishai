@@ -5,6 +5,11 @@ import { useRef, useState } from "react";
 import { FileUploader, type UploadedFile } from "@/components/ui/file-uploader";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  BRAND_ASSET_EXTENSIONS,
+  MAX_BRAND_ASSET_FILES_PER_REQUEST,
+  MAX_BRAND_ASSET_SIZE_BYTES,
+} from "@/lib/brand-assets";
 import type { BrandFormData } from "./BrandSetupWizard";
 import { type ColorItem, ColorPalettePicker } from "./ColorPalettePicker";
 import { type FontItem, TypographyPicker } from "./TypographyPicker";
@@ -44,11 +49,12 @@ export function Visual({ formData, onUpdate }: VisualProps) {
         typeof formData.typography === "string"
           ? JSON.parse(formData.typography as string)
           : (formData.typography as unknown);
-      // Filter out file objects since they can't be serialized
-      return parsed.map((f: FontItem) => ({
-        ...f,
-        file: undefined,
-      }));
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((f: FontItem & { data?: string }) => {
+        // `data` was the previous name for the uploaded font's storage path.
+        const { data, ...font } = f;
+        return { ...font, storagePath: font.storagePath ?? data };
+      });
     } catch {
       return [];
     }
@@ -89,11 +95,13 @@ export function Visual({ formData, onUpdate }: VisualProps) {
 
   const handleFontsChange = (newFonts: FontItem[]) => {
     setFonts(newFonts);
+    // Persist the storage path of uploaded fonts, never the File or its blob: URL —
+    // neither survives serialization or a page reload.
     const serializable = newFonts.map((f) => ({
       id: f.id,
       name: f.name,
       source: f.source,
-      ...(f.data && { data: f.data }),
+      ...(f.storagePath && { storagePath: f.storagePath }),
     }));
     onUpdate({ typography: JSON.stringify(serializable) });
   };
@@ -113,7 +121,6 @@ export function Visual({ formData, onUpdate }: VisualProps) {
   };
 
   const handleLogoChange = (newLogos: UploadedFile[]) => {
-    console.log("[Visual] handleLogoChange:", newLogos);
     setLogoFiles(newLogos);
     // Only store essential fields for persistence: id, name, storagePath, width, height, willCrop
     // Don't store blob: URLs or File objects as they can't be serialized or persist across sessions
@@ -125,9 +132,7 @@ export function Visual({ formData, onUpdate }: VisualProps) {
       height: logo.height,
       willCrop: logo.willCrop,
     }));
-    const json = JSON.stringify(persistedLogos);
-    console.log("[Visual] Saving logoPath as JSON:", json);
-    onUpdate({ logoPath: json });
+    onUpdate({ logoPath: JSON.stringify(persistedLogos) });
   };
 
   return (
@@ -199,9 +204,9 @@ export function Visual({ formData, onUpdate }: VisualProps) {
             <FileUploader
               files={logoFiles}
               onFilesChange={handleLogoChange}
-              acceptedExtensions={[".png"]}
-              maxFiles={10}
-              maxFileSizeBytes={50 * 1024 * 1024}
+              acceptedExtensions={BRAND_ASSET_EXTENSIONS.logo}
+              maxFiles={MAX_BRAND_ASSET_FILES_PER_REQUEST}
+              maxFileSizeBytes={MAX_BRAND_ASSET_SIZE_BYTES.logo}
               required={false}
               fileType="logo"
             />
@@ -232,9 +237,9 @@ export function Visual({ formData, onUpdate }: VisualProps) {
             <FileUploader
               files={patternFiles}
               onFilesChange={handlePatternChange}
-              acceptedExtensions={[".png"]}
-              maxFiles={10}
-              maxFileSizeBytes={50 * 1024 * 1024}
+              acceptedExtensions={BRAND_ASSET_EXTENSIONS.pattern}
+              maxFiles={MAX_BRAND_ASSET_FILES_PER_REQUEST}
+              maxFileSizeBytes={MAX_BRAND_ASSET_SIZE_BYTES.pattern}
               required={false}
               fileType="pattern"
             />

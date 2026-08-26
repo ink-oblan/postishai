@@ -204,26 +204,22 @@ model BrandProfile {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   posts  Post[]
 
-  // Required Info
   brandName      String
   topic          String
   targetAudience String
   mission        String?
 
-  // Visual Identity
   colors     Json?
   typography Json?
   logoPath   Json?
   patterns   Json?
   photoStyle String?
 
-  // Tone of Voice
   youFormality    Boolean @default(false)
   emojiLevel      Int     @default(0)
   voiceStyle      String?
   brandVocabulary String?
 
-  // Video & Meaning
   videoAnimations  String?
   videoTransitions String?
 

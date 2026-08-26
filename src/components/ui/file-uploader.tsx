@@ -59,7 +59,7 @@ interface FileUploaderProps {
   processingCount?: number;
   label?: string;
   description?: string;
-  acceptedExtensions?: string[]; // e.g., [".png", ".jpg", ".ttf"]
+  acceptedExtensions?: readonly string[]; // e.g., [".png", ".jpg", ".ttf"]
   maxFiles?: number;
   maxFileSizeBytes?: number;
   required?: boolean;
@@ -114,16 +114,12 @@ export function FileUploader({
         filesToLoad.map(async (f) => {
           try {
             if (!f.storagePath) return;
-            console.log(`[FileUploader] Loading preview for ${f.name} from ${f.storagePath}`);
             const response = await fetch(
               `/api/brand-profile/file?path=${encodeURIComponent(f.storagePath)}`,
               { credentials: "include" },
             );
             if (response.ok) {
-              const blob = await response.blob();
-              const previewUrl = URL.createObjectURL(blob);
-              updates[f.id] = previewUrl;
-              console.log(`[FileUploader] Successfully loaded preview for ${f.name}`);
+              updates[f.id] = URL.createObjectURL(await response.blob());
             } else {
               console.error(
                 `[FileUploader] Failed to load preview for ${f.name}: ${response.status} ${response.statusText}`,
@@ -135,9 +131,6 @@ export function FileUploader({
         }),
       );
       if (Object.keys(updates).length > 0) {
-        console.log(
-          `[FileUploader] Updating ${Object.keys(updates).length} file(s) with preview URLs`,
-        );
         onFilesChange(
           files.map((file) =>
             updates[file.id] ? { ...file, previewUrl: updates[file.id] } : file,
@@ -232,7 +225,8 @@ export function FileUploader({
             });
 
             if (!uploadResponse.ok) {
-              throw new Error("Failed to upload file to server");
+              const { error } = await uploadResponse.json().catch(() => ({ error: null }));
+              throw new Error(error || `Failed to upload ${file.name}`);
             }
 
             const uploadedData = await uploadResponse.json();
@@ -267,7 +261,6 @@ export function FileUploader({
     if (newFiles.length > 0) {
       const allFiles = [...files, ...newFiles];
       const finalFiles = computeCropFlags ? computeCropFlags(allFiles) : allFiles;
-      console.log("[FileUploader] Files after upload:", finalFiles);
       onFilesChange(finalFiles);
       const totalNow = files.length + newFiles.length;
       toast.success(`${newFiles.length} file(s) added (${totalNow}/${maxFiles})`);

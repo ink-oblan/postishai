@@ -3,6 +3,7 @@
 import type { BrandProfile } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { isStepValid } from "../lib/validation";
 import { CoreBrand } from "./CoreBrand";
 import { Video } from "./Video";
@@ -22,8 +23,17 @@ export type BrandFormData = Partial<
 
 const STEPS = ["Core Brand", "Visual Identity", "Tone of Voice", "Video & Meaning"];
 
+/**
+ * Drafts are namespaced per user and per brand — a shared key would make the draft of
+ * one brand (or of "create new") bleed into the edit form of another.
+ */
+function draftKey(userId: string, brandProfileId: string | undefined): string {
+  return `brandWizard:${userId}:${brandProfileId ?? "new"}`;
+}
+
 export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps) {
   const router = useRouter();
+  const storageKey = draftKey(userId, initialData?.id);
   const [currentStep, setCurrentStep] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
   const [formData, setFormData] = useState<BrandFormData>({
@@ -37,8 +47,9 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
     patterns: initialData?.patterns || "",
     photoStyle: initialData?.photoStyle || "",
     voiceStyle: initialData?.voiceStyle || "",
-    youFormality: initialData?.youFormality || false,
-    emojiLevel: initialData?.emojiLevel || 1,
+    youFormality: initialData?.youFormality ?? false,
+    // `??` not `||`: emoji level 0 ("None") is a valid saved choice.
+    emojiLevel: initialData?.emojiLevel ?? 1,
     brandVocabulary: initialData?.brandVocabulary || "",
     videoAnimations: initialData?.videoAnimations || "",
     videoTransitions: initialData?.videoTransitions || "",
@@ -46,32 +57,28 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const savedStep = localStorage.getItem("brandWizardStep");
-    const savedFormData = localStorage.getItem("brandWizardFormData");
-
-    if (savedStep) {
-      setCurrentStep(Math.min(parseInt(savedStep, 10), STEPS.length - 1));
-    }
-
-    if (savedFormData) {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
       try {
-        const parsed = JSON.parse(savedFormData);
-        setFormData((prev) => ({ ...prev, ...parsed }));
+        const { step, formData: savedFormData } = JSON.parse(saved);
+        if (typeof step === "number" && Number.isInteger(step)) {
+          setCurrentStep(Math.min(Math.max(step, 0), STEPS.length - 1));
+        }
+        if (savedFormData && typeof savedFormData === "object") {
+          setFormData((prev) => ({ ...prev, ...savedFormData }));
+        }
       } catch (e) {
-        console.error("Failed to parse saved form data:", e);
+        console.error("Failed to parse saved brand wizard draft:", e);
       }
     }
 
     setIsHydrated(true);
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
-    localStorage.setItem("brandWizardStep", String(currentStep));
-  }, [currentStep]);
-
-  useEffect(() => {
-    localStorage.setItem("brandWizardFormData", JSON.stringify(formData));
-  }, [formData]);
+    if (!isHydrated) return;
+    localStorage.setItem(storageKey, JSON.stringify({ step: currentStep, formData }));
+  }, [storageKey, currentStep, formData, isHydrated]);
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -97,21 +104,21 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          userId,
           brandProfileId: initialData?.id,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save brand profile");
+        const { error } = await response.json().catch(() => ({ error: null }));
+        throw new Error(error || "Failed to save brand profile");
       }
 
-      localStorage.removeItem("brandWizardStep");
-      localStorage.removeItem("brandWizardFormData");
+      localStorage.removeItem(storageKey);
       router.push("/brand");
+      router.refresh();
     } catch (error) {
       console.error("Error saving brand profile:", error);
-      alert("Failed to save brand profile");
+      toast.error(error instanceof Error ? error.message : "Failed to save brand profile");
       setIsSaving(false);
     }
   };

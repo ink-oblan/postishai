@@ -12,12 +12,20 @@ import {
 import { RemoveButton } from "@/components/ui/cross-remove-button";
 import { FileUploader, type UploadedFile } from "@/components/ui/file-uploader";
 import { Label } from "@/components/ui/label";
+import { BRAND_ASSET_EXTENSIONS, MAX_BRAND_ASSET_SIZE_BYTES } from "@/lib/brand-assets";
+import {
+  BUILTIN_FONTS,
+  builtinFontFamily,
+  getBuiltinFontById,
+  getBuiltinFontByName,
+} from "../lib/builtin-fonts";
 
 export interface FontItem {
   id: string;
   name: string;
   source: "builtin" | "uploaded";
-  data?: string; // base64 encoded font file
+  /** Storage path of the uploaded font file; unset for library fonts. */
+  storagePath?: string;
 }
 
 interface TypographyPickerProps {
@@ -26,86 +34,20 @@ interface TypographyPickerProps {
   maxFonts?: number;
 }
 
-const BUILTIN_FONTS = [
-  { id: "inter", name: "Inter" },
-  { id: "roboto", name: "Roboto" },
-  { id: "poppins", name: "Poppins" },
-  { id: "playfair", name: "Playfair Display" },
-  { id: "montserrat", name: "Montserrat" },
-  { id: "lora", name: "Lora" },
-  { id: "opensans", name: "Open Sans" },
-  { id: "raleway", name: "Raleway" },
-  { id: "spacemono", name: "Space Mono" },
-  { id: "ubuntu", name: "Ubuntu" },
-  { id: "cormorant", name: "Cormorant Garamond" },
-  { id: "quicksand", name: "Quicksand" },
-  { id: "manrope", name: "Manrope" },
-  { id: "outfit", name: "Outfit" },
-  { id: "dm-sans", name: "DM Sans" },
-  { id: "nunito", name: "Nunito" },
-  { id: "sora", name: "Sora" },
-  { id: "source-serif", name: "Source Serif Pro" },
-  { id: "crimson", name: "Crimson Text" },
-  { id: "gowun", name: "Gowun Dodum" },
-  { id: "varela", name: "Varela Round" },
-  { id: "josefin", name: "Josefin Sans" },
-  { id: "ibm-plex", name: "IBM Plex Sans" },
-  { id: "jetbrains", name: "JetBrains Mono" },
-];
-
-const FONT_FAMILY_MAP: Record<string, string> = {
-  inter: "'Inter', sans-serif",
-  roboto: "'Roboto', sans-serif",
-  poppins: "'Poppins', sans-serif",
-  playfair: "'Playfair Display', serif",
-  montserrat: "'Montserrat', sans-serif",
-  lora: "'Lora', serif",
-  opensans: "'Open Sans', sans-serif",
-  raleway: "'Raleway', sans-serif",
-  spacemono: "'Space Mono', monospace",
-  ubuntu: "'Ubuntu', sans-serif",
-  cormorant: "'Cormorant Garamond', serif",
-  quicksand: "'Quicksand', sans-serif",
-  manrope: "'Manrope', sans-serif",
-  outfit: "'Outfit', sans-serif",
-  "dm-sans": "'DM Sans', sans-serif",
-  nunito: "'Nunito', sans-serif",
-  sora: "'Sora', sans-serif",
-  "source-serif": "'Source Serif Pro', serif",
-  crimson: "'Crimson Text', serif",
-  gowun: "'Gowun Dodum', sans-serif",
-  varela: "'Varela Round', sans-serif",
-  josefin: "'Josefin Sans', sans-serif",
-  "ibm-plex": "'IBM Plex Sans', sans-serif",
-  jetbrains: "'JetBrains Mono', monospace",
-};
-
-function getFontFamily(fontId: string): string {
-  return FONT_FAMILY_MAP[fontId] || "sans-serif";
-}
-
-function getFontIdByName(fontName: string): string {
-  const font = BUILTIN_FONTS.find((f) => f.name === fontName);
-  return font ? font.id : "";
-}
-
 export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPickerProps) {
   const [fontSearch, setFontSearch] = useState<string>("");
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [customFontFiles, setCustomFontFiles] = useState<UploadedFile[]>([]);
 
   const addBuiltinFont = (builtinId: string) => {
-    if (fonts.length < maxFonts) {
-      const builtinFont = BUILTIN_FONTS.find((f) => f.id === builtinId);
-      if (builtinFont) {
-        const newFont: FontItem = {
-          id: Math.random().toString(36).slice(2),
-          name: builtinFont.name,
-          source: "builtin",
-        };
-        onChange([...fonts, newFont]);
-      }
-    }
+    if (fonts.length >= maxFonts) return;
+    const builtinFont = getBuiltinFontById(builtinId);
+    if (!builtinFont) return;
+
+    onChange([
+      ...fonts,
+      { id: Math.random().toString(36).slice(2), name: builtinFont.name, source: "builtin" },
+    ]);
   };
 
   const filteredBuiltins = useMemo(() => {
@@ -127,7 +69,7 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
         id: f.id,
         name: f.name,
         source: "uploaded" as const,
-        data: f.storagePath,
+        storagePath: f.storagePath,
       }));
 
     if (newFonts.length > 0 && fonts.length + newFonts.length <= maxFonts) {
@@ -174,7 +116,7 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
                   className="flex items-center justify-between rounded-md bg-muted p-3"
                   style={
                     font.source === "builtin"
-                      ? { fontFamily: getFontFamily(getFontIdByName(font.name)) }
+                      ? { fontFamily: builtinFontFamily(getBuiltinFontByName(font.name)) }
                       : undefined
                   }
                 >
@@ -204,19 +146,19 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
                   <ComboboxInputGroup>
                     <ComboboxInput placeholder="Search or select font..." />
                   </ComboboxInputGroup>
-                  <ComboboxContent>
+                  <ComboboxContent className="max-h-40">
                     {filteredBuiltins.length > 0 ? (
                       filteredBuiltins.map((font) => (
                         <ComboboxItem
                           key={font.id}
-                          value=""
+                          value={font.id}
                           onClick={() => {
                             addBuiltinFont(font.id);
                             setFontSearch("");
                             setIsFocused(false);
                           }}
                         >
-                          <span style={{ fontFamily: getFontFamily(font.id) }}>{font.name}</span>
+                          <span style={{ fontFamily: builtinFontFamily(font) }}>{font.name}</span>
                         </ComboboxItem>
                       ))
                     ) : (
@@ -234,9 +176,9 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
                 onFilesChange={handleCustomFontFilesChange}
                 label="Upload custom font"
                 description="Upload TTF, OTF, WOFF, or WOFF2 font files"
-                acceptedExtensions={[".ttf", ".otf", ".woff", ".woff2"]}
+                acceptedExtensions={BRAND_ASSET_EXTENSIONS.font}
                 maxFiles={maxFonts - fonts.length}
-                maxFileSizeBytes={50 * 1024 * 1024}
+                maxFileSizeBytes={MAX_BRAND_ASSET_SIZE_BYTES.font}
                 required={false}
                 fileType="font"
               />
