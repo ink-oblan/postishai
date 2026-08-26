@@ -1,16 +1,28 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { FieldChanges } from "../lib/draft";
 import type { BrandFormData } from "./BrandSetupWizard";
+import { FieldStatusIcon, fieldTone, TONE_INPUT_CLASS } from "./FieldStatus";
 
 interface VideoProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
+  changes?: FieldChanges;
 }
 
-export function Video({ formData, onUpdate }: VideoProps) {
+export function Video({ formData, onUpdate, changes }: VideoProps) {
+  const animationsTone = fieldTone({
+    changed: Boolean(changes?.videoAnimations),
+    filled: (formData.videoAnimations || "").trim().length > 0,
+  });
+
+  const transitionsTone = fieldTone({
+    changed: Boolean(changes?.videoTransitions),
+    filled: (formData.videoTransitions || "").trim().length > 0,
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -19,61 +31,45 @@ export function Video({ formData, onUpdate }: VideoProps) {
       </div>
 
       <div className="space-y-6">
-        {(() => {
-          const hasAnimations = (formData.videoAnimations || "").trim().length > 0;
-          return (
-            <div className="space-y-2">
-              <Label htmlFor="animations">Video Animations</Label>
-              <div className="relative">
-                <Textarea
-                  id="animations"
-                  placeholder="e.g., Smooth fade-ins, Kinetic text animations, Minimal transitions"
-                  value={formData.videoAnimations || ""}
-                  onChange={(e) => onUpdate({ videoAnimations: e.target.value })}
-                  className={`pr-10 ${
-                    hasAnimations
-                      ? "border-green-500 focus:ring-green-500"
-                      : "border-border focus:ring-ring"
-                  }`}
-                  rows={2}
-                />
-                {hasAnimations && (
-                  <div className="absolute top-3 right-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" aria-hidden="true" />
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+        <div className="space-y-2">
+          <Label htmlFor="animations">Video Animations</Label>
+          <div className="relative">
+            <Textarea
+              id="animations"
+              placeholder="e.g., Smooth fade-ins, Kinetic text animations, Minimal transitions"
+              value={formData.videoAnimations || ""}
+              onChange={(e) => onUpdate({ videoAnimations: e.target.value })}
+              className={`pr-10 ${TONE_INPUT_CLASS[animationsTone]}`}
+              rows={2}
+            />
+            <FieldStatusIcon
+              tone={animationsTone}
+              field="videoAnimations"
+              changes={changes}
+              className="absolute top-3 right-3"
+            />
+          </div>
+        </div>
 
-        {(() => {
-          const hasTransitions = (formData.videoTransitions || "").trim().length > 0;
-          return (
-            <div className="space-y-2">
-              <Label htmlFor="transitions">Video Transitions</Label>
-              <div className="relative">
-                <Textarea
-                  id="transitions"
-                  placeholder="e.g., Cross fade, Slide left, Zoom in, Cut"
-                  value={formData.videoTransitions || ""}
-                  onChange={(e) => onUpdate({ videoTransitions: e.target.value })}
-                  className={`pr-10 ${
-                    hasTransitions
-                      ? "border-green-500 focus:ring-green-500"
-                      : "border-border focus:ring-ring"
-                  }`}
-                  rows={2}
-                />
-                {hasTransitions && (
-                  <div className="absolute top-3 right-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" aria-hidden="true" />
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+        <div className="space-y-2">
+          <Label htmlFor="transitions">Video Transitions</Label>
+          <div className="relative">
+            <Textarea
+              id="transitions"
+              placeholder="e.g., Cross fade, Slide left, Zoom in, Cut"
+              value={formData.videoTransitions || ""}
+              onChange={(e) => onUpdate({ videoTransitions: e.target.value })}
+              className={`pr-10 ${TONE_INPUT_CLASS[transitionsTone]}`}
+              rows={2}
+            />
+            <FieldStatusIcon
+              tone={transitionsTone}
+              field="videoTransitions"
+              changes={changes}
+              className="absolute top-3 right-3"
+            />
+          </div>
+        </div>
 
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
           <h4 className="font-semibold text-primary">Almost there!</h4>

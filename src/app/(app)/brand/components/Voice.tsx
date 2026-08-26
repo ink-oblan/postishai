@@ -1,6 +1,5 @@
 "use client";
 
-import { AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   Combobox,
   ComboboxContent,
@@ -9,17 +8,32 @@ import {
   ComboboxItem,
 } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
+import type { FieldChanges } from "../lib/draft";
+import { EMOJI_LEVEL_LABELS } from "../lib/field-preview";
 import type { BrandFormData } from "./BrandSetupWizard";
+import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS } from "./FieldStatus";
 import { ValidatedTextarea } from "./ValidatedTextarea";
-
-const EMOJI_LEVEL_LABELS = ["None", "Moderate", "High", "Very High"] as const;
 
 interface VoiceProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
+  changes?: FieldChanges;
 }
 
-export function Voice({ formData, onUpdate }: VoiceProps) {
+export function Voice({ formData, onUpdate, changes }: VoiceProps) {
+  const formalityTone = fieldTone({
+    invalid: formData.youFormality === undefined || formData.youFormality === null,
+    changed: Boolean(changes?.youFormality),
+    filled: true,
+  });
+
+  const emojiTone = fieldTone({
+    invalid:
+      formData.emojiLevel === undefined || formData.emojiLevel === null || formData.emojiLevel < 0,
+    changed: Boolean(changes?.emojiLevel),
+    filled: true,
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -32,28 +46,17 @@ export function Voice({ formData, onUpdate }: VoiceProps) {
           <Label htmlFor="formality">
             Formality Level <span className="text-destructive">*</span>
           </Label>
-          <div
-            className={`rounded-lg border p-4 ${
-              formData.youFormality !== undefined && formData.youFormality !== null
-                ? "border-green-500 bg-green-500/5"
-                : "border-red-500 bg-red-500/5"
-            }`}
-          >
+          <div className={`rounded-lg border p-4 ${TONE_BLOCK_CLASS[formalityTone]}`}>
             <div className="mb-4 flex items-start justify-between">
               <p className="flex-1 text-muted-foreground text-xs">
                 Choose between formal and casual communication style
               </p>
-              {formData.youFormality !== undefined && formData.youFormality !== null ? (
-                <CheckCircle2
-                  className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
-                  aria-hidden="true"
-                />
-              ) : (
-                <AlertCircle
-                  className="ml-2 h-5 w-5 flex-shrink-0 text-red-500"
-                  aria-hidden="true"
-                />
-              )}
+              <FieldStatusIcon
+                tone={formalityTone}
+                field="youFormality"
+                changes={changes}
+                className="ml-2"
+              />
             </div>
             <Combobox
               value={formData.youFormality ? "casual" : "formal"}
@@ -79,32 +82,17 @@ export function Voice({ formData, onUpdate }: VoiceProps) {
           <Label htmlFor="emojiLevel">
             Emoji & Hashtag Level <span className="text-destructive">*</span>
           </Label>
-          <div
-            className={`rounded-lg border p-4 ${
-              formData.emojiLevel !== undefined &&
-              formData.emojiLevel !== null &&
-              formData.emojiLevel >= 0
-                ? "border-green-500 bg-green-500/5"
-                : "border-red-500 bg-red-500/5"
-            }`}
-          >
+          <div className={`rounded-lg border p-4 ${TONE_BLOCK_CLASS[emojiTone]}`}>
             <div className="mb-4 flex items-start justify-between">
               <p className="flex-1 text-muted-foreground text-xs">
                 Select how many emojis and hashtags to use
               </p>
-              {formData.emojiLevel !== undefined &&
-              formData.emojiLevel !== null &&
-              formData.emojiLevel >= 0 ? (
-                <CheckCircle2
-                  className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
-                  aria-hidden="true"
-                />
-              ) : (
-                <AlertCircle
-                  className="ml-2 h-5 w-5 flex-shrink-0 text-red-500"
-                  aria-hidden="true"
-                />
-              )}
+              <FieldStatusIcon
+                tone={emojiTone}
+                field="emojiLevel"
+                changes={changes}
+                className="ml-2"
+              />
             </div>
             <div className="mb-4 flex gap-2">
               {EMOJI_LEVEL_LABELS.map((label, idx) => (
@@ -158,6 +146,7 @@ export function Voice({ formData, onUpdate }: VoiceProps) {
           onChange={(value) => onUpdate({ voiceStyle: value })}
           placeholder="e.g., Professional yet approachable, Playful and witty, Educational and authoritative"
           fieldName="voiceStyle"
+          changes={changes}
           rows={2}
         />
 
@@ -168,6 +157,7 @@ export function Voice({ formData, onUpdate }: VoiceProps) {
           onChange={(value) => onUpdate({ brandVocabulary: value })}
           placeholder="Key words, catchphrases, or signature expressions your brand uses"
           fieldName="brandVocabulary"
+          changes={changes}
           rows={3}
         />
       </div>

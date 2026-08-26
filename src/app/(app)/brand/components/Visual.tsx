@@ -1,6 +1,5 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { FileUploader, type UploadedFile } from "@/components/ui/file-uploader";
 import { Label } from "@/components/ui/label";
@@ -10,16 +9,19 @@ import {
   MAX_BRAND_ASSET_FILES_PER_REQUEST,
   MAX_BRAND_ASSET_SIZE_BYTES,
 } from "@/lib/brand-assets";
+import type { FieldChanges } from "../lib/draft";
 import type { BrandFormData } from "./BrandSetupWizard";
 import { type ColorItem, ColorPalettePicker } from "./ColorPalettePicker";
+import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS, TONE_INPUT_CLASS } from "./FieldStatus";
 import { type FontItem, TypographyPicker } from "./TypographyPicker";
 
 interface VisualProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
+  changes?: FieldChanges;
 }
 
-export function Visual({ formData, onUpdate }: VisualProps) {
+export function Visual({ formData, onUpdate, changes }: VisualProps) {
   const colorIdCounter = useRef(0);
 
   const normalizeColors = (parsed: ColorItem[]) => {
@@ -135,6 +137,21 @@ export function Visual({ formData, onUpdate }: VisualProps) {
     onUpdate({ logoPath: JSON.stringify(persistedLogos) });
   };
 
+  const photoStyleTone = fieldTone({
+    changed: Boolean(changes?.photoStyle),
+    filled: (formData.photoStyle || "").trim().length > 0,
+  });
+
+  const logoTone = fieldTone({
+    changed: Boolean(changes?.logoPath),
+    filled: logoFiles.length >= 1,
+  });
+
+  const patternsTone = fieldTone({
+    changed: Boolean(changes?.patterns),
+    filled: patternFiles.length >= 1,
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -146,60 +163,46 @@ export function Visual({ formData, onUpdate }: VisualProps) {
 
       <div className="space-y-4">
         {/* Color Palette */}
-        <ColorPalettePicker colors={colors} onChange={handleColorsChange} />
+        <ColorPalettePicker colors={colors} onChange={handleColorsChange} changes={changes} />
 
         {/* Typography - Built-in fonts and custom font upload */}
-        <TypographyPicker fonts={fonts} onChange={handleFontsChange} />
+        <TypographyPicker fonts={fonts} onChange={handleFontsChange} changes={changes} />
 
         {/* Photo Style */}
-        {(() => {
-          const hasText = (formData.photoStyle || "").trim().length > 0;
-          return (
-            <div className="space-y-2">
-              <Label htmlFor="photoStyle">Photo Style</Label>
-              <div className="relative">
-                <Textarea
-                  id="photoStyle"
-                  placeholder="e.g., Bright and energetic, Minimalist, Dark and moody"
-                  value={formData.photoStyle || ""}
-                  onChange={(e) => onUpdate({ photoStyle: e.target.value })}
-                  className={`pr-10 ${
-                    hasText
-                      ? "border-green-500 focus:ring-green-500"
-                      : "border-border focus:ring-ring"
-                  }`}
-                  rows={2}
-                />
-                {hasText && (
-                  <div className="absolute top-3 right-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" aria-hidden="true" />
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+        <div className="space-y-2">
+          <Label htmlFor="photoStyle">Photo Style</Label>
+          <div className="relative">
+            <Textarea
+              id="photoStyle"
+              placeholder="e.g., Bright and energetic, Minimalist, Dark and moody"
+              value={formData.photoStyle || ""}
+              onChange={(e) => onUpdate({ photoStyle: e.target.value })}
+              className={`pr-10 ${TONE_INPUT_CLASS[photoStyleTone]}`}
+              rows={2}
+            />
+            <FieldStatusIcon
+              tone={photoStyleTone}
+              field="photoStyle"
+              changes={changes}
+              className="absolute top-3 right-3"
+            />
+          </div>
+        </div>
 
         {/* Logo */}
         <div className="space-y-2">
           <Label>Logo</Label>
-          <div
-            className={`rounded-lg border p-4 ${
-              logoFiles.length >= 1
-                ? "border-green-500 bg-green-500/5"
-                : "border-border bg-muted/20"
-            }`}
-          >
+          <div className={`rounded-lg border p-4 ${TONE_BLOCK_CLASS[logoTone]}`}>
             <div className="mb-4 flex items-start justify-between">
               <p className="flex-1 text-muted-foreground text-xs">
                 Upload PNG logos that represent your brand. These will be used in generated content.
               </p>
-              {logoFiles.length >= 1 ? (
-                <CheckCircle2
-                  className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
-                  aria-hidden="true"
-                />
-              ) : null}
+              <FieldStatusIcon
+                tone={logoTone}
+                field="logoPath"
+                changes={changes}
+                className="ml-2"
+              />
             </div>
             <FileUploader
               files={logoFiles}
@@ -216,23 +219,17 @@ export function Visual({ formData, onUpdate }: VisualProps) {
         {/* Patterns */}
         <div className="space-y-2">
           <Label>Patterns & Decorative Elements</Label>
-          <div
-            className={`rounded-lg border p-4 ${
-              patternFiles.length >= 1
-                ? "border-green-500 bg-green-500/5"
-                : "border-border bg-muted/20"
-            }`}
-          >
+          <div className={`rounded-lg border p-4 ${TONE_BLOCK_CLASS[patternsTone]}`}>
             <div className="mb-4 flex items-start justify-between">
               <p className="flex-1 text-muted-foreground text-xs">
                 Upload PNG patterns and decorative elements to enhance your brand's visual identity.
               </p>
-              {patternFiles.length >= 1 ? (
-                <CheckCircle2
-                  className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
-                  aria-hidden="true"
-                />
-              ) : null}
+              <FieldStatusIcon
+                tone={patternsTone}
+                field="patterns"
+                changes={changes}
+                className="ml-2"
+              />
             </div>
             <FileUploader
               files={patternFiles}

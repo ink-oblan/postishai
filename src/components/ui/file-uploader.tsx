@@ -300,7 +300,7 @@ export function FileUploader({
           Maximum {maxFiles} files reached. Remove files to upload more.
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="relative flex flex-wrap gap-2">
         {files.map((f) => {
           const isImage = /\.(png|jpg|jpeg|webp|gif)$/i.test(f.name);
           const isVideo = /\.(mp4|webm|mov)$/i.test(f.name);
@@ -348,7 +348,7 @@ export function FileUploader({
           type="button"
           onClick={() => canUploadMore && fileRef.current?.click()}
           disabled={!canUploadMore || effectiveProcessingCount > 0}
-          className={`inline-flex items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-xs transition-colors ${
+          className={`inline-flex h-20 shrink-0 items-center justify-center gap-1.5 rounded-md border border-dashed px-4 text-xs transition-colors ${
             canUploadMore && processingCount === 0
               ? "cursor-pointer text-muted-foreground hover:border-primary/40 hover:text-foreground"
               : "cursor-not-allowed text-muted-foreground/50 opacity-50"

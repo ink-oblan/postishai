@@ -1,85 +1,104 @@
+import {
+  Cormorant_Garamond,
+  Crimson_Text,
+  DM_Sans,
+  Gowun_Dodum,
+  IBM_Plex_Sans,
+  Inter,
+  JetBrains_Mono,
+  Josefin_Sans,
+  Lora,
+  Manrope,
+  Montserrat,
+  Nunito,
+  Open_Sans,
+  Outfit,
+  Playfair_Display,
+  Poppins,
+  Quicksand,
+  Raleway,
+  Roboto,
+  Sora,
+  Source_Serif_4,
+  Space_Mono,
+  Ubuntu,
+  Varela_Round,
+} from "next/font/google";
+
 /**
  * Catalogue of the fonts a brand can pick from the library.
  *
- * `cssVariable` is the custom property that `src/app/(app)/brand/layout.tsx` binds via
- * `next/font/google`. Previews must go through the variable — the literal family name
- * ("Inter") does not resolve, because next/font emits a hashed family name.
+ * next/font requires every loader call to be a top-level `const` with literal options, so the
+ * calls below can't be generated from the catalogue. They are referenced nowhere else though:
+ * adding a font means adding one `const` here plus one entry in `BUILTIN_FONTS`, and an unused
+ * `const` is the only way to get it wrong.
  *
- * The fonts are loaded by the brand layout only, so the rest of the app doesn't pay for
- * them. Keep this list and the loader in `layout.tsx` in sync.
+ * Only weight 400 is requested: these are used to preview a typeface, not to set body copy.
+ * The fonts ship with whatever imports this module, so the rest of the app doesn't pay for them.
  */
+const inter = Inter({ weight: "400", subsets: ["latin"], display: "swap" });
+const roboto = Roboto({ weight: "400", subsets: ["latin"], display: "swap" });
+const poppins = Poppins({ weight: "400", subsets: ["latin"], display: "swap" });
+const playfairDisplay = Playfair_Display({ weight: "400", subsets: ["latin"], display: "swap" });
+const montserrat = Montserrat({ weight: "400", subsets: ["latin"], display: "swap" });
+const lora = Lora({ weight: "400", subsets: ["latin"], display: "swap" });
+const openSans = Open_Sans({ weight: "400", subsets: ["latin"], display: "swap" });
+const raleway = Raleway({ weight: "400", subsets: ["latin"], display: "swap" });
+const spaceMono = Space_Mono({ weight: "400", subsets: ["latin"], display: "swap" });
+const ubuntu = Ubuntu({ weight: "400", subsets: ["latin"], display: "swap" });
+const cormorantGaramond = Cormorant_Garamond({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+});
+const quicksand = Quicksand({ weight: "400", subsets: ["latin"], display: "swap" });
+const manrope = Manrope({ weight: "400", subsets: ["latin"], display: "swap" });
+const outfit = Outfit({ weight: "400", subsets: ["latin"], display: "swap" });
+const dmSans = DM_Sans({ weight: "400", subsets: ["latin"], display: "swap" });
+const nunito = Nunito({ weight: "400", subsets: ["latin"], display: "swap" });
+const sora = Sora({ weight: "400", subsets: ["latin"], display: "swap" });
+const sourceSerif = Source_Serif_4({ weight: "400", subsets: ["latin"], display: "swap" });
+const crimsonText = Crimson_Text({ weight: "400", subsets: ["latin"], display: "swap" });
+const gowunDodum = Gowun_Dodum({ weight: "400", subsets: ["latin"], display: "swap" });
+const varelaRound = Varela_Round({ weight: "400", subsets: ["latin"], display: "swap" });
+const josefinSans = Josefin_Sans({ weight: "400", subsets: ["latin"], display: "swap" });
+const ibmPlexSans = IBM_Plex_Sans({ weight: "400", subsets: ["latin"], display: "swap" });
+const jetbrainsMono = JetBrains_Mono({ weight: "400", subsets: ["latin"], display: "swap" });
+
+type LoadedFont = { style: { fontFamily: string } };
+
 export interface BuiltinFont {
   id: string;
   name: string;
-  cssVariable: string;
   fallback: "sans-serif" | "serif" | "monospace";
+  font: LoadedFont;
 }
 
 export const BUILTIN_FONTS: readonly BuiltinFont[] = [
-  { id: "inter", name: "Inter", cssVariable: "--font-inter", fallback: "sans-serif" },
-  { id: "roboto", name: "Roboto", cssVariable: "--font-roboto", fallback: "sans-serif" },
-  { id: "poppins", name: "Poppins", cssVariable: "--font-poppins", fallback: "sans-serif" },
-  {
-    id: "playfair",
-    name: "Playfair Display",
-    cssVariable: "--font-playfair-display",
-    fallback: "serif",
-  },
-  {
-    id: "montserrat",
-    name: "Montserrat",
-    cssVariable: "--font-montserrat",
-    fallback: "sans-serif",
-  },
-  { id: "lora", name: "Lora", cssVariable: "--font-lora", fallback: "serif" },
-  { id: "opensans", name: "Open Sans", cssVariable: "--font-open-sans", fallback: "sans-serif" },
-  { id: "raleway", name: "Raleway", cssVariable: "--font-raleway", fallback: "sans-serif" },
-  { id: "spacemono", name: "Space Mono", cssVariable: "--font-space-mono", fallback: "monospace" },
-  { id: "ubuntu", name: "Ubuntu", cssVariable: "--font-ubuntu", fallback: "sans-serif" },
-  {
-    id: "cormorant",
-    name: "Cormorant Garamond",
-    cssVariable: "--font-cormorant-garamond",
-    fallback: "serif",
-  },
-  { id: "quicksand", name: "Quicksand", cssVariable: "--font-quicksand", fallback: "sans-serif" },
-  { id: "manrope", name: "Manrope", cssVariable: "--font-manrope", fallback: "sans-serif" },
-  { id: "outfit", name: "Outfit", cssVariable: "--font-outfit", fallback: "sans-serif" },
-  { id: "dm-sans", name: "DM Sans", cssVariable: "--font-dm-sans", fallback: "sans-serif" },
-  { id: "nunito", name: "Nunito", cssVariable: "--font-nunito", fallback: "sans-serif" },
-  { id: "sora", name: "Sora", cssVariable: "--font-sora", fallback: "sans-serif" },
-  {
-    id: "source-serif",
-    name: "Source Serif",
-    cssVariable: "--font-source-serif",
-    fallback: "serif",
-  },
-  { id: "crimson", name: "Crimson Text", cssVariable: "--font-crimson-text", fallback: "serif" },
-  { id: "gowun", name: "Gowun Dodum", cssVariable: "--font-gowun-dodum", fallback: "sans-serif" },
-  {
-    id: "varela",
-    name: "Varela Round",
-    cssVariable: "--font-varela-round",
-    fallback: "sans-serif",
-  },
-  {
-    id: "josefin",
-    name: "Josefin Sans",
-    cssVariable: "--font-josefin-sans",
-    fallback: "sans-serif",
-  },
-  {
-    id: "ibm-plex",
-    name: "IBM Plex Sans",
-    cssVariable: "--font-ibm-plex-sans",
-    fallback: "sans-serif",
-  },
-  {
-    id: "jetbrains",
-    name: "JetBrains Mono",
-    cssVariable: "--font-jetbrains-mono",
-    fallback: "monospace",
-  },
+  { id: "inter", name: "Inter", fallback: "sans-serif", font: inter },
+  { id: "roboto", name: "Roboto", fallback: "sans-serif", font: roboto },
+  { id: "poppins", name: "Poppins", fallback: "sans-serif", font: poppins },
+  { id: "playfair", name: "Playfair Display", fallback: "serif", font: playfairDisplay },
+  { id: "montserrat", name: "Montserrat", fallback: "sans-serif", font: montserrat },
+  { id: "lora", name: "Lora", fallback: "serif", font: lora },
+  { id: "opensans", name: "Open Sans", fallback: "sans-serif", font: openSans },
+  { id: "raleway", name: "Raleway", fallback: "sans-serif", font: raleway },
+  { id: "spacemono", name: "Space Mono", fallback: "monospace", font: spaceMono },
+  { id: "ubuntu", name: "Ubuntu", fallback: "sans-serif", font: ubuntu },
+  { id: "cormorant", name: "Cormorant Garamond", fallback: "serif", font: cormorantGaramond },
+  { id: "quicksand", name: "Quicksand", fallback: "sans-serif", font: quicksand },
+  { id: "manrope", name: "Manrope", fallback: "sans-serif", font: manrope },
+  { id: "outfit", name: "Outfit", fallback: "sans-serif", font: outfit },
+  { id: "dm-sans", name: "DM Sans", fallback: "sans-serif", font: dmSans },
+  { id: "nunito", name: "Nunito", fallback: "sans-serif", font: nunito },
+  { id: "sora", name: "Sora", fallback: "sans-serif", font: sora },
+  { id: "source-serif", name: "Source Serif", fallback: "serif", font: sourceSerif },
+  { id: "crimson", name: "Crimson Text", fallback: "serif", font: crimsonText },
+  { id: "gowun", name: "Gowun Dodum", fallback: "sans-serif", font: gowunDodum },
+  { id: "varela", name: "Varela Round", fallback: "sans-serif", font: varelaRound },
+  { id: "josefin", name: "Josefin Sans", fallback: "sans-serif", font: josefinSans },
+  { id: "ibm-plex", name: "IBM Plex Sans", fallback: "sans-serif", font: ibmPlexSans },
+  { id: "jetbrains", name: "JetBrains Mono", fallback: "monospace", font: jetbrainsMono },
 ];
 
 const BY_ID = new Map(BUILTIN_FONTS.map((font) => [font.id, font]));
@@ -96,5 +115,5 @@ export function getBuiltinFontByName(name: string): BuiltinFont | undefined {
 /** CSS `font-family` value for a catalogue font, or the generic fallback when unknown. */
 export function builtinFontFamily(font: BuiltinFont | undefined): string {
   if (!font) return "sans-serif";
-  return `var(${font.cssVariable}), ${font.fallback}`;
+  return `${font.font.style.fontFamily}, ${font.fallback}`;
 }

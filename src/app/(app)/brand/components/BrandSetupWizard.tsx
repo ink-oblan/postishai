@@ -2,8 +2,9 @@
 
 import type { BrandProfile } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { changedFields, draftKey, previousValues, readDraft, writeDraft } from "../lib/draft";
 import { isStepValid } from "../lib/validation";
 import { CoreBrand } from "./CoreBrand";
 import { Video } from "./Video";
@@ -23,20 +24,8 @@ export type BrandFormData = Partial<
 
 const STEPS = ["Core Brand", "Visual Identity", "Tone of Voice", "Video & Meaning"];
 
-/**
- * Drafts are namespaced per user and per brand — a shared key would make the draft of
- * one brand (or of "create new") bleed into the edit form of another.
- */
-function draftKey(userId: string, brandProfileId: string | undefined): string {
-  return `brandWizard:${userId}:${brandProfileId ?? "new"}`;
-}
-
-export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps) {
-  const router = useRouter();
-  const storageKey = draftKey(userId, initialData?.id);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [formData, setFormData] = useState<BrandFormData>({
+function seedFormData(initialData: BrandProfile | null): BrandFormData {
+  return {
     brandName: initialData?.brandName || "",
     mission: initialData?.mission || "",
     targetAudience: initialData?.targetAudience || "",
@@ -53,32 +42,47 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
     brandVocabulary: initialData?.brandVocabulary || "",
     videoAnimations: initialData?.videoAnimations || "",
     videoTransitions: initialData?.videoTransitions || "",
-  });
+  };
+}
+
+export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps) {
+  const router = useRouter();
+  const storageKey = draftKey(userId, initialData?.id);
+  const savedFormData = useMemo(() => seedFormData(initialData), [initialData]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [formData, setFormData] = useState<BrandFormData>(savedFormData);
   const [isSaving, setIsSaving] = useState(false);
 
+  const changes = useMemo(
+    () => changedFields(formData as Record<string, unknown>, savedFormData),
+    [formData, savedFormData],
+  );
+
+  // Only meaningful against a saved brand — on a new one every field starts empty, so
+  // "changed" would just repeat what the field itself already shows.
+  const fieldChanges = useMemo(
+    () => (initialData ? previousValues(changes, savedFormData) : {}),
+    [initialData, changes, savedFormData],
+  );
+
   useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        const { step, formData: savedFormData } = JSON.parse(saved);
-        if (typeof step === "number" && Number.isInteger(step)) {
-          setCurrentStep(Math.min(Math.max(step, 0), STEPS.length - 1));
-        }
-        if (savedFormData && typeof savedFormData === "object") {
-          setFormData((prev) => ({ ...prev, ...savedFormData }));
-        }
-      } catch (e) {
-        console.error("Failed to parse saved brand wizard draft:", e);
+    const draft = readDraft(storageKey);
+    if (draft) {
+      if (draft.step >= 0 && draft.step < STEPS.length) {
+        setCurrentStep(draft.step);
       }
+      setFormData((prev) => ({ ...prev, ...draft.changes }));
     }
 
     setIsHydrated(true);
   }, [storageKey]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem(storageKey, JSON.stringify({ step: currentStep, formData }));
-  }, [storageKey, currentStep, formData, isHydrated]);
+    // A save clears the draft; re-persisting on the way out would resurrect it.
+    if (!isHydrated || isSaving) return;
+    writeDraft(storageKey, { step: currentStep, changes });
+  }, [storageKey, currentStep, changes, isHydrated, isSaving]);
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -144,10 +148,18 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
       <WizardProgress currentStep={currentStep} steps={STEPS} />
 
       <div className="mt-8 rounded-lg border border-border bg-card p-8">
-        {currentStep === 0 && <CoreBrand formData={formData} onUpdate={handleUpdateFormData} />}
-        {currentStep === 1 && <Visual formData={formData} onUpdate={handleUpdateFormData} />}
-        {currentStep === 2 && <Voice formData={formData} onUpdate={handleUpdateFormData} />}
-        {currentStep === 3 && <Video formData={formData} onUpdate={handleUpdateFormData} />}
+        {currentStep === 0 && (
+          <CoreBrand formData={formData} onUpdate={handleUpdateFormData} changes={fieldChanges} />
+        )}
+        {currentStep === 1 && (
+          <Visual formData={formData} onUpdate={handleUpdateFormData} changes={fieldChanges} />
+        )}
+        {currentStep === 2 && (
+          <Voice formData={formData} onUpdate={handleUpdateFormData} changes={fieldChanges} />
+        )}
+        {currentStep === 3 && (
+          <Video formData={formData} onUpdate={handleUpdateFormData} changes={fieldChanges} />
+        )}
       </div>
 
       <WizardNavigation

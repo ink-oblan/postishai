@@ -1,5 +1,6 @@
 "use client";
 
+import type { FieldChanges } from "../lib/draft";
 import type { BrandFormData } from "./BrandSetupWizard";
 import { ValidatedInput } from "./ValidatedInput";
 import { ValidatedTextarea } from "./ValidatedTextarea";
@@ -7,9 +8,10 @@ import { ValidatedTextarea } from "./ValidatedTextarea";
 interface CoreBrandProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
+  changes?: FieldChanges;
 }
 
-export function CoreBrand({ formData, onUpdate }: CoreBrandProps) {
+export function CoreBrand({ formData, onUpdate, changes }: CoreBrandProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -25,6 +27,7 @@ export function CoreBrand({ formData, onUpdate }: CoreBrandProps) {
           onChange={(value) => onUpdate({ brandName: value })}
           placeholder="Your brand name"
           fieldName="brandName"
+          changes={changes}
           required
         />
 
@@ -35,6 +38,7 @@ export function CoreBrand({ formData, onUpdate }: CoreBrandProps) {
           onChange={(value) => onUpdate({ topic: value })}
           placeholder="e.g., Sustainable Fashion, Tech Education, Fitness"
           fieldName="topic"
+          changes={changes}
           required
         />
 
@@ -45,6 +49,7 @@ export function CoreBrand({ formData, onUpdate }: CoreBrandProps) {
           onChange={(value) => onUpdate({ targetAudience: value })}
           placeholder="Who are you trying to reach? Describe your ideal customer or follower."
           fieldName="targetAudience"
+          changes={changes}
           rows={3}
           required
         />
@@ -56,6 +61,7 @@ export function CoreBrand({ formData, onUpdate }: CoreBrandProps) {
           onChange={(value) => onUpdate({ mission: value })}
           placeholder="What is your brand's purpose or main message?"
           fieldName="mission"
+          changes={changes}
           rows={3}
         />
       </div>

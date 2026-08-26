@@ -1,9 +1,10 @@
 "use client";
 
-import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { FieldChanges } from "../lib/draft";
 import { VALIDATION_RULES } from "../lib/validation";
+import { FieldStatusIcon, fieldTone, TONE_INPUT_CLASS } from "./FieldStatus";
 
 interface ValidatedInputProps {
   id: string;
@@ -13,6 +14,7 @@ interface ValidatedInputProps {
   placeholder?: string;
   fieldName: keyof typeof VALIDATION_RULES;
   required?: boolean;
+  changes?: FieldChanges;
 }
 
 export function ValidatedInput({
@@ -23,11 +25,17 @@ export function ValidatedInput({
   placeholder,
   fieldName,
   required = false,
+  changes,
 }: ValidatedInputProps) {
   const rules = VALIDATION_RULES[fieldName];
   const length = value.trim().length;
   const isValid = (rules.min === 0 && length === 0) || (length >= rules.min && length <= rules.max);
   const isTouched = length > 0;
+  const tone = fieldTone({
+    invalid: isTouched && !isValid,
+    changed: Boolean(changes?.[fieldName]),
+    filled: isTouched,
+  });
 
   return (
     <div className="space-y-2">
@@ -41,23 +49,14 @@ export function ValidatedInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`pr-10 ${
-            isTouched
-              ? isValid
-                ? "border-green-500 focus:ring-green-500"
-                : "border-red-500 focus:ring-red-500"
-              : ""
-          }`}
+          className={`pr-10 ${tone === "neutral" ? "" : TONE_INPUT_CLASS[tone]}`}
         />
-        {isTouched && (
-          <div className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center">
-            {isValid ? (
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
-            ) : (
-              <AlertCircle className="h-5 w-5 text-red-500" />
-            )}
-          </div>
-        )}
+        <FieldStatusIcon
+          tone={tone}
+          field={fieldName}
+          changes={changes}
+          className="absolute top-1/2 right-3 -translate-y-1/2 items-center"
+        />
       </div>
 
       <div className="flex items-center justify-between text-xs">

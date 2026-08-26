@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, ChevronDown, Pipette, Plus } from "lucide-react";
+import { ChevronDown, Pipette, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 
 declare global {
@@ -17,7 +17,9 @@ import { Button } from "@/components/ui/button";
 import { RemoveButton } from "@/components/ui/cross-remove-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { FieldChanges } from "../lib/draft";
 import { ColorPickerAdvanced } from "./ColorPickerAdvanced";
+import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS } from "./FieldStatus";
 
 const PRESET_COLORS = [
   // Reds
@@ -62,9 +64,15 @@ interface ColorPalettePickerProps {
   colors: ColorItem[];
   onChange: (colors: ColorItem[]) => void;
   maxColors?: number;
+  changes?: FieldChanges;
 }
 
-export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPalettePickerProps) {
+export function ColorPalettePicker({
+  colors,
+  onChange,
+  maxColors = 5,
+  changes,
+}: ColorPalettePickerProps) {
   const [expandedColorId, setExpandedColorId] = useState<string | null>(null);
   const colorIdCounter = useRef(0);
 
@@ -100,6 +108,7 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
   };
 
   const isValid = colors.length >= 2;
+  const tone = fieldTone({ invalid: !isValid, changed: Boolean(changes?.colors), filled: true });
 
   return (
     <div className="space-y-2">
@@ -107,23 +116,12 @@ export function ColorPalettePicker({ colors, onChange, maxColors = 5 }: ColorPal
         Color Palette <span className="text-destructive">*</span>
       </Label>
 
-      <div
-        className={`rounded-lg border p-4 ${
-          isValid ? "border-green-500 bg-green-500/5" : "border-red-500 bg-red-500/5"
-        }`}
-      >
+      <div className={`rounded-lg border p-4 ${TONE_BLOCK_CLASS[tone]}`}>
         <div className="mb-4 flex items-start justify-between">
           <p className="text-muted-foreground text-xs">
             Select at least 2 colors for your brand palette
           </p>
-          {isValid ? (
-            <CheckCircle2
-              className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
-              aria-hidden="true"
-            />
-          ) : (
-            <AlertCircle className="ml-2 h-5 w-5 flex-shrink-0 text-red-500" aria-hidden="true" />
-          )}
+          <FieldStatusIcon tone={tone} field="colors" changes={changes} className="ml-2" />
         </div>
         <div className="space-y-4">
           {/* Quick colors panel */}

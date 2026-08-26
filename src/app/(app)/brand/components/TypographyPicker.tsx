@@ -1,6 +1,5 @@
 "use client";
 
-import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   Combobox,
@@ -19,6 +18,8 @@ import {
   getBuiltinFontById,
   getBuiltinFontByName,
 } from "../lib/builtin-fonts";
+import type { FieldChanges } from "../lib/draft";
+import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS } from "./FieldStatus";
 
 export interface FontItem {
   id: string;
@@ -32,9 +33,15 @@ interface TypographyPickerProps {
   fonts: FontItem[];
   onChange: (fonts: FontItem[]) => void;
   maxFonts?: number;
+  changes?: FieldChanges;
 }
 
-export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPickerProps) {
+export function TypographyPicker({
+  fonts,
+  onChange,
+  maxFonts = 3,
+  changes,
+}: TypographyPickerProps) {
   const [fontSearch, setFontSearch] = useState<string>("");
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [customFontFiles, setCustomFontFiles] = useState<UploadedFile[]>([]);
@@ -79,6 +86,11 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
   };
 
   const isValid = fonts.length >= 1;
+  const tone = fieldTone({
+    invalid: !isValid,
+    changed: Boolean(changes?.typography),
+    filled: true,
+  });
 
   return (
     <div className="space-y-2">
@@ -86,23 +98,12 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
         Typefaces <span className="text-destructive">*</span>
       </Label>
 
-      <div
-        className={`rounded-lg border p-4 ${
-          isValid ? "border-green-500 bg-green-500/5" : "border-red-500 bg-red-500/5"
-        }`}
-      >
+      <div className={`rounded-lg border p-4 ${TONE_BLOCK_CLASS[tone]}`}>
         <div className="mb-4 flex items-start justify-between">
           <p className="text-muted-foreground text-xs">
             Select from our library or upload your own font files
           </p>
-          {isValid ? (
-            <CheckCircle2
-              className="ml-2 h-5 w-5 flex-shrink-0 text-green-500"
-              aria-hidden="true"
-            />
-          ) : (
-            <AlertCircle className="ml-2 h-5 w-5 flex-shrink-0 text-red-500" aria-hidden="true" />
-          )}
+          <FieldStatusIcon tone={tone} field="typography" changes={changes} className="ml-2" />
         </div>
         <div className="space-y-4">
           {/* Selected fonts */}
@@ -138,8 +139,16 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
               <div className="space-y-2">
                 <Label className="text-sm">Add from library</Label>
                 <Combobox
+                  value={null}
+                  onValueChange={(builtinId) => {
+                    if (builtinId) addBuiltinFont(builtinId);
+                  }}
                   inputValue={fontSearch}
-                  onInputValueChange={setFontSearch}
+                  onInputValueChange={(value, details) => {
+                    // Base UI mirrors the picked item into the input on selection; the picked
+                    // font moves to the list above instead, so leave the search box empty.
+                    setFontSearch(details.reason === "item-press" ? "" : value);
+                  }}
                   open={isFocused}
                   onOpenChange={setIsFocused}
                 >
@@ -149,15 +158,7 @@ export function TypographyPicker({ fonts, onChange, maxFonts = 3 }: TypographyPi
                   <ComboboxContent className="max-h-40">
                     {filteredBuiltins.length > 0 ? (
                       filteredBuiltins.map((font) => (
-                        <ComboboxItem
-                          key={font.id}
-                          value={font.id}
-                          onClick={() => {
-                            addBuiltinFont(font.id);
-                            setFontSearch("");
-                            setIsFocused(false);
-                          }}
-                        >
+                        <ComboboxItem key={font.id} value={font.id}>
                           <span style={{ fontFamily: builtinFontFamily(font) }}>{font.name}</span>
                         </ComboboxItem>
                       ))

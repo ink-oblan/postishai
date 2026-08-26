@@ -30,13 +30,13 @@ export default async function BrandEditPage(props: { searchParams: Promise<{ id?
   const searchParams = await props.searchParams;
   const brandId = searchParams.id;
 
-  // Scope the lookup to the session user so an id from another account resolves to nothing.
-  const brandProfile = brandId
-    ? await prisma.brandProfile.findFirst({ where: { id: brandId, userId: session.userId } })
-    : await prisma.brandProfile.findFirst({
-        where: { userId: session.userId },
-        orderBy: { createdAt: "asc" },
-      });
+  if (!brandId) {
+    redirect("/brand");
+  }
+
+  const brandProfile = await prisma.brandProfile.findFirst({
+    where: { id: brandId, userId: session.userId },
+  });
 
   if (!brandProfile) {
     redirect("/brand");
