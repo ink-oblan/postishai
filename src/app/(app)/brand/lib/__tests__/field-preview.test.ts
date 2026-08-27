@@ -57,11 +57,11 @@ describe("previewFieldValue", () => {
     });
   });
 
-  it("identifies an asset by name and size, never by its upload path", () => {
+  it("identifies an asset by name and size, never by its asset id", () => {
     const first = previewFieldValue("logoPath", [
       {
         name: "logo.png",
-        storagePath: "brand-assets/u1/logo/1700-logo.png",
+        assetId: "clxasset1",
         width: 512,
         height: 512,
       },
@@ -69,7 +69,7 @@ describe("previewFieldValue", () => {
     const reAdded = previewFieldValue("logoPath", [
       {
         name: "logo.png",
-        storagePath: "brand-assets/u1/logo/1899-logo.png",
+        assetId: "clxasset2",
         width: 512,
         height: 512,
       },

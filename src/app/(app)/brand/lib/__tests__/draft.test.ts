@@ -23,13 +23,13 @@ describe("draftKey", () => {
   });
 });
 
-/** An uploaded asset as it comes back from Prisma, path timestamp and all. */
+/** An uploaded asset as it comes back from Prisma, asset id and all. */
 const savedLogo = {
   logoPath: [
     {
       id: "a",
       name: "logo.png",
-      storagePath: "brand-assets/u1/logo/1700-logo.png",
+      assetId: "clxasset1",
       width: 512,
     },
   ],
@@ -74,20 +74,15 @@ describe("changedFields", () => {
     ).toEqual({});
   });
 
-  it("ignores the fresh upload path a re-added image gets", () => {
-    const reAdded =
-      '[{"id":"b","name":"logo.png","storagePath":"brand-assets/u1/logo/1899-logo.png","width":512}]';
+  it("ignores the fresh asset id a re-added image gets", () => {
+    const reAdded = '[{"id":"b","name":"logo.png","assetId":"clxasset2","width":512}]';
 
     expect(changedFields({ logoPath: reAdded }, savedLogo)).toEqual({});
   });
 
   it("still catches a different file swapped in", () => {
-    const renamed = [
-      { id: "b", name: "mark.png", storagePath: "brand-assets/u1/logo/1899-mark.png", width: 512 },
-    ];
-    const resized = [
-      { id: "b", name: "logo.png", storagePath: "brand-assets/u1/logo/1899-logo.png", width: 256 },
-    ];
+    const renamed = [{ id: "b", name: "mark.png", assetId: "clxasset2", width: 512 }];
+    const resized = [{ id: "b", name: "logo.png", assetId: "clxasset2", width: 256 }];
 
     expect(changedFields({ logoPath: renamed }, savedLogo)).toEqual({ logoPath: renamed });
     expect(changedFields({ logoPath: resized }, savedLogo)).toEqual({ logoPath: resized });

@@ -10,6 +10,7 @@ import {
   MAX_BRAND_UPLOAD_BODY_BYTES,
   sanitizeAssetFileName,
 } from "@/lib/brand-assets";
+import { prisma } from "@/lib/db";
 import { writeFile } from "@/lib/storage";
 
 function megabytes(bytes: number): string {
@@ -79,12 +80,24 @@ export const POST = withAuth(async function POST(request: NextRequest, _context,
     // Offset by index so files uploaded within the same millisecond don't overwrite each other.
     const timestamp = batchTimestamp + index;
     const storagePath = brandAssetStoragePath(userId, fileType, file.name, timestamp);
-    await writeFile(storagePath, Buffer.from(await file.arrayBuffer()));
+    const fileName = sanitizeAssetFileName(file.name);
+
+    // Row first: a row without a file only makes the asset 404, but a file without a row is
+    // untracked and nothing can ever find it again.
+    const asset = await prisma.brandAsset.create({
+      data: { userId, type: fileType, storagePath, fileName, sizeBytes: file.size },
+    });
+
+    try {
+      await writeFile(storagePath, Buffer.from(await file.arrayBuffer()));
+    } catch (error) {
+      await prisma.brandAsset.delete({ where: { id: asset.id } }).catch(() => null);
+      throw error;
+    }
 
     uploadedFiles.push({
-      id: `${timestamp}-${sanitizeAssetFileName(file.name)}`,
-      name: sanitizeAssetFileName(file.name),
-      storagePath,
+      id: asset.id,
+      name: fileName,
       size: file.size,
       type: file.type,
     });

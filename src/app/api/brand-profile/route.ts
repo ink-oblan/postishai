@@ -1,6 +1,7 @@
-import type { Prisma } from "@prisma/client";
+import type { BrandProfile, Prisma } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { extractAssetIds } from "@/lib/brand-assets";
 import { prisma } from "@/lib/db";
 
 const MAX_TEXT_LENGTH = 2_000;
@@ -82,12 +83,49 @@ function parseBrandProfileInput(body: unknown): { data: BrandProfileInput } | { 
   return { data: data as BrandProfileInput };
 }
 
+/** The three wizard fields whose entries can carry an uploaded asset. */
+const ASSET_FIELDS = ["logoPath", "patterns", "typography"] as const;
+
+function referencedAssetIds(source: Partial<Record<(typeof ASSET_FIELDS)[number], unknown>>) {
+  return [...new Set(ASSET_FIELDS.flatMap((field) => extractAssetIds(source[field])))];
+}
+
+/**
+ * Point every asset the saved brand references at it, and release the ones it no longer
+ * does. Reads the ids back off the persisted row rather than the request, so a partial
+ * update can't release assets held by a field it never sent.
+ */
+async function linkAssets(userId: string, brandProfile: BrandProfile): Promise<void> {
+  const assetIds = referencedAssetIds(brandProfile);
+
+  await prisma.brandAsset.updateMany({
+    where: { userId, id: { in: assetIds } },
+    data: { brandProfileId: brandProfile.id },
+  });
+
+  await prisma.brandAsset.updateMany({
+    where: { userId, brandProfileId: brandProfile.id, id: { notIn: assetIds } },
+    data: { brandProfileId: null },
+  });
+}
+
 export const POST = withAuth(async function POST(request: NextRequest, _context, { userId }) {
   const body = await request.json();
   const parsed = parseBrandProfileInput(body);
 
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  // Reject unknown or someone else's asset ids before they are written into the brand.
+  const incomingAssetIds = referencedAssetIds(parsed.data);
+  if (incomingAssetIds.length > 0) {
+    const owned = await prisma.brandAsset.count({
+      where: { userId, id: { in: incomingAssetIds } },
+    });
+    if (owned !== incomingAssetIds.length) {
+      return NextResponse.json({ error: "Unknown asset reference" }, { status: 400 });
+    }
   }
 
   const brandProfileId = typeof body?.brandProfileId === "string" ? body.brandProfileId : null;
@@ -106,12 +144,14 @@ export const POST = withAuth(async function POST(request: NextRequest, _context,
     const brandProfile = await prisma.brandProfile.findUniqueOrThrow({
       where: { id: brandProfileId },
     });
+    await linkAssets(userId, brandProfile);
     return NextResponse.json(brandProfile);
   }
 
   const brandProfile = await prisma.brandProfile.create({
     data: { ...parsed.data, userId },
   });
+  await linkAssets(userId, brandProfile);
 
   return NextResponse.json(brandProfile);
 });

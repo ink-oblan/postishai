@@ -24,6 +24,7 @@ model User {
   avatars            Avatar[]
   posts              Post[]
   brandProfiles      BrandProfile[]
+  brandAssets        BrandAsset[]
 }
 
 model Account {
@@ -199,10 +200,11 @@ model WaitlistEntry {
 }
 
 model BrandProfile {
-  id     String @id @default(cuid())
+  id     String       @id @default(cuid())
   userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   posts  Post[]
+  assets BrandAsset[]
 
   brandName      String
   topic          String
@@ -228,4 +230,21 @@ model BrandProfile {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model BrandAsset {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brandProfileId String?
+  brandProfile   BrandProfile? @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
+
+  type        String
+  storagePath String
+  fileName    String
+  sizeBytes   Int
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([brandProfileId])
 }

@@ -47,7 +47,8 @@ export interface UploadedFile {
   name: string;
   file?: File;
   previewUrl?: string;
-  storagePath?: string;
+  /** BrandAsset row id, present once the file has been uploaded. */
+  assetId?: string;
   width?: number;
   height?: number;
   willCrop?: boolean;
@@ -83,7 +84,7 @@ export function FileUploader({
   const fileRef = useRef<HTMLInputElement>(null);
   const filesRef = useRef<UploadedFile[]>(files);
   filesRef.current = files;
-  const loadedStoragePathsRef = useRef<Set<string>>(new Set());
+  const loadedAssetIdsRef = useRef<Set<string>>(new Set());
   const [localProcessingCount, setLocalProcessingCount] = useState(0);
 
   useEffect(() => {
@@ -97,15 +98,15 @@ export function FileUploader({
   }, []);
 
   useEffect(() => {
-    // Load preview URLs for files stored on server (those with storagePath but no previewUrl)
+    // Load preview URLs for files stored on server (those with assetId but no previewUrl)
     const filesToLoad = files.filter(
-      (f) => f.storagePath && !f.previewUrl && !loadedStoragePathsRef.current.has(f.storagePath),
+      (f) => f.assetId && !f.previewUrl && !loadedAssetIdsRef.current.has(f.assetId),
     );
     if (filesToLoad.length === 0) return;
 
     // Mark as loading
     filesToLoad.forEach((f) => {
-      if (f.storagePath) loadedStoragePathsRef.current.add(f.storagePath);
+      if (f.assetId) loadedAssetIdsRef.current.add(f.assetId);
     });
 
     (async () => {
@@ -113,9 +114,9 @@ export function FileUploader({
       await Promise.all(
         filesToLoad.map(async (f) => {
           try {
-            if (!f.storagePath) return;
+            if (!f.assetId) return;
             const response = await fetch(
-              `/api/brand-profile/file?path=${encodeURIComponent(f.storagePath)}`,
+              `/api/brand-profile/file?id=${encodeURIComponent(f.assetId)}`,
               { credentials: "include" },
             );
             if (response.ok) {
@@ -199,7 +200,7 @@ export function FileUploader({
       filesWithPreviews.map(async ({ file, previewUrl }) => {
         try {
           let dimensions: { width?: number; height?: number } = {};
-          let storagePath: string | undefined;
+          let assetId: string | undefined;
 
           // Get dimensions for media files if computeCropFlags is provided
           if (
@@ -230,8 +231,8 @@ export function FileUploader({
             }
 
             const uploadedData = await uploadResponse.json();
-            if (uploadedData.files?.[0]?.storagePath) {
-              storagePath = uploadedData.files[0].storagePath;
+            if (uploadedData.files?.[0]?.id) {
+              assetId = uploadedData.files[0].id;
             }
           }
 
@@ -240,7 +241,7 @@ export function FileUploader({
             name: file.name,
             file,
             previewUrl,
-            storagePath,
+            assetId,
             ...dimensions,
           };
         } catch (error) {

@@ -52,11 +52,7 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
           ? JSON.parse(formData.typography as string)
           : (formData.typography as unknown);
       if (!Array.isArray(parsed)) return [];
-      return parsed.map((f: FontItem & { data?: string }) => {
-        // `data` was the previous name for the uploaded font's storage path.
-        const { data, ...font } = f;
-        return { ...font, storagePath: font.storagePath ?? data };
-      });
+      return parsed as FontItem[];
     } catch {
       return [];
     }
@@ -97,13 +93,13 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
 
   const handleFontsChange = (newFonts: FontItem[]) => {
     setFonts(newFonts);
-    // Persist the storage path of uploaded fonts, never the File or its blob: URL —
+    // Persist the asset id of uploaded fonts, never the File or its blob: URL —
     // neither survives serialization or a page reload.
     const serializable = newFonts.map((f) => ({
       id: f.id,
       name: f.name,
       source: f.source,
-      ...(f.storagePath && { storagePath: f.storagePath }),
+      ...(f.assetId && { assetId: f.assetId }),
     }));
     onUpdate({ typography: JSON.stringify(serializable) });
   };
@@ -114,7 +110,7 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
     const persistedPatterns = newPatterns.map((pattern) => ({
       id: pattern.id,
       name: pattern.name,
-      storagePath: pattern.storagePath,
+      assetId: pattern.assetId,
       width: pattern.width,
       height: pattern.height,
       willCrop: pattern.willCrop,
@@ -124,12 +120,12 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
 
   const handleLogoChange = (newLogos: UploadedFile[]) => {
     setLogoFiles(newLogos);
-    // Only store essential fields for persistence: id, name, storagePath, width, height, willCrop
+    // Only store essential fields for persistence: id, name, assetId, width, height, willCrop
     // Don't store blob: URLs or File objects as they can't be serialized or persist across sessions
     const persistedLogos = newLogos.map((logo) => ({
       id: logo.id,
       name: logo.name,
-      storagePath: logo.storagePath,
+      assetId: logo.assetId,
       width: logo.width,
       height: logo.height,
       willCrop: logo.willCrop,

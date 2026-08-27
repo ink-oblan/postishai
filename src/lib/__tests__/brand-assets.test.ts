@@ -1,98 +1,56 @@
 import { describe, expect, it } from "vitest";
 import {
-  BRAND_ASSET_EXTENSIONS,
   brandAssetStoragePath,
+  extractAssetIds,
   fileExtension,
   isBrandAssetType,
-  resolveOwnBrandAssetPath,
   sanitizeAssetFileName,
 } from "@/lib/brand-assets";
 
 const USER = "clx1user0000000000000000";
-const VICTIM = "clx2victim000000000000000";
 
-describe("resolveOwnBrandAssetPath", () => {
-  it("accepts a path produced by brandAssetStoragePath", () => {
-    const path = brandAssetStoragePath(USER, "logo", "mark.png", 1700000000000);
-    expect(resolveOwnBrandAssetPath(path, USER)).toBe(path);
+describe("extractAssetIds", () => {
+  const entries = [
+    { id: "a", name: "logo.png", assetId: "clxasset1" },
+    { id: "b", name: "mark.png", assetId: "clxasset2" },
+  ];
+
+  it("reads a plain JSON string, as the wizard sends it", () => {
+    expect(extractAssetIds(JSON.stringify(entries))).toEqual(["clxasset1", "clxasset2"]);
   });
 
-  it("accepts every asset type with its own extensions", () => {
-    for (const [type, extensions] of Object.entries(BRAND_ASSET_EXTENSIONS)) {
-      for (const ext of extensions) {
-        const path = `brand-assets/${USER}/${type}/1700000000000-file${ext}`;
-        expect(resolveOwnBrandAssetPath(path, USER)).toBe(path);
-      }
-    }
+  it("reads an already-parsed array", () => {
+    expect(extractAssetIds(entries)).toEqual(["clxasset1", "clxasset2"]);
   });
 
-  it("rejects a path owned by another user", () => {
-    const path = brandAssetStoragePath(VICTIM, "logo", "mark.png", 1700000000000);
-    expect(resolveOwnBrandAssetPath(path, USER)).toBeNull();
+  it("unwraps the double encoding Prisma returns", () => {
+    // parseBrandProfileInput stores the wizard's JSON string inside a Json column, so a
+    // value read back is a JSON string nested in JSONB.
+    expect(extractAssetIds(JSON.stringify(JSON.stringify(entries)))).toEqual([
+      "clxasset1",
+      "clxasset2",
+    ]);
   });
 
-  it("rejects traversal into another user's directory", () => {
-    // The exploit from the review: the raw path contains the caller's id, so a
-    // substring check would pass, but it resolves into the victim's directory.
-    expect(
-      resolveOwnBrandAssetPath(
-        `brand-assets/${USER}/../${VICTIM}/logo/1700000000000-mark.png`,
-        USER,
-      ),
-    ).toBeNull();
-    expect(
-      resolveOwnBrandAssetPath(
-        `brand-assets/${USER}/logo/../../${VICTIM}/logo/1700000000000-mark.png`,
-        USER,
-      ),
-    ).toBeNull();
+  it("skips entries with no assetId, such as library fonts", () => {
+    const fonts = [
+      { id: "a", name: "Inter", source: "builtin" },
+      { id: "b", name: "Custom.ttf", source: "uploaded", assetId: "clxfont1" },
+    ];
+    expect(extractAssetIds(JSON.stringify(fonts))).toEqual(["clxfont1"]);
   });
 
-  it("rejects escaping the storage root entirely", () => {
-    expect(resolveOwnBrandAssetPath("../../etc/passwd", USER)).toBeNull();
-    expect(resolveOwnBrandAssetPath("/etc/passwd", USER)).toBeNull();
-    expect(resolveOwnBrandAssetPath(`brand-assets/${USER}/logo/..`, USER)).toBeNull();
+  it("returns nothing for empty, malformed or non-list values", () => {
+    expect(extractAssetIds(undefined)).toEqual([]);
+    expect(extractAssetIds(null)).toEqual([]);
+    expect(extractAssetIds("")).toEqual([]);
+    expect(extractAssetIds("not json")).toEqual([]);
+    expect(extractAssetIds('{"assetId":"x"}')).toEqual([]);
+    expect(extractAssetIds(JSON.stringify([null, 42, "text"]))).toEqual([]);
   });
 
-  it("rejects backslash and null-byte payloads", () => {
-    expect(
-      resolveOwnBrandAssetPath(`brand-assets\\${USER}\\logo\\1700000000000-a.png`, USER),
-    ).toBeNull();
-    expect(
-      resolveOwnBrandAssetPath(`brand-assets/${USER}/logo/1700000000000-a.png\0.txt`, USER),
-    ).toBeNull();
-  });
-
-  it("rejects paths outside the brand-assets prefix", () => {
-    expect(resolveOwnBrandAssetPath(`videos/${USER}.mp4`, USER)).toBeNull();
-    expect(resolveOwnBrandAssetPath(`avatars/${USER}/logo/1700000000000-a.png`, USER)).toBeNull();
-  });
-
-  it("rejects an unknown asset type", () => {
-    expect(
-      resolveOwnBrandAssetPath(`brand-assets/${USER}/secrets/1700000000000-a.png`, USER),
-    ).toBeNull();
-  });
-
-  it("rejects an extension the asset type does not allow", () => {
-    expect(
-      resolveOwnBrandAssetPath(`brand-assets/${USER}/logo/1700000000000-a.ttf`, USER),
-    ).toBeNull();
-    expect(
-      resolveOwnBrandAssetPath(`brand-assets/${USER}/font/1700000000000-a.png`, USER),
-    ).toBeNull();
-    expect(
-      resolveOwnBrandAssetPath(`brand-assets/${USER}/logo/1700000000000-a.svg`, USER),
-    ).toBeNull();
-  });
-
-  it("rejects a filename without the timestamp prefix", () => {
-    expect(resolveOwnBrandAssetPath(`brand-assets/${USER}/logo/mark.png`, USER)).toBeNull();
-  });
-
-  it("rejects an empty path or empty user id", () => {
-    expect(resolveOwnBrandAssetPath("", USER)).toBeNull();
-    expect(resolveOwnBrandAssetPath(`brand-assets/${USER}/logo/1-a.png`, "")).toBeNull();
+  it("ignores a non-string assetId", () => {
+    expect(extractAssetIds(JSON.stringify([{ assetId: 42 }, { assetId: "" }]))).toEqual([]);
   });
 });
 
@@ -103,9 +61,10 @@ describe("sanitizeAssetFileName", () => {
     expect(sanitizeAssetFileName("my logo (final).png")).toBe("my_logo__final_.png");
   });
 
-  it("produces a name the path validator accepts", () => {
-    const path = brandAssetStoragePath(USER, "logo", "../../etc/evil.png", 1700000000000);
-    expect(resolveOwnBrandAssetPath(path, USER)).toBe(path);
+  it("keeps a hostile name inside the caller's own directory", () => {
+    expect(brandAssetStoragePath(USER, "logo", "../../etc/evil.png", 1700000000000)).toBe(
+      `brand-assets/${USER}/logo/1700000000000-__.._etc_evil.png`,
+    );
   });
 });
 

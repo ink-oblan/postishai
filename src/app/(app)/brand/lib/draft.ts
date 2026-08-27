@@ -71,36 +71,25 @@ function parseJson(value: unknown): unknown {
 }
 
 /**
- * Sorts keys so serialization order can't stand in for a real edit, and drops `id`: the
- * pickers mint a fresh random one per entry, so removing a font or colour and adding the
- * same one back would otherwise read as an unsaved change forever.
+ * Keys that identify an entry's storage rather than its content, and so must not count as
+ * an edit. `id` is minted fresh per entry by the pickers, and `assetId` per upload — so
+ * removing a font, colour or image and adding the same one back would otherwise read as an
+ * unsaved change forever. What is left, `name` plus the dimensions that ride alongside it,
+ * is the same identity `previewFieldValue` diffs on.
  */
+const VOLATILE_KEYS = new Set(["id", "assetId"]);
+
+/** Sorts keys so serialization order can't stand in for a real edit. */
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value === null || typeof value !== "object") return value;
 
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
-      .filter(([key]) => key !== "id")
+      .filter(([key]) => !VOLATILE_KEYS.has(key))
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, entry]) => [
-        key,
-        key === "storagePath" && typeof entry === "string"
-          ? assetIdentity(entry)
-          : canonicalize(entry),
-      ]),
+      .map(([key, entry]) => [key, canonicalize(entry)]),
   );
-}
-
-/**
- * Re-adding a file re-uploads it, and every upload lands at its own
- * `brand-assets/<user>/<type>/<timestamp>-<name>` path — so the same image put back would
- * compare unequal to the one already saved. The file name is the part that identifies the
- * asset to the user; for images the dimensions ride alongside it in the same entry and
- * catch a genuinely different file that happens to share a name.
- */
-function assetIdentity(path: string): string {
-  return path.slice(path.lastIndexOf("/") + 1).replace(/^\d+-/, "");
 }
 
 /** The subset of `current` that differs from `baseline`, keyed by field name. */

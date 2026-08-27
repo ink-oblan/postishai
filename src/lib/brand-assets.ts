@@ -58,31 +58,35 @@ export function brandAssetStoragePath(
 }
 
 /**
- * Exactly the shape `brandAssetStoragePath` produces: four segments, anchored, with a
- * strict charset per segment.
- *
- * Being segment-exact is what makes this traversal-proof. A payload such as
- * `brand-assets/<me>/../<victim>/logo/1-x.png` has six segments and cannot match, so it
- * is rejected *before* any normalization can collapse `..` and hide the real owner.
+ * The wizard hands its list fields back as JSON strings, and `parseBrandProfileInput` stores
+ * that string as-is into a Json column — so a value read back from Prisma is a JSON string
+ * *inside* JSONB, and needs unwrapping twice before it is an array.
  */
-const BRAND_ASSET_PATH_PATTERN =
-  /^brand-assets\/([A-Za-z0-9_-]+)\/(logo|pattern|font)\/\d+-[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+function parseEntries(value: unknown): unknown[] {
+  let current = value;
+
+  for (let depth = 0; depth < 2; depth++) {
+    if (Array.isArray(current)) return current;
+    if (typeof current !== "string") return [];
+    try {
+      current = JSON.parse(current);
+    } catch {
+      return [];
+    }
+  }
+
+  return Array.isArray(current) ? current : [];
+}
 
 /**
- * Validate a client-supplied storage path and return it only if it belongs to `userId`;
- * `null` when it is malformed or owned by somebody else.
+ * The asset ids referenced by one of the wizard's list fields (`logoPath`, `patterns`,
+ * `typography`). Entries without an `assetId` — library fonts, say — are skipped, and
+ * anything malformed yields an empty list rather than throwing.
  */
-export function resolveOwnBrandAssetPath(rawPath: string, userId: string): string | null {
-  if (!userId || !rawPath || rawPath.includes("\0") || rawPath.includes("\\")) return null;
-
-  const match = BRAND_ASSET_PATH_PATTERN.exec(rawPath);
-  if (!match) return null;
-
-  const [, ownerId, assetType] = match;
-  if (ownerId !== userId) return null;
-
-  const ext = fileExtension(rawPath);
-  if (!BRAND_ASSET_EXTENSIONS[assetType as BrandAssetType].includes(ext)) return null;
-
-  return rawPath;
+export function extractAssetIds(value: unknown): string[] {
+  return parseEntries(value).flatMap((entry) => {
+    if (entry === null || typeof entry !== "object") return [];
+    const assetId = (entry as { assetId?: unknown }).assetId;
+    return typeof assetId === "string" && assetId.length > 0 ? [assetId] : [];
+  });
 }

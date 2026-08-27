@@ -25,8 +25,8 @@ export interface FontItem {
   id: string;
   name: string;
   source: "builtin" | "uploaded";
-  /** Storage path of the uploaded font file; unset for library fonts. */
-  storagePath?: string;
+  /** BrandAsset id of the uploaded font file; unset for library fonts. */
+  assetId?: string;
 }
 
 interface TypographyPickerProps {
@@ -76,7 +76,7 @@ export function TypographyPicker({
         id: f.id,
         name: f.name,
         source: "uploaded" as const,
-        storagePath: f.storagePath,
+        assetId: f.assetId,
       }));
 
     if (newFonts.length > 0 && fonts.length + newFonts.length <= maxFonts) {
