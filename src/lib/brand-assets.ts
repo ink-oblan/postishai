@@ -58,29 +58,24 @@ export function brandAssetStoragePath(
 }
 
 /**
- * The wizard hands its list fields back as JSON strings, and `parseBrandProfileInput` stores
- * that string as-is into a Json column — so a value read back from Prisma is a JSON string
- * *inside* JSONB, and needs unwrapping twice before it is an array.
+ * List fields arrive either already parsed — from a Json column, or from a client that sent
+ * real JSON — or as the JSON string older clients and rows still carry.
  */
 function parseEntries(value: unknown): unknown[] {
-  let current = value;
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return [];
 
-  for (let depth = 0; depth < 2; depth++) {
-    if (Array.isArray(current)) return current;
-    if (typeof current !== "string") return [];
-    try {
-      current = JSON.parse(current);
-    } catch {
-      return [];
-    }
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
-
-  return Array.isArray(current) ? current : [];
 }
 
 /**
- * The asset ids referenced by one of the wizard's list fields (`logoPath`, `patterns`,
- * `typography`). Entries without an `assetId` — library fonts, say — are skipped, and
+ * The asset ids referenced by one of the wizard's list fields.
+ * Entries without an `assetId`, say — are skipped, and
  * anything malformed yields an empty list rather than throwing.
  */
 export function extractAssetIds(value: unknown): string[] {

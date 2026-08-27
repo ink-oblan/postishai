@@ -21,6 +21,17 @@ interface VisualProps {
   changes?: FieldChanges;
 }
 
+export interface BrandAssetRef {
+  id: string;
+  name: string;
+  /** BrandAsset row id, present once the file has been uploaded. */
+  assetId?: string;
+}
+
+function persistedAsset(file: UploadedFile): BrandAssetRef {
+  return { id: file.id, name: file.name, assetId: file.assetId };
+}
+
 export function Visual({ formData, onUpdate, changes }: VisualProps) {
   const colorIdCounter = useRef(0);
 
@@ -31,106 +42,38 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
     }));
   };
 
-  const [colors, setColors] = useState<ColorItem[]>(() => {
-    if (!formData.colors) return [];
-    try {
-      const parsed =
-        typeof formData.colors === "string"
-          ? JSON.parse(formData.colors as string)
-          : (formData.colors as unknown);
-      return normalizeColors(parsed as ColorItem[]);
-    } catch {
-      return [];
-    }
-  });
-
-  const [fonts, setFonts] = useState<FontItem[]>(() => {
-    if (!formData.typography) return [];
-    try {
-      const parsed =
-        typeof formData.typography === "string"
-          ? JSON.parse(formData.typography as string)
-          : (formData.typography as unknown);
-      if (!Array.isArray(parsed)) return [];
-      return parsed as FontItem[];
-    } catch {
-      return [];
-    }
-  });
-
-  const [patternFiles, setPatternFiles] = useState<UploadedFile[]>(() => {
-    if (!formData.patterns) return [];
-    try {
-      const parsed =
-        typeof formData.patterns === "string"
-          ? JSON.parse(formData.patterns as string)
-          : (formData.patterns as unknown);
-      if (!Array.isArray(parsed)) return [];
-      return parsed as UploadedFile[];
-    } catch {
-      return [];
-    }
-  });
-
-  const [logoFiles, setLogoFiles] = useState<UploadedFile[]>(() => {
-    if (!formData.logoPath) return [];
-    try {
-      const parsed =
-        typeof formData.logoPath === "string"
-          ? JSON.parse(formData.logoPath as string)
-          : (formData.logoPath as unknown);
-      if (!Array.isArray(parsed)) return [];
-      return parsed as UploadedFile[];
-    } catch {
-      return [];
-    }
-  });
+  const [colors, setColors] = useState<ColorItem[]>(() => normalizeColors(formData.colors ?? []));
+  const [fonts, setFonts] = useState<FontItem[]>(() => formData.typography ?? []);
+  const [patternFiles, setPatternFiles] = useState<UploadedFile[]>(() => formData.patterns ?? []);
+  const [logoFiles, setLogoFiles] = useState<UploadedFile[]>(() => formData.logoPath ?? []);
 
   const handleColorsChange = (newColors: ColorItem[]) => {
     setColors(newColors);
-    onUpdate({ colors: JSON.stringify(newColors) });
+    onUpdate({ colors: newColors });
   };
 
   const handleFontsChange = (newFonts: FontItem[]) => {
     setFonts(newFonts);
     // Persist the asset id of uploaded fonts, never the File or its blob: URL —
     // neither survives serialization or a page reload.
-    const serializable = newFonts.map((f) => ({
-      id: f.id,
-      name: f.name,
-      source: f.source,
-      ...(f.assetId && { assetId: f.assetId }),
-    }));
-    onUpdate({ typography: JSON.stringify(serializable) });
+    onUpdate({
+      typography: newFonts.map((f) => ({
+        id: f.id,
+        name: f.name,
+        source: f.source,
+        ...(f.assetId && { assetId: f.assetId }),
+      })),
+    });
   };
 
   const handlePatternChange = (newPatterns: UploadedFile[]) => {
     setPatternFiles(newPatterns);
-    // Only store essential fields for persistence
-    const persistedPatterns = newPatterns.map((pattern) => ({
-      id: pattern.id,
-      name: pattern.name,
-      assetId: pattern.assetId,
-      width: pattern.width,
-      height: pattern.height,
-      willCrop: pattern.willCrop,
-    }));
-    onUpdate({ patterns: JSON.stringify(persistedPatterns) });
+    onUpdate({ patterns: newPatterns.map(persistedAsset) });
   };
 
   const handleLogoChange = (newLogos: UploadedFile[]) => {
     setLogoFiles(newLogos);
-    // Only store essential fields for persistence: id, name, assetId, width, height, willCrop
-    // Don't store blob: URLs or File objects as they can't be serialized or persist across sessions
-    const persistedLogos = newLogos.map((logo) => ({
-      id: logo.id,
-      name: logo.name,
-      assetId: logo.assetId,
-      width: logo.width,
-      height: logo.height,
-      willCrop: logo.willCrop,
-    }));
-    onUpdate({ logoPath: JSON.stringify(persistedLogos) });
+    onUpdate({ logoPath: newLogos.map(persistedAsset) });
   };
 
   const photoStyleTone = fieldTone({

@@ -57,27 +57,17 @@ describe("previewFieldValue", () => {
     });
   });
 
-  it("identifies an asset by name and size, never by its asset id", () => {
+  it("identifies an asset by name, never by its asset id", () => {
     const first = previewFieldValue("logoPath", [
-      {
-        name: "logo.png",
-        assetId: "clxasset1",
-        width: 512,
-        height: 512,
-      },
+      { id: "a", name: "logo.png", assetId: "clxasset1" },
     ]);
     const reAdded = previewFieldValue("logoPath", [
-      {
-        name: "logo.png",
-        assetId: "clxasset2",
-        width: 512,
-        height: 512,
-      },
+      { id: "b", name: "logo.png", assetId: "clxasset2" },
     ]);
 
     expect(first).toEqual({
       kind: "entries",
-      entries: [{ key: "logo.png|512×512", label: "logo.png", meta: "512×512" }],
+      entries: [{ key: "logo.png", label: "logo.png" }],
     });
     expect(reAdded).toEqual(first);
   });

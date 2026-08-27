@@ -8,9 +8,6 @@ export interface BrandWizardDraft {
   changes: Record<string, unknown>;
 }
 
-/** Bumped when the stored shape changes; drafts written by an older version are ignored. */
-const DRAFT_VERSION = 2;
-
 /**
  * Drafts are namespaced per user and per brand — a shared key would make the draft of
  * one brand (or of "create new") bleed into the edit form of another.
@@ -19,16 +16,18 @@ export function draftKey(userId: string, brandProfileId?: string): string {
   return `brandWizard:${userId}:${brandProfileId ?? "new"}`;
 }
 
+/**
+ * The stored entry is only trusted as far as its shape holds up: anything that isn't a
+ * non-empty set of changes is treated as no draft at all, whoever or whatever wrote it.
+ */
 export function readDraft(key: string): BrandWizardDraft | null {
   const saved = localStorage.getItem(key);
   if (!saved) return null;
 
   try {
     const parsed = JSON.parse(saved);
-    if (parsed?.version !== DRAFT_VERSION) return null;
-
     const changes =
-      parsed.changes && typeof parsed.changes === "object" ? parsed.changes : undefined;
+      parsed?.changes && typeof parsed.changes === "object" ? parsed.changes : undefined;
     if (!changes || Object.keys(changes).length === 0) return null;
 
     return { step: Number.isInteger(parsed.step) ? parsed.step : 0, changes };
@@ -44,7 +43,29 @@ export function writeDraft(key: string, draft: BrandWizardDraft): void {
     localStorage.removeItem(key);
     return;
   }
-  localStorage.setItem(key, JSON.stringify({ version: DRAFT_VERSION, ...draft }));
+  localStorage.setItem(key, JSON.stringify(draft));
+}
+
+/** Lists tell themselves apart from the objects they are; `typeof` covers the rest. */
+const shapeOf = (value: unknown) => (Array.isArray(value) ? "list" : typeof value);
+
+/**
+ * Drafts outlive the form that wrote them. The values the wizard seeds itself with are both
+ * the fields it still has and the shape each one holds, so an edit is restored only where it
+ * matches its seed: a field the form dropped has no seed at all, and one that changed shape no
+ * longer matches its own. Both go quietly; the rest of the draft is still unsaved work.
+ *
+ * Shapes, not structure — a list whose entries changed still reads as a list. Changing what an
+ * entry holds means tolerating both forms on read, the way `parseList` does, or renaming the
+ * field so its old drafts stop matching.
+ */
+export function restorableChanges(
+  changes: Record<string, unknown>,
+  baseline: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(changes).filter(([field, value]) => shapeOf(value) === shapeOf(baseline[field])),
+  );
 }
 
 /**
@@ -74,8 +95,8 @@ function parseJson(value: unknown): unknown {
  * Keys that identify an entry's storage rather than its content, and so must not count as
  * an edit. `id` is minted fresh per entry by the pickers, and `assetId` per upload — so
  * removing a font, colour or image and adding the same one back would otherwise read as an
- * unsaved change forever. What is left, `name` plus the dimensions that ride alongside it,
- * is the same identity `previewFieldValue` diffs on.
+ * unsaved change forever. What is left — `name`, and whatever else the entry describes itself
+ * with — is the same identity `previewFieldValue` diffs on.
  */
 const VOLATILE_KEYS = new Set(["id", "assetId"]);
 

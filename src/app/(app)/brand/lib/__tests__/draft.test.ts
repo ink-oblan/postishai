@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { changedFields, draftKey, previousValues, readDraft, writeDraft } from "../draft";
+import {
+  changedFields,
+  draftKey,
+  previousValues,
+  readDraft,
+  restorableChanges,
+  writeDraft,
+} from "../draft";
 
 const USER = "clx1user0000000000000000";
 const BRAND = "clx2brand000000000000000";
@@ -25,14 +32,7 @@ describe("draftKey", () => {
 
 /** An uploaded asset as it comes back from Prisma, asset id and all. */
 const savedLogo = {
-  logoPath: [
-    {
-      id: "a",
-      name: "logo.png",
-      assetId: "clxasset1",
-      width: 512,
-    },
-  ],
+  logoPath: [{ id: "a", name: "logo.png", assetId: "clxasset1" }],
 };
 
 describe("changedFields", () => {
@@ -75,17 +75,15 @@ describe("changedFields", () => {
   });
 
   it("ignores the fresh asset id a re-added image gets", () => {
-    const reAdded = '[{"id":"b","name":"logo.png","assetId":"clxasset2","width":512}]';
+    const reAdded = '[{"id":"b","name":"logo.png","assetId":"clxasset2"}]';
 
     expect(changedFields({ logoPath: reAdded }, savedLogo)).toEqual({});
   });
 
   it("still catches a different file swapped in", () => {
-    const renamed = [{ id: "b", name: "mark.png", assetId: "clxasset2", width: 512 }];
-    const resized = [{ id: "b", name: "logo.png", assetId: "clxasset2", width: 256 }];
+    const renamed = [{ id: "b", name: "mark.png", assetId: "clxasset2" }];
 
     expect(changedFields({ logoPath: renamed }, savedLogo)).toEqual({ logoPath: renamed });
-    expect(changedFields({ logoPath: resized }, savedLogo)).toEqual({ logoPath: resized });
   });
 
   it("ignores key order within a json value", () => {
@@ -128,6 +126,42 @@ describe("writeDraft / readDraft", () => {
   it("ignores unparseable entries", () => {
     localStorage.setItem(KEY, "not json");
     expect(readDraft(KEY)).toBeNull();
+  });
+});
+
+describe("restorableChanges", () => {
+  it("keeps edits to fields the form still has", () => {
+    const changes = { brandName: "Acme Co", emojiLevel: 2, colors: [{ id: "c2", hex: "#00ff00" }] };
+    expect(restorableChanges(changes, saved)).toEqual(changes);
+  });
+
+  it("drops a field the form no longer has", () => {
+    expect(restorableChanges({ brandName: "Acme Co", retired: "gone" }, saved)).toEqual({
+      brandName: "Acme Co",
+    });
+  });
+
+  it("drops a field whose value no longer has the shape the form seeds", () => {
+    // emojiLevel as a label, colors as the JSON string an older wizard stored.
+    const changes = { brandName: "Acme Co", emojiLevel: "high", colors: '[{"hex":"#00ff00"}]' };
+    expect(restorableChanges(changes, saved)).toEqual({ brandName: "Acme Co" });
+  });
+
+  it("restores nothing when every edit is stale", () => {
+    expect(restorableChanges({ retired: "gone", emojiLevel: "high" }, saved)).toEqual({});
+  });
+
+  it("drops an edit the form seeds with nothing, having no shape to match", () => {
+    expect(restorableChanges({ patterns: [{ id: "p1" }] }, { patterns: null })).toEqual({});
+  });
+
+  it("tells an empty list apart from an empty string", () => {
+    expect(restorableChanges({ colors: [] }, saved)).toEqual({ colors: [] });
+    expect(restorableChanges({ colors: "" }, saved)).toEqual({});
+  });
+
+  it("ignores a field the draft never touched", () => {
+    expect(restorableChanges({}, saved)).toEqual({});
   });
 });
 

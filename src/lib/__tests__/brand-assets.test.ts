@@ -15,21 +15,12 @@ describe("extractAssetIds", () => {
     { id: "b", name: "mark.png", assetId: "clxasset2" },
   ];
 
-  it("reads a plain JSON string, as the wizard sends it", () => {
-    expect(extractAssetIds(JSON.stringify(entries))).toEqual(["clxasset1", "clxasset2"]);
-  });
-
-  it("reads an already-parsed array", () => {
+  it("reads an array, as a Json column returns it", () => {
     expect(extractAssetIds(entries)).toEqual(["clxasset1", "clxasset2"]);
   });
 
-  it("unwraps the double encoding Prisma returns", () => {
-    // parseBrandProfileInput stores the wizard's JSON string inside a Json column, so a
-    // value read back is a JSON string nested in JSONB.
-    expect(extractAssetIds(JSON.stringify(JSON.stringify(entries)))).toEqual([
-      "clxasset1",
-      "clxasset2",
-    ]);
+  it("reads a JSON string, as older clients and rows still hold it", () => {
+    expect(extractAssetIds(JSON.stringify(entries))).toEqual(["clxasset1", "clxasset2"]);
   });
 
   it("skips entries with no assetId, such as library fonts", () => {

@@ -4,10 +4,21 @@ import type { BrandProfile } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { changedFields, draftKey, previousValues, readDraft, writeDraft } from "../lib/draft";
+import {
+  changedFields,
+  draftKey,
+  previousValues,
+  readDraft,
+  restorableChanges,
+  writeDraft,
+} from "../lib/draft";
+import { parseList } from "../lib/list-field";
 import { isStepValid } from "../lib/validation";
+import type { ColorItem } from "./ColorPalettePicker";
 import { CoreBrand } from "./CoreBrand";
+import type { FontItem } from "./TypographyPicker";
 import { Video } from "./Video";
+import type { BrandAssetRef } from "./Visual";
 import { Visual } from "./Visual";
 import { Voice } from "./Voice";
 import { WizardNavigation } from "./WizardNavigation";
@@ -18,9 +29,21 @@ interface BrandSetupWizardProps {
   userId: string;
 }
 
+/**
+ * The Json columns come back from Prisma as `JsonValue`; the wizard works with the lists they
+ * actually hold, and posts them as-is for the API to store.
+ */
 export type BrandFormData = Partial<
-  Omit<BrandProfile, "id" | "userId" | "createdAt" | "updatedAt">
->;
+  Omit<
+    BrandProfile,
+    "id" | "userId" | "createdAt" | "updatedAt" | "colors" | "typography" | "logoPath" | "patterns"
+  >
+> & {
+  colors?: ColorItem[];
+  typography?: FontItem[];
+  logoPath?: BrandAssetRef[];
+  patterns?: BrandAssetRef[];
+};
 
 const STEPS = ["Core Brand", "Visual Identity", "Tone of Voice", "Video & Meaning"];
 
@@ -30,10 +53,10 @@ function seedFormData(initialData: BrandProfile | null): BrandFormData {
     mission: initialData?.mission || "",
     targetAudience: initialData?.targetAudience || "",
     topic: initialData?.topic || "",
-    colors: initialData?.colors || "",
-    typography: initialData?.typography || "",
-    logoPath: initialData?.logoPath || "",
-    patterns: initialData?.patterns || "",
+    colors: parseList<ColorItem>(initialData?.colors),
+    typography: parseList<FontItem>(initialData?.typography),
+    logoPath: parseList<BrandAssetRef>(initialData?.logoPath),
+    patterns: parseList<BrandAssetRef>(initialData?.patterns),
     photoStyle: initialData?.photoStyle || "",
     voiceStyle: initialData?.voiceStyle || "",
     youFormality: initialData?.youFormality ?? false,
@@ -72,11 +95,13 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
       if (draft.step >= 0 && draft.step < STEPS.length) {
         setCurrentStep(draft.step);
       }
-      setFormData((prev) => ({ ...prev, ...draft.changes }));
+      // Edits the form can no longer take are dropped here and never written back, so a
+      // draft left by an older release settles into the current shape on first open.
+      setFormData((prev) => ({ ...prev, ...restorableChanges(draft.changes, savedFormData) }));
     }
 
     setIsHydrated(true);
-  }, [storageKey]);
+  }, [storageKey, savedFormData]);
 
   useEffect(() => {
     // A save clears the draft; re-persisting on the way out would resurrect it.
@@ -127,10 +152,7 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
     }
   };
 
-  const isCurrentStepValid = isStepValid(
-    currentStep,
-    formData as Record<string, string | undefined>,
-  );
+  const isCurrentStepValid = isStepValid(currentStep, formData);
 
   if (!isHydrated) {
     return (

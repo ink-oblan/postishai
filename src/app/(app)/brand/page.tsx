@@ -6,6 +6,7 @@ import { BrandDraftBadge } from "./components/BrandDraftBadge";
 import { BrandSetupWizard } from "./components/BrandSetupWizard";
 import { DeleteBrandButton } from "./components/DeleteBrandButton";
 import { NewBrandButton } from "./components/NewBrandButton";
+import { parseList } from "./lib/list-field";
 
 export const metadata = {
   title: "Brand Profile — PostishAI",
@@ -15,53 +16,24 @@ const MAX_VISIBLE_COLORS = 6;
 const MAX_VISIBLE_FONTS = 4;
 
 interface Color {
-  id: string;
+  id?: string;
   hex: string;
 }
 
 interface Font {
-  id: string;
+  id?: string;
   name: string;
-}
-
-function normalizeColors(colors: unknown): Color[] {
-  if (!colors) return [];
-  try {
-    const parsed = typeof colors === "string" ? JSON.parse(colors) : colors;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((color, idx) => ({
-      id: color.id || `color-${idx}-${Date.now()}`,
-      hex: color.hex,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-function normalizeFonts(fonts: unknown): Font[] {
-  if (!fonts) return [];
-  try {
-    const parsed = typeof fonts === "string" ? JSON.parse(fonts) : fonts;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((font, idx) => ({
-      id: font.id || `font-${idx}-${Date.now()}`,
-      name: font.name,
-    }));
-  } catch {
-    return [];
-  }
 }
 
 export default async function BrandPage() {
   const session = await requireSession();
 
-  const user = await prisma.user.findUniqueOrThrow({
-    where: { id: session.userId },
-    include: { brandProfiles: true },
+  const brandProfiles = await prisma.brandProfile.findMany({
+    where: { userId: session.userId },
+    orderBy: { createdAt: "asc" },
   });
 
   // If brand profiles exist, show them all; otherwise show the wizard
-  const brandProfiles = user.brandProfiles || [];
   if (brandProfiles.length > 0) {
     return (
       <div className="min-h-screen bg-background">
@@ -72,13 +44,13 @@ export default async function BrandPage() {
                 <h1 className="mb-2 font-bold text-3xl">Your Brand Profiles</h1>
                 <p className="text-muted-foreground">Manage your brand identities</p>
               </div>
-              <NewBrandButton userId={user.id} />
+              <NewBrandButton userId={session.userId} />
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
               {brandProfiles.map((brandProfile) => {
-                const colors = normalizeColors(brandProfile.colors);
-                const fonts = normalizeFonts(brandProfile.typography);
+                const colors = parseList<Color>(brandProfile.colors);
+                const fonts = parseList<Font>(brandProfile.typography);
 
                 return (
                   <div
@@ -94,7 +66,7 @@ export default async function BrandPage() {
                           </p>
                         )}
                       </div>
-                      <BrandDraftBadge userId={user.id} brandId={brandProfile.id} />
+                      <BrandDraftBadge userId={session.userId} brandId={brandProfile.id} />
                     </div>
 
                     {brandProfile.targetAudience && (
@@ -124,9 +96,9 @@ export default async function BrandPage() {
                       <div>
                         <h3 className="mb-2 font-semibold text-muted-foreground text-sm">Colors</h3>
                         <div className="flex flex-wrap items-center gap-2">
-                          {colors.slice(0, MAX_VISIBLE_COLORS).map((color: Color) => (
+                          {colors.slice(0, MAX_VISIBLE_COLORS).map((color) => (
                             <div
-                              key={color.id}
+                              key={color.id ?? color.hex}
                               className="h-8 w-8 rounded border border-border"
                               style={{ backgroundColor: color.hex }}
                               title={color.hex}
@@ -147,9 +119,9 @@ export default async function BrandPage() {
                           Typefaces
                         </h3>
                         <div className="flex flex-wrap items-center gap-2">
-                          {fonts.slice(0, MAX_VISIBLE_FONTS).map((font: Font) => (
+                          {fonts.slice(0, MAX_VISIBLE_FONTS).map((font) => (
                             <span
-                              key={font.id}
+                              key={font.id ?? font.name}
                               className="inline-block max-w-[12rem] truncate rounded bg-muted px-2 py-1 text-xs"
                               title={font.name}
                             >
@@ -185,7 +157,7 @@ export default async function BrandPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <BrandSetupWizard initialData={null} userId={user.id} />
+      <BrandSetupWizard initialData={null} userId={session.userId} />
     </div>
   );
 }

@@ -103,10 +103,6 @@ export function ColorPalettePicker({
     onChange(colors.map((c) => (c.id === id ? { ...c, hex } : c)));
   };
 
-  const _updateColorName = (id: string, name: string) => {
-    onChange(colors.map((c) => (c.id === id ? { ...c, name } : c)));
-  };
-
   const isValid = colors.length >= 2;
   const tone = fieldTone({ invalid: !isValid, changed: Boolean(changes?.colors), filled: true });
 

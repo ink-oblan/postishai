@@ -20,7 +20,7 @@ const TEXT_FIELDS = [
   "videoTransitions",
 ] as const;
 
-/** Json columns, which the wizard sends as JSON-encoded strings. */
+/** Json columns, each holding a list of entries (colours, fonts, uploaded assets). */
 const JSON_FIELDS = ["colors", "typography", "logoPath", "patterns"] as const;
 
 const REQUIRED_FIELDS = ["brandName", "targetAudience", "topic"] as const;
@@ -50,10 +50,22 @@ function parseBrandProfileInput(body: unknown): { data: BrandProfileInput } | { 
   }
 
   for (const field of JSON_FIELDS) {
-    const value = input[field];
-    if (value === undefined || value === null) continue;
-    if (typeof value !== "string") return { error: `${field} must be a JSON string` };
-    if (value.length > MAX_JSON_LENGTH) {
+    const raw = input[field];
+    // The wizard seeds untouched list fields with "", meaning "not set".
+    if (raw === undefined || raw === null || raw === "") continue;
+
+    let value = raw;
+    if (typeof value === "string") {
+      // Tolerated for JSON sent as text; decoded so the column stores a real array
+      // rather than a string that every reader would have to unwrap again.
+      try {
+        value = JSON.parse(value);
+      } catch {
+        return { error: `${field} must be valid JSON` };
+      }
+    }
+    if (!Array.isArray(value)) return { error: `${field} must be a list` };
+    if (JSON.stringify(value).length > MAX_JSON_LENGTH) {
       return { error: `${field} exceeds ${MAX_JSON_LENGTH} characters` };
     }
     data[field] = value;
@@ -154,15 +166,6 @@ export const POST = withAuth(async function POST(request: NextRequest, _context,
   await linkAssets(userId, brandProfile);
 
   return NextResponse.json(brandProfile);
-});
-
-export const GET = withAuth(async function GET(_request: NextRequest, _context, { userId }) {
-  const brandProfiles = await prisma.brandProfile.findMany({
-    where: { userId },
-    orderBy: { createdAt: "asc" },
-  });
-
-  return NextResponse.json(brandProfiles);
 });
 
 export const DELETE = withAuth(async function DELETE(request: NextRequest, _context, { userId }) {

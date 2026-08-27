@@ -1,3 +1,5 @@
+import { parseList } from "./list-field";
+
 /** Level 0 says what it means on its own — "None" reads as "nothing picked yet" out of context. */
 export const EMOJI_LEVEL_LABELS = ["No emojis", "Moderate", "High", "Very High"] as const;
 
@@ -19,18 +21,8 @@ export type FieldPreview =
   | { kind: "text"; text: string }
   | { kind: "entries"; entries: FieldEntry[] };
 
-/** Wizard fields hold either a JSON string or the parsed Json column straight from Prisma. */
-function parseList(value: unknown): Record<string, unknown>[] {
-  const parsed = typeof value === "string" ? safeParse(value) : value;
-  return Array.isArray(parsed) ? parsed : [];
-}
-
-function safeParse(value: string): unknown {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
+function entries(value: unknown): Record<string, unknown>[] {
+  return parseList<Record<string, unknown>>(value);
 }
 
 function text(value: unknown): string | undefined {
@@ -38,7 +30,7 @@ function text(value: unknown): string | undefined {
 }
 
 function colorEntries(value: unknown): FieldEntry[] {
-  return parseList(value).map((color) => {
+  return entries(value).map((color) => {
     const hex = text(color.hex);
     return {
       key: (hex ?? text(color.name) ?? EMPTY_LABEL).toLowerCase(),
@@ -49,7 +41,7 @@ function colorEntries(value: unknown): FieldEntry[] {
 }
 
 function fontEntries(value: unknown): FieldEntry[] {
-  return parseList(value).map((font) => {
+  return entries(value).map((font) => {
     const name = text(font.name) ?? "Unnamed font";
     return {
       key: name.toLowerCase(),
@@ -60,17 +52,13 @@ function fontEntries(value: unknown): FieldEntry[] {
 }
 
 /**
- * Assets are identified by name and dimensions — the same bytes re-uploaded land at a fresh
- * storage path, so the path would report a change the user never made.
+ * Assets are identified by name — the same file re-uploaded gets a fresh id and asset id, so
+ * either of those would report a change the user never made.
  */
 function assetEntries(value: unknown): FieldEntry[] {
-  return parseList(value).map((file) => {
+  return entries(value).map((file) => {
     const name = text(file.name) ?? "Unnamed file";
-    const size =
-      typeof file.width === "number" && typeof file.height === "number"
-        ? `${file.width}×${file.height}`
-        : undefined;
-    return { key: `${name.toLowerCase()}|${size ?? ""}`, label: name, meta: size };
+    return { key: name.toLowerCase(), label: name };
   });
 }
 

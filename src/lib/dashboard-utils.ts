@@ -43,24 +43,13 @@ export async function fetchDashboardData(userId: string): Promise<DashboardData>
       where: activeWhere,
       _count: true,
     }),
-    prisma.brandProfile.findFirst({
-      where: { userId },
-      select: {
-        brandName: true,
-        topic: true,
-        targetAudience: true,
-        colors: true,
-      },
-    }),
+    prisma.brandProfile.findFirst({ where: { userId }, select: { id: true } }),
   ]);
 
   const byStatus = Object.fromEntries(statusCounts.map((s) => [s.status, s._count]));
   const completedCount = byStatus.COMPLETED ?? 0;
   const generatingCount = byStatus.GENERATING ?? 0;
   const completionRate = postCount > 0 ? Math.round((completedCount / postCount) * 100) : 0;
-
-  // If brand profile exists in DB, it's complete (API validates required fields on save)
-  const hasBrandProfile = !!brandProfile;
 
   return {
     avatarCount,
@@ -72,6 +61,6 @@ export async function fetchDashboardData(userId: string): Promise<DashboardData>
       ...p,
       createdAt: p.createdAt.toISOString(),
     })),
-    hasBrandProfile: !!hasBrandProfile,
+    hasBrandProfile: brandProfile !== null,
   };
 }

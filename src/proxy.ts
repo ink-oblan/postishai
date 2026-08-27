@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getValidSession, SESSION_COOKIE } from "@/lib/auth/session";
+import { getValidSession, SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 
 const PUBLIC_PATHS = [
   "/",
@@ -27,15 +27,15 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
 
   if (isPublicPath(pathname)) {
-    // If user is authenticated and on login page, redirect to dashboard
+    // /login is the one place the cookie has to be checked against the database: it is
+    // where a request lands after the DAL rejects a session, so trusting the JWT alone
+    // would bounce the user straight back to a protected route and loop.
     if (pathname === "/login" && token) {
-      const session = await getValidSession(token);
-      if (session) {
+      if (await getValidSession(token)) {
         return NextResponse.redirect(new URL("/dashboard", request.url));
       }
-      // Cookie is present but doesn't back a live DB session (expired,
-      // revoked, or from another database) — clear it so it can't keep
-      // bouncing this request between /login and a protected route.
+      // The cookie doesn't back a live session (expired, revoked, or from another
+      // database) — clear it so the loop can't restart on the next navigation.
       const response = NextResponse.next();
       response.cookies.delete(SESSION_COOKIE);
       return response;
@@ -43,7 +43,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protected routes — check for a valid, DB-backed session
+  // Protected routes — optimistic check only. Proxy runs on every request, so it verifies
+  // the JWT signature and nothing else; `verifySession` in the DAL is what actually
+  // authorizes each page and route handler against the database.
   const isApi = pathname.startsWith("/api/");
 
   if (!token) {
@@ -51,8 +53,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const session = await getValidSession(token);
-  if (!session) {
+  if (!(await verifySessionToken(token))) {
     const response = isApi
       ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       : NextResponse.redirect(new URL("/login", request.url));

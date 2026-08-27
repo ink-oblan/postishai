@@ -1,3 +1,5 @@
+import { parseList } from "./list-field";
+
 export const VALIDATION_RULES = {
   brandName: {
     min: 3,
@@ -93,9 +95,13 @@ export function validateField(
 
 export function validateStep(
   stepNumber: number,
-  formData: Record<string, string | undefined>,
+  formData: Record<string, unknown>,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
+  const text = (field: string): string | undefined => {
+    const value = formData[field];
+    return typeof value === "string" ? value : undefined;
+  };
 
   if (stepNumber === 0) {
     // Step 1: Required fields
@@ -106,54 +112,35 @@ export function validateStep(
     ];
 
     requiredFields.forEach((field) => {
-      const error = validateField(field, formData[field]);
+      const error = validateField(field, text(field));
       if (error) errors.push(error);
     });
 
     // Mission is optional, but validate if provided
-    if (formData.mission && formData.mission.trim().length > 0) {
-      const error = validateField("mission", formData.mission);
+    if (text("mission")?.trim()) {
+      const error = validateField("mission", text("mission"));
       if (error) errors.push(error);
     }
   }
 
   if (stepNumber === 1) {
-    // Step 2: Color palette - must have at least 2 colors
-    try {
-      const colors = formData.colors ? JSON.parse(formData.colors) : [];
-      if (!Array.isArray(colors) || colors.length < 2) {
-        errors.push({
-          field: "brandName",
-          message: "Add at least 2 colors (Primary and Secondary)",
-          current: colors.length || 0,
-          required: 2,
-        });
-      }
-    } catch {
+    // Step 2: at least a primary and a secondary colour, and one typeface
+    const colors = parseList(formData.colors);
+    if (colors.length < 2) {
       errors.push({
         field: "brandName",
         message: "Add at least 2 colors (Primary and Secondary)",
-        current: 0,
+        current: colors.length,
         required: 2,
       });
     }
 
-    // Step 2: Typography - must have at least 1 font
-    try {
-      const fonts = formData.typography ? JSON.parse(formData.typography) : [];
-      if (!Array.isArray(fonts) || fonts.length < 1) {
-        errors.push({
-          field: "brandName",
-          message: "Select at least 1 typeface",
-          current: fonts.length || 0,
-          required: 1,
-        });
-      }
-    } catch {
+    const fonts = parseList(formData.typography);
+    if (fonts.length < 1) {
       errors.push({
         field: "brandName",
         message: "Select at least 1 typeface",
-        current: 0,
+        current: fonts.length,
         required: 1,
       });
     }
@@ -164,8 +151,8 @@ export function validateStep(
     const optionalFields: (keyof typeof VALIDATION_RULES)[] = ["voiceStyle", "brandVocabulary"];
 
     optionalFields.forEach((field) => {
-      if (formData[field] && formData[field]?.trim().length > 0) {
-        const error = validateField(field, formData[field]);
+      if (text(field)?.trim()) {
+        const error = validateField(field, text(field));
         if (error) errors.push(error);
       }
     });
@@ -174,10 +161,7 @@ export function validateStep(
   return errors;
 }
 
-export function isStepValid(
-  stepNumber: number,
-  formData: Record<string, string | undefined>,
-): boolean {
+export function isStepValid(stepNumber: number, formData: Record<string, unknown>): boolean {
   const errors = validateStep(stepNumber, formData);
   return errors.length === 0;
 }
