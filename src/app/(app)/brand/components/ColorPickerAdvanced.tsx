@@ -10,19 +10,33 @@ interface ColorPickerAdvancedProps {
   isMaxReached?: boolean;
 }
 
+/**
+ * Every shape `isValidHexColor` accepts — `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa` — reduced to
+ * the `#rrggbb` these sliders work in. Alpha is dropped, since the picker has no channel for it.
+ * Reading a saved `#FFF` as black would rewrite the user's colour the moment they nudge a
+ * slider, so anything unreadable returns nothing and the caller falls back explicitly.
+ */
+function normalizeHex(hex: string): string | undefined {
+  if (typeof hex !== "string" || !/^#[0-9a-f]+$/i.test(hex)) return undefined;
+
+  const digits = hex.slice(1);
+  if (digits.length === 3 || digits.length === 4) {
+    return `#${[...digits.slice(0, 3)].map((d) => d + d).join("")}`.toUpperCase();
+  }
+  if (digits.length === 6 || digits.length === 8) {
+    return `#${digits.slice(0, 6)}`.toUpperCase();
+  }
+  return undefined;
+}
+
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
-  if (!hex?.startsWith("#") || hex.length !== 7) {
+  const normalized = normalizeHex(hex);
+  if (!normalized) {
     return { h: 0, s: 0, l: 0 };
   }
-  const rVal = parseInt(hex.slice(1, 3), 16);
-  const gVal = parseInt(hex.slice(3, 5), 16);
-  const bVal = parseInt(hex.slice(5, 7), 16);
-  if (Number.isNaN(rVal) || Number.isNaN(gVal) || Number.isNaN(bVal)) {
-    return { h: 0, s: 0, l: 0 };
-  }
-  const r = rVal / 255;
-  const g = gVal / 255;
-  const b = bVal / 255;
+  const r = parseInt(normalized.slice(1, 3), 16) / 255;
+  const g = parseInt(normalized.slice(3, 5), 16) / 255;
+  const b = parseInt(normalized.slice(5, 7), 16) / 255;
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -54,13 +68,15 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  if (!hex?.startsWith("#") || hex.length !== 7) {
+  const normalized = normalizeHex(hex);
+  if (!normalized) {
     return { r: 0, g: 0, b: 0 };
   }
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return { r: Number.isNaN(r) ? 0 : r, g: Number.isNaN(g) ? 0 : g, b: Number.isNaN(b) ? 0 : b };
+  return {
+    r: parseInt(normalized.slice(1, 3), 16),
+    g: parseInt(normalized.slice(3, 5), 16),
+    b: parseInt(normalized.slice(5, 7), 16),
+  };
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
@@ -143,9 +159,7 @@ function getAnalogousColors(hex: string): string[] {
 }
 
 function getContrastColor(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const { r, g, b } = hexToRgb(hex);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.5 ? "#000000" : "#FFFFFF";
 }
@@ -160,6 +174,7 @@ export function ColorPickerAdvanced({
   const keyCounterRef = useRef(0);
   const { h, s, l } = hexToHsl(value);
   const { r, g, b } = hexToRgb(value);
+  const complementaryColor = getComplementaryColor(value);
 
   const [mounted, setMounted] = useState(false);
 
@@ -465,11 +480,11 @@ export function ColorPickerAdvanced({
             disabled={isMaxReached}
             onClick={(e) => {
               e.stopPropagation();
-              onAddColor?.(getComplementaryColor(value));
+              onAddColor?.(complementaryColor);
             }}
             className={`h-8 w-full rounded border-2 border-border transition-all ${isMaxReached ? "cursor-not-allowed opacity-50" : "hover:scale-105"}`}
-            style={{ backgroundColor: getComplementaryColor(value) }}
-            title={getComplementaryColor(value)}
+            style={{ backgroundColor: complementaryColor }}
+            title={complementaryColor}
           />
         </div>
 

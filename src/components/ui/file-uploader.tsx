@@ -5,42 +5,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
-
-async function getMediaDimensions(file: File): Promise<{ width: number; height: number }> {
-  const url = URL.createObjectURL(file);
-  try {
-    if (file.type.startsWith("video/")) {
-      return new Promise((resolve, reject) => {
-        const video = document.createElement("video");
-        video.onloadedmetadata = () => {
-          URL.revokeObjectURL(url);
-          resolve({ width: video.videoWidth, height: video.videoHeight });
-        };
-        video.onerror = () => {
-          URL.revokeObjectURL(url);
-          reject(new Error("Failed to load video metadata"));
-        };
-        video.src = url;
-      });
-    } else {
-      return new Promise((resolve, reject) => {
-        const img = document.createElement("img");
-        img.onload = () => {
-          URL.revokeObjectURL(url);
-          resolve({ width: img.width, height: img.height });
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          reject(new Error("Failed to load image"));
-        };
-        img.src = url;
-      });
-    }
-  } catch (error) {
-    URL.revokeObjectURL(url);
-    throw error;
-  }
-}
+import { getMediaDimensions } from "@/lib/media-utils";
 
 export interface UploadedFile {
   id: string;
@@ -131,13 +96,26 @@ export function FileUploader({
           }
         }),
       );
-      if (Object.keys(updates).length > 0) {
-        onFilesChange(
-          files.map((file) =>
-            updates[file.id] ? { ...file, previewUrl: updates[file.id] } : file,
-          ),
-        );
+      if (Object.keys(updates).length === 0) return;
+
+      // Apply to the current list, not this effect run's `files`: the user can add or remove
+      // files while the previews are in flight, and writing back the captured array would
+      // undo those edits.
+      const latest = filesRef.current;
+      const present = new Set(latest.map((file) => file.id));
+      for (const [id, previewUrl] of Object.entries(updates)) {
+        if (present.has(id)) continue;
+        // Removed while loading: drop the blob, and forget the asset so a later render that
+        // brings the file back fetches its preview again.
+        URL.revokeObjectURL(previewUrl);
+        loadedAssetIdsRef.current.delete(filesToLoad.find((f) => f.id === id)?.assetId ?? "");
+        delete updates[id];
       }
+      if (Object.keys(updates).length === 0) return;
+
+      onFilesChange(
+        latest.map((file) => (updates[file.id] ? { ...file, previewUrl: updates[file.id] } : file)),
+      );
     })();
   }, [files, onFilesChange]);
 
@@ -148,17 +126,13 @@ export function FileUploader({
 
     // Validate file types if extensions specified
     if (acceptedExtensions.length > 0) {
-      const invalidFiles = selectedFiles.filter((f) => {
-        const ext = `.${f.name.split(".").pop()?.toLowerCase()}`;
-        return !acceptedExtensions.includes(ext);
-      });
+      const validFiles = selectedFiles.filter((f) =>
+        acceptedExtensions.includes(`.${f.name.split(".").pop()?.toLowerCase()}`),
+      );
 
-      if (invalidFiles.length > 0) {
+      if (validFiles.length < selectedFiles.length) {
         toast.error(`Invalid file type. Accepted: ${acceptedExtensions.join(", ")}`);
-        selectedFiles = selectedFiles.filter((f) => {
-          const ext = `.${f.name.split(".").pop()?.toLowerCase()}`;
-          return acceptedExtensions.includes(ext);
-        });
+        selectedFiles = validFiles;
         if (selectedFiles.length === 0) return;
       }
     }

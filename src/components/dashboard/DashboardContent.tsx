@@ -6,15 +6,16 @@ import { POST_STATUS, STATUS_LABELS } from "@/lib/constants";
 import type { DashboardData } from "@/lib/dashboard-utils";
 import { BrandPrompt } from "./BrandPrompt";
 
-export function DashboardContent({
-  data,
-  hasBrandProfile = false,
-}: {
-  data: DashboardData;
-  hasBrandProfile?: boolean;
-}) {
-  const { avatarCount, postCount, completedCount, generatingCount, completionRate, recentPosts } =
-    data;
+export function DashboardContent({ data }: { data: DashboardData }) {
+  const {
+    avatarCount,
+    postCount,
+    completedCount,
+    generatingCount,
+    completionRate,
+    recentPosts,
+    hasBrandProfile,
+  } = data;
 
   return (
     <div className="min-h-full bg-background text-foreground">

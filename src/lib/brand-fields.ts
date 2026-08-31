@@ -146,8 +146,12 @@ function parseEntries<T>(
   return { value: entries, dropped };
 }
 
-/** Long enough for `#rgb` through `#rrggbbaa`, which is every form the pickers emit. */
-const HEX_PATTERN = /^#[0-9a-f]{3,8}$/i;
+/**
+ * `#rgb` through `#rrggbbaa`, which is every form the pickers emit — and only those, since the
+ * in-between lengths a range would let through are neither a colour CSS can read nor one the
+ * advanced picker's sliders can represent.
+ */
+const HEX_PATTERN = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 export function isValidHexColor(hex: string): boolean {
   return HEX_PATTERN.test(hex);

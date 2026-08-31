@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type BrandFieldName, fieldLimits } from "@/lib/brand-fields";
+import { type BrandFieldName, fieldLimits, validateFieldLimits } from "@/lib/brand-fields";
 import type { FieldChanges } from "../lib/draft";
 import { FieldStatusIcon, fieldTone, TONE_INPUT_CLASS } from "./FieldStatus";
 
@@ -29,10 +29,10 @@ export function ValidatedInput({
 }: ValidatedInputProps) {
   const rules = fieldLimits(fieldName);
   const length = value.length;
-  const isValid = (rules.min === 0 && length === 0) || (length >= rules.min && length <= rules.max);
+  const limitError = validateFieldLimits(fieldName, value);
   const isTouched = length > 0;
   const tone = fieldTone({
-    invalid: isTouched && !isValid,
+    invalid: isTouched && limitError !== null,
     changed: Boolean(changes?.[fieldName]),
     filled: isTouched,
   });
@@ -60,12 +60,8 @@ export function ValidatedInput({
       </div>
 
       <div className="flex items-center justify-between text-xs">
-        {isTouched && !isValid ? (
-          <span className="text-red-500">
-            {length < rules.min
-              ? `Min ${rules.min} characters, ${rules.min - length} more needed`
-              : `Max ${rules.max} characters, you have ${length}`}
-          </span>
+        {isTouched && limitError ? (
+          <span className="text-red-500">{limitError.message}</span>
         ) : (
           <span className="text-muted-foreground">
             {rules.min > 0 ? `${rules.min}–${rules.max} characters` : `Max ${rules.max} characters`}

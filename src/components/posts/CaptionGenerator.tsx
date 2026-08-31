@@ -18,7 +18,12 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
-import { ASPECT_RATIO_MULTI_MEDIA, ASPECT_RATIO_SINGLE_VIDEO } from "@/lib/media-constants";
+import {
+  ASPECT_RATIO_MULTI_MEDIA,
+  ASPECT_RATIO_SINGLE_VIDEO,
+  MAX_CAPTION_FILE_SIZE_BYTES,
+  MAX_CAPTION_MEDIA_FILES,
+} from "@/lib/media-constants";
 import { needsCrop } from "@/lib/media-utils";
 import { PLATFORM_LABELS } from "@/lib/utils";
 
@@ -109,8 +114,8 @@ export function CaptionGenerator() {
         label="Media"
         description="Add images and videos for AI to analyze and generate captions."
         acceptedExtensions={[".png", ".jpg", ".jpeg", ".webp", ".mp4", ".mov", ".webm"]}
-        maxFiles={10}
-        maxFileSizeBytes={100 * 1024 * 1024}
+        maxFiles={MAX_CAPTION_MEDIA_FILES}
+        maxFileSizeBytes={MAX_CAPTION_FILE_SIZE_BYTES}
         required={true}
         computeCropFlags={computeMediaCropFlags}
       />

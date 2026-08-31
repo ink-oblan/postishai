@@ -18,9 +18,15 @@ function megabytes(bytes: number): string {
 }
 
 export const POST = withAuth(async function POST(request: NextRequest, _context, { userId }) {
-  // Reject oversized bodies before `formData()` buffers them into memory.
-  const contentLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_BRAND_UPLOAD_BODY_BYTES) {
+  // Reject oversized bodies before `formData()` buffers them into memory. A missing or
+  // unparseable Content-Length is refused rather than waved through: without it there is
+  // nothing to check the body against until it has already been buffered.
+  const contentLengthHeader = request.headers.get("content-length");
+  const contentLength = contentLengthHeader === null ? Number.NaN : Number(contentLengthHeader);
+  if (!Number.isInteger(contentLength) || contentLength <= 0) {
+    return NextResponse.json({ error: "A valid Content-Length is required" }, { status: 411 });
+  }
+  if (contentLength > MAX_BRAND_UPLOAD_BODY_BYTES) {
     return NextResponse.json(
       { error: `Upload exceeds the ${megabytes(MAX_BRAND_UPLOAD_BODY_BYTES)} limit` },
       { status: 413 },

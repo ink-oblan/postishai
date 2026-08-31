@@ -163,6 +163,9 @@ describe("isValidHexColor", () => {
 
   it("rejects a code that's cut short or isn't hex at all", () => {
     expect(isValidHexColor("#12")).toBe(false);
+    // Lengths between the real forms: hex digits, but no colour anything can render or edit.
+    expect(isValidHexColor("#12345")).toBe(false);
+    expect(isValidHexColor("#1234567")).toBe(false);
     expect(isValidHexColor("red")).toBe(false);
     expect(isValidHexColor("#ff00zz")).toBe(false);
     expect(isValidHexColor("")).toBe(false);

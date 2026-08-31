@@ -10,6 +10,7 @@ import {
   isListField,
   parseWholeField,
   REQUIRED_FIELDS,
+  seedFormData,
   validateFieldLimits,
 } from "@/lib/brand-fields";
 import { prisma } from "@/lib/db";
@@ -44,19 +45,24 @@ function parseBrandProfileInput(body: unknown): { data: BrandProfileInput } | { 
     const value = parseWholeField(field, raw);
     if (value === undefined) return { error: invalidFieldMessage(field) };
 
-    const limitError = validateFieldLimits(field, value);
-    if (limitError) return { error: limitError.message };
-
     data[field] = value;
   }
 
-  for (const field of REQUIRED_FIELDS) {
-    if (!data[field]) {
-      return { error: `Missing required fields: ${REQUIRED_FIELDS.join(", ")}` };
-    }
+  return { data: data as BrandProfileInput };
+}
+
+function brandProfileError(effective: Partial<Record<BrandFieldName, unknown>>): string | null {
+  const missing = REQUIRED_FIELDS.filter((field) => !effective[field]);
+  if (missing.length > 0) {
+    return `Missing required fields: ${missing.join(", ")}`;
   }
 
-  return { data: data as BrandProfileInput };
+  for (const field of BRAND_FIELD_NAMES) {
+    const limitError = validateFieldLimits(field, effective[field]);
+    if (limitError) return limitError.message;
+  }
+
+  return null;
 }
 
 function referencedAssetIds(source: Partial<Record<BrandFieldName, unknown>>) {
@@ -71,15 +77,16 @@ function referencedAssetIds(source: Partial<Record<BrandFieldName, unknown>>) {
 async function linkAssets(userId: string, brandProfile: BrandProfile): Promise<void> {
   const assetIds = referencedAssetIds(brandProfile);
 
-  await prisma.brandAsset.updateMany({
-    where: { userId, id: { in: assetIds } },
-    data: { brandProfileId: brandProfile.id },
-  });
-
-  await prisma.brandAsset.updateMany({
-    where: { userId, brandProfileId: brandProfile.id, id: { notIn: assetIds } },
-    data: { brandProfileId: null },
-  });
+  await Promise.all([
+    prisma.brandAsset.updateMany({
+      where: { userId, id: { in: assetIds } },
+      data: { brandProfileId: brandProfile.id },
+    }),
+    prisma.brandAsset.updateMany({
+      where: { userId, brandProfileId: brandProfile.id, id: { notIn: assetIds } },
+      data: { brandProfileId: null },
+    }),
+  ]);
 }
 
 export const POST = withAuth(async function POST(request: NextRequest, _context, { userId }) {
@@ -104,21 +111,29 @@ export const POST = withAuth(async function POST(request: NextRequest, _context,
   const brandProfileId = typeof body?.brandProfileId === "string" ? body.brandProfileId : null;
 
   if (brandProfileId) {
+    const existing = await prisma.brandProfile.findFirst({ where: { id: brandProfileId, userId } });
+    if (!existing) {
+      return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+    }
+
+    const error = brandProfileError({ ...existing, ...parsed.data });
+    if (error) {
+      return NextResponse.json({ error }, { status: 400 });
+    }
+
     // Scope the update by userId so it can only ever touch the caller's own brand.
-    const { count } = await prisma.brandProfile.updateMany({
+    const brandProfile = await prisma.brandProfile.update({
       where: { id: brandProfileId, userId },
       data: parsed.data,
     });
 
-    if (count === 0) {
-      return NextResponse.json({ error: "Brand not found" }, { status: 404 });
-    }
-
-    const brandProfile = await prisma.brandProfile.findUniqueOrThrow({
-      where: { id: brandProfileId },
-    });
     await linkAssets(userId, brandProfile);
     return NextResponse.json(brandProfile);
+  }
+
+  const createError = brandProfileError({ ...seedFormData(null), ...parsed.data });
+  if (createError) {
+    return NextResponse.json({ error: createError }, { status: 400 });
   }
 
   const brandProfile = await prisma.brandProfile.create({
