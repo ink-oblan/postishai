@@ -12,6 +12,7 @@ import { RemoveButton } from "@/components/ui/cross-remove-button";
 import { FileUploader, type UploadedFile } from "@/components/ui/file-uploader";
 import { Label } from "@/components/ui/label";
 import { BRAND_ASSET_EXTENSIONS, MAX_BRAND_ASSET_SIZE_BYTES } from "@/lib/brand-assets";
+import { type FontItem, fieldLimits } from "@/lib/brand-fields";
 import {
   BUILTIN_FONTS,
   builtinFontFamily,
@@ -20,14 +21,6 @@ import {
 } from "../lib/builtin-fonts";
 import type { FieldChanges } from "../lib/draft";
 import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS } from "./FieldStatus";
-
-export interface FontItem {
-  id: string;
-  name: string;
-  source: "builtin" | "uploaded";
-  /** BrandAsset id of the uploaded font file; unset for library fonts. */
-  assetId?: string;
-}
 
 interface TypographyPickerProps {
   fonts: FontItem[];
@@ -39,7 +32,7 @@ interface TypographyPickerProps {
 export function TypographyPicker({
   fonts,
   onChange,
-  maxFonts = 3,
+  maxFonts = fieldLimits("typography").max,
   changes,
 }: TypographyPickerProps) {
   const [fontSearch, setFontSearch] = useState<string>("");
@@ -85,7 +78,9 @@ export function TypographyPicker({
     }
   };
 
-  const isValid = fonts.length >= 1;
+  const minFonts = fieldLimits("typography").min;
+  const missing = Math.max(minFonts - fonts.length, 0);
+  const isValid = missing === 0;
   const tone = fieldTone({
     invalid: !isValid,
     changed: Boolean(changes?.typography),
@@ -194,13 +189,13 @@ export function TypographyPicker({
           >
             <p>
               Add{" "}
-              {1 - Math.min(fonts.length, 1) > 0
-                ? `${1 - Math.min(fonts.length, 1)} more typeface${1 - Math.min(fonts.length, 1) > 1 ? "s" : ""}`
-                : `up to ${maxFonts - fonts.length} more typeface${maxFonts - fonts.length > 1 ? "s" : ""}`}{" "}
-              (1–{maxFonts} total)
+              {missing > 0
+                ? `${missing} more typeface${missing > 1 ? "s" : ""}`
+                : `up to ${maxFonts - fonts.length} more typeface${maxFonts - fonts.length === 1 ? "" : "s"}`}{" "}
+              ({minFonts}–{maxFonts} total)
             </p>
             <p className={isValid ? "text-xs opacity-75" : "text-red-500 text-xs"}>
-              At least 1 typeface required
+              At least {minFonts} typeface{minFonts === 1 ? "" : "s"} required
             </p>
           </div>
         </div>

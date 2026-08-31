@@ -8,9 +8,9 @@ import {
   ComboboxItem,
 } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
+import type { BrandFormData } from "@/lib/brand-fields";
+import { EMOJI_LEVEL_LABELS } from "@/lib/brand-fields";
 import type { FieldChanges } from "../lib/draft";
-import { EMOJI_LEVEL_LABELS } from "../lib/field-preview";
-import type { BrandFormData } from "./BrandSetupWizard";
 import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS } from "./FieldStatus";
 import { ValidatedTextarea } from "./ValidatedTextarea";
 

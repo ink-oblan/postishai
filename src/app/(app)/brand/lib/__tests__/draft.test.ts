@@ -123,6 +123,14 @@ describe("writeDraft / readDraft", () => {
     expect(readDraft(KEY)).toBeNull();
   });
 
+  it("ignores drafts stamped with another version", () => {
+    writeDraft(KEY, { step: 1, changes: { brandName: "Acme Co" } });
+    const stored = JSON.parse(localStorage.getItem(KEY) as string);
+    localStorage.setItem(KEY, JSON.stringify({ ...stored, version: stored.version - 1 }));
+
+    expect(readDraft(KEY)).toBeNull();
+  });
+
   it("ignores unparseable entries", () => {
     localStorage.setItem(KEY, "not json");
     expect(readDraft(KEY)).toBeNull();
@@ -130,38 +138,60 @@ describe("writeDraft / readDraft", () => {
 });
 
 describe("restorableChanges", () => {
-  it("keeps edits to fields the form still has", () => {
-    const changes = { brandName: "Acme Co", emojiLevel: 2, colors: [{ id: "c2", hex: "#00ff00" }] };
-    expect(restorableChanges(changes, saved)).toEqual(changes);
+  it("keeps edits the field registry can still read", () => {
+    const changes = {
+      brandName: "Acme Co",
+      emojiLevel: 2,
+      colors: [{ id: "c2", name: "Leaf", hex: "#00ff00" }],
+    };
+
+    expect(restorableChanges(changes)).toEqual(changes);
   });
 
   it("drops a field the form no longer has", () => {
-    expect(restorableChanges({ brandName: "Acme Co", retired: "gone" }, saved)).toEqual({
+    expect(restorableChanges({ brandName: "Acme Co", retired: "gone" })).toEqual({
       brandName: "Acme Co",
     });
   });
 
-  it("drops a field whose value no longer has the shape the form seeds", () => {
-    // emojiLevel as a label, colors as the JSON string an older wizard stored.
-    const changes = { brandName: "Acme Co", emojiLevel: "high", colors: '[{"hex":"#00ff00"}]' };
-    expect(restorableChanges(changes, saved)).toEqual({ brandName: "Acme Co" });
+  it("drops a field whose value the form can no longer take", () => {
+    // An emoji level as a label, and one past the top of the scale.
+    expect(restorableChanges({ brandName: "Acme Co", emojiLevel: "high" })).toEqual({
+      brandName: "Acme Co",
+    });
+    expect(restorableChanges({ emojiLevel: 9 })).toEqual({});
+  });
+
+  it("reads a list an older wizard stored as a JSON string", () => {
+    expect(restorableChanges({ colors: '[{"id":"c2","name":"Leaf","hex":"#00ff00"}]' })).toEqual({
+      colors: [{ id: "c2", name: "Leaf", hex: "#00ff00" }],
+    });
+  });
+
+  it("refuses a list rather than restoring part of one", () => {
+    // Restoring only the readable colour and then saving would delete the other.
+    expect(restorableChanges({ colors: [{ hex: "#00ff00" }, { hex: "not a colour" }] })).toEqual(
+      {},
+    );
+  });
+
+  it("fills in what an entry leaves out, so the form only holds values it could produce", () => {
+    expect(restorableChanges({ typography: [{ name: "Inter" }] })).toEqual({
+      typography: [{ id: "", name: "Inter", source: "builtin" }],
+    });
   });
 
   it("restores nothing when every edit is stale", () => {
-    expect(restorableChanges({ retired: "gone", emojiLevel: "high" }, saved)).toEqual({});
-  });
-
-  it("drops an edit the form seeds with nothing, having no shape to match", () => {
-    expect(restorableChanges({ patterns: [{ id: "p1" }] }, { patterns: null })).toEqual({});
+    expect(restorableChanges({ retired: "gone", emojiLevel: "high" })).toEqual({});
   });
 
   it("tells an empty list apart from an empty string", () => {
-    expect(restorableChanges({ colors: [] }, saved)).toEqual({ colors: [] });
-    expect(restorableChanges({ colors: "" }, saved)).toEqual({});
+    expect(restorableChanges({ colors: [] })).toEqual({ colors: [] });
+    expect(restorableChanges({ colors: "" })).toEqual({});
   });
 
   it("ignores a field the draft never touched", () => {
-    expect(restorableChanges({}, saved)).toEqual({});
+    expect(restorableChanges({})).toEqual({});
   });
 });
 

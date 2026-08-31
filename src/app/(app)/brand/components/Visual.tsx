@@ -3,29 +3,22 @@
 import { useRef, useState } from "react";
 import { FileUploader, type UploadedFile } from "@/components/ui/file-uploader";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   BRAND_ASSET_EXTENSIONS,
   MAX_BRAND_ASSET_FILES_PER_REQUEST,
   MAX_BRAND_ASSET_SIZE_BYTES,
 } from "@/lib/brand-assets";
+import type { BrandAssetRef, BrandFormData, ColorItem, FontItem } from "@/lib/brand-fields";
 import type { FieldChanges } from "../lib/draft";
-import type { BrandFormData } from "./BrandSetupWizard";
-import { type ColorItem, ColorPalettePicker } from "./ColorPalettePicker";
-import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS, TONE_INPUT_CLASS } from "./FieldStatus";
-import { type FontItem, TypographyPicker } from "./TypographyPicker";
+import { ColorPalettePicker } from "./ColorPalettePicker";
+import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS } from "./FieldStatus";
+import { TypographyPicker } from "./TypographyPicker";
+import { ValidatedTextarea } from "./ValidatedTextarea";
 
 interface VisualProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
   changes?: FieldChanges;
-}
-
-export interface BrandAssetRef {
-  id: string;
-  name: string;
-  /** BrandAsset row id, present once the file has been uploaded. */
-  assetId?: string;
 }
 
 function persistedAsset(file: UploadedFile): BrandAssetRef {
@@ -76,11 +69,6 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
     onUpdate({ logoPath: newLogos.map(persistedAsset) });
   };
 
-  const photoStyleTone = fieldTone({
-    changed: Boolean(changes?.photoStyle),
-    filled: (formData.photoStyle || "").trim().length > 0,
-  });
-
   const logoTone = fieldTone({
     changed: Boolean(changes?.logoPath),
     filled: logoFiles.length >= 1,
@@ -108,25 +96,16 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
         <TypographyPicker fonts={fonts} onChange={handleFontsChange} changes={changes} />
 
         {/* Photo Style */}
-        <div className="space-y-2">
-          <Label htmlFor="photoStyle">Photo Style</Label>
-          <div className="relative">
-            <Textarea
-              id="photoStyle"
-              placeholder="e.g., Bright and energetic, Minimalist, Dark and moody"
-              value={formData.photoStyle || ""}
-              onChange={(e) => onUpdate({ photoStyle: e.target.value })}
-              className={`pr-10 ${TONE_INPUT_CLASS[photoStyleTone]}`}
-              rows={2}
-            />
-            <FieldStatusIcon
-              tone={photoStyleTone}
-              field="photoStyle"
-              changes={changes}
-              className="absolute top-3 right-3"
-            />
-          </div>
-        </div>
+        <ValidatedTextarea
+          id="photoStyle"
+          label="Photo Style"
+          value={formData.photoStyle || ""}
+          onChange={(value) => onUpdate({ photoStyle: value })}
+          placeholder="e.g., Bright and energetic, Minimalist, Dark and moody"
+          fieldName="photoStyle"
+          changes={changes}
+          rows={2}
+        />
 
         {/* Logo */}
         <div className="space-y-2">

@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/auth/dal";
+import { type ColorItem, type FontItem, parseList } from "@/lib/brand-fields";
 import { prisma } from "@/lib/db";
 import { BrandDraftBadge } from "./components/BrandDraftBadge";
 import { BrandSetupWizard } from "./components/BrandSetupWizard";
 import { DeleteBrandButton } from "./components/DeleteBrandButton";
 import { NewBrandButton } from "./components/NewBrandButton";
-import { parseList } from "./lib/list-field";
 
 export const metadata = {
   title: "Brand Profile — PostishAI",
@@ -14,16 +14,6 @@ export const metadata = {
 
 const MAX_VISIBLE_COLORS = 6;
 const MAX_VISIBLE_FONTS = 4;
-
-interface Color {
-  id?: string;
-  hex: string;
-}
-
-interface Font {
-  id?: string;
-  name: string;
-}
 
 export default async function BrandPage() {
   const session = await requireSession();
@@ -49,8 +39,8 @@ export default async function BrandPage() {
 
             <div className="grid gap-6 md:grid-cols-2">
               {brandProfiles.map((brandProfile) => {
-                const colors = parseList<Color>(brandProfile.colors);
-                const fonts = parseList<Font>(brandProfile.typography);
+                const colors = parseList<ColorItem>(brandProfile.colors);
+                const fonts = parseList<FontItem>(brandProfile.typography);
 
                 return (
                   <div
@@ -98,7 +88,7 @@ export default async function BrandPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           {colors.slice(0, MAX_VISIBLE_COLORS).map((color) => (
                             <div
-                              key={color.id ?? color.hex}
+                              key={color.id || color.hex}
                               className="h-8 w-8 rounded border border-border"
                               style={{ backgroundColor: color.hex }}
                               title={color.hex}
@@ -121,7 +111,7 @@ export default async function BrandPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           {fonts.slice(0, MAX_VISIBLE_FONTS).map((font) => (
                             <span
-                              key={font.id ?? font.name}
+                              key={font.id || font.name}
                               className="inline-block max-w-[12rem] truncate rounded bg-muted px-2 py-1 text-xs"
                               title={font.name}
                             >

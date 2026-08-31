@@ -2,8 +2,8 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { type BrandFieldName, fieldLimits } from "@/lib/brand-fields";
 import type { FieldChanges } from "../lib/draft";
-import { VALIDATION_RULES } from "../lib/validation";
 import { FieldStatusIcon, fieldTone, TONE_INPUT_CLASS } from "./FieldStatus";
 
 interface ValidatedInputProps {
@@ -12,7 +12,7 @@ interface ValidatedInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  fieldName: keyof typeof VALIDATION_RULES;
+  fieldName: BrandFieldName;
   required?: boolean;
   changes?: FieldChanges;
 }
@@ -27,8 +27,8 @@ export function ValidatedInput({
   required = false,
   changes,
 }: ValidatedInputProps) {
-  const rules = VALIDATION_RULES[fieldName];
-  const length = value.trim().length;
+  const rules = fieldLimits(fieldName);
+  const length = value.length;
   const isValid = (rules.min === 0 && length === 0) || (length >= rules.min && length <= rules.max);
   const isTouched = length > 0;
   const tone = fieldTone({
@@ -60,21 +60,21 @@ export function ValidatedInput({
       </div>
 
       <div className="flex items-center justify-between text-xs">
-        <span className={isTouched && !isValid ? "text-red-500" : "text-muted-foreground"}>
-          {rules.min > 0 ? `${rules.min}–${rules.max} characters` : `Max ${rules.max} characters`}
-        </span>
+        {isTouched && !isValid ? (
+          <span className="text-red-500">
+            {length < rules.min
+              ? `Min ${rules.min} characters, ${rules.min - length} more needed`
+              : `Max ${rules.max} characters, you have ${length}`}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">
+            {rules.min > 0 ? `${rules.min}–${rules.max} characters` : `Max ${rules.max} characters`}
+          </span>
+        )}
         <span className={length > rules.max ? "font-medium text-red-500" : "text-muted-foreground"}>
           {length} / {rules.max}
         </span>
       </div>
-
-      {isTouched && !isValid && (
-        <p className="text-red-500 text-xs">
-          {length < rules.min
-            ? `Minimum ${rules.min} characters required (${rules.min - length} more)`
-            : `Maximum ${rules.max} characters (${length - rules.max} too many)`}
-        </p>
-      )}
     </div>
   );
 }

@@ -1,22 +1,14 @@
 "use client";
 
-import { ChevronDown, Pipette, Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { useRef, useState } from "react";
-
-declare global {
-  interface Window {
-    EyeDropper?: {
-      new (): {
-        open: () => Promise<{ sRGBHex: string }>;
-      };
-    };
-  }
-}
 
 import { Button } from "@/components/ui/button";
 import { RemoveButton } from "@/components/ui/cross-remove-button";
+import { EyeDropperButton } from "@/components/ui/eyedropper-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { type ColorItem, fieldLimits, isValidHexColor } from "@/lib/brand-fields";
 import type { FieldChanges } from "../lib/draft";
 import { ColorPickerAdvanced } from "./ColorPickerAdvanced";
 import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS } from "./FieldStatus";
@@ -54,12 +46,6 @@ const PRESET_COLORS = [
   "#FFFFFF",
 ];
 
-export interface ColorItem {
-  id: string;
-  name: string;
-  hex: string;
-}
-
 interface ColorPalettePickerProps {
   colors: ColorItem[];
   onChange: (colors: ColorItem[]) => void;
@@ -70,7 +56,7 @@ interface ColorPalettePickerProps {
 export function ColorPalettePicker({
   colors,
   onChange,
-  maxColors = 5,
+  maxColors = fieldLimits("colors").max,
   changes,
 }: ColorPalettePickerProps) {
   const [expandedColorId, setExpandedColorId] = useState<string | null>(null);
@@ -103,7 +89,10 @@ export function ColorPalettePicker({
     onChange(colors.map((c) => (c.id === id ? { ...c, hex } : c)));
   };
 
-  const isValid = colors.length >= 2;
+  const minColors = fieldLimits("colors").min;
+  const missing = Math.max(minColors - colors.length, 0);
+  const hasInvalidHex = colors.some((color) => !isValidHexColor(color.hex));
+  const isValid = missing === 0 && !hasInvalidHex;
   const tone = fieldTone({ invalid: !isValid, changed: Boolean(changes?.colors), filled: true });
 
   return (
@@ -149,97 +138,91 @@ export function ColorPalettePicker({
           </div>
 
           <div className="space-y-2">
-            {colors.map((color) => (
-              <div
-                key={color.id}
-                className="space-y-2 rounded-lg border border-border bg-muted/30 p-3"
-              >
-                {/* Color header */}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedColorId(expandedColorId === color.id ? null : color.id)
-                    }
-                    className="flex-shrink-0 p-0 transition-opacity hover:opacity-80"
-                  >
-                    <ChevronDown
-                      className="h-5 w-5 transition-transform"
-                      style={{
-                        transform: expandedColorId === color.id ? "rotate(0deg)" : "rotate(-90deg)",
-                      }}
-                    />
-                  </button>
-
-                  <div
-                    className="h-10 w-10 flex-shrink-0 rounded-md border-2 border-border"
-                    style={{ backgroundColor: color.hex }}
-                    title={color.hex}
-                  />
-
-                  <Input
-                    type="text"
-                    value={color.hex}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      updateColor(color.id, e.target.value);
-                    }}
-                    placeholder="#000000"
-                    className="h-10 flex-1 font-mono text-sm uppercase"
-                    maxLength={7}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-
-                  <button
-                    type="button"
-                    title="Pick color from screen"
-                    className="flex-shrink-0 rounded border border-border bg-muted px-2 py-2 transition-colors hover:bg-muted/80"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.EyeDropper) {
-                        new window.EyeDropper()
-                          .open()
-                          .then((result: { sRGBHex: string }) => {
-                            updateColor(color.id, result.sRGBHex);
-                          })
-                          .catch(() => {});
+            {colors.map((color) => {
+              const isHexValid = isValidHexColor(color.hex);
+              return (
+                <div
+                  key={color.id}
+                  className="space-y-2 rounded-lg border border-border bg-muted/30 p-3"
+                >
+                  {/* Color header */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedColorId(expandedColorId === color.id ? null : color.id)
                       }
-                    }}
-                  >
-                    <Pipette className="h-4 w-4" />
-                  </button>
+                      className="flex-shrink-0 p-0 transition-opacity hover:opacity-80"
+                    >
+                      <ChevronDown
+                        className="h-5 w-5 transition-transform"
+                        style={{
+                          transform:
+                            expandedColorId === color.id ? "rotate(0deg)" : "rotate(-90deg)",
+                        }}
+                      />
+                    </button>
 
-                  <RemoveButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeColor(color.id);
-                    }}
-                    aria-label="Delete this color"
-                    className="flex-shrink-0"
-                  />
-                </div>
+                    <div
+                      className={`h-10 w-10 flex-shrink-0 rounded-md border-2 ${isHexValid ? "border-border" : "border-red-500 bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(239,68,68,0.25)_4px,rgba(239,68,68,0.25)_8px)]"}`}
+                      style={isHexValid ? { backgroundColor: color.hex } : undefined}
+                      title={isHexValid ? color.hex : "Not a valid hex color"}
+                    />
 
-                {/* Expanded color picker */}
-                {expandedColorId === color.id && (
-                  <div className="border-border border-t pt-3">
-                    <ColorPickerAdvanced
+                    <Input
+                      type="text"
                       value={color.hex}
-                      onChange={(hex) => updateColor(color.id, hex)}
-                      isMaxReached={colors.length >= maxColors}
-                      onAddColor={(hex) => {
-                        const newColor: ColorItem = {
-                          id: generateColorId(),
-                          name: `Color ${colors.length + 1}`,
-                          hex,
-                        };
-                        onChange([...colors, newColor]);
-                        setExpandedColorId(newColor.id);
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        updateColor(color.id, e.target.value);
                       }}
+                      placeholder="#000000"
+                      className={`h-10 flex-1 font-mono text-sm uppercase ${isHexValid ? "" : "border-red-500 focus-visible:ring-red-500"}`}
+                      maxLength={9}
+                      aria-invalid={!isHexValid}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+
+                    <EyeDropperButton onPick={(hex) => updateColor(color.id, hex)} />
+
+                    <RemoveButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeColor(color.id);
+                      }}
+                      aria-label="Delete this color"
+                      className="flex-shrink-0"
                     />
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {!isHexValid && (
+                    <p className="pl-9 text-red-500 text-xs">
+                      Not a valid hex color — use 3 to 8 hex digits, e.g. #FF0000
+                    </p>
+                  )}
+
+                  {/* Expanded color picker */}
+                  {expandedColorId === color.id && (
+                    <div className="border-border border-t pt-3">
+                      <ColorPickerAdvanced
+                        value={color.hex}
+                        onChange={(hex) => updateColor(color.id, hex)}
+                        isMaxReached={colors.length >= maxColors}
+                        onAddColor={(hex) => {
+                          const newColor: ColorItem = {
+                            id: generateColorId(),
+                            name: `Color ${colors.length + 1}`,
+                            hex,
+                          };
+                          onChange([...colors, newColor]);
+                          setExpandedColorId(newColor.id);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Add color button */}
@@ -253,17 +236,17 @@ export function ColorPalettePicker({
           {/* Info hint */}
           <div
             className={`space-y-1 pt-2 text-center text-xs ${
-              colors.length >= 2 ? "text-muted-foreground" : "font-medium text-red-500"
+              isValid ? "text-muted-foreground" : "font-medium text-red-500"
             }`}
           >
             <p>
               Add{" "}
-              {2 - Math.min(colors.length, 2) > 0
-                ? `${2 - Math.min(colors.length, 2)} more color${2 - Math.min(colors.length, 2) > 1 ? "s" : ""}`
-                : "up to 3 more colors"}{" "}
-              (2–5 total)
+              {missing > 0
+                ? `${missing} more color${missing > 1 ? "s" : ""}`
+                : `up to ${maxColors - colors.length} more color${maxColors - colors.length === 1 ? "" : "s"}`}{" "}
+              ({minColors}–{maxColors} total)
             </p>
-            <p className={colors.length >= 2 ? "text-xs opacity-75" : "text-red-500 text-xs"}>
+            <p className={isValid ? "text-xs opacity-75" : "text-red-500 text-xs"}>
               Primary & Secondary required
             </p>
           </div>

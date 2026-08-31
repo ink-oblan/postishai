@@ -1,3 +1,5 @@
+import { type BrandFieldName, isBrandField, parseWholeField } from "@/lib/brand-fields";
+
 /**
  * A draft holds only the fields that drift from what the wizard was opened with — the saved
  * brand when editing, empty values when creating. So a stored draft existing at all already
@@ -9,6 +11,14 @@ export interface BrandWizardDraft {
 }
 
 /**
+ * Bumped only when a field's meaning changes while its shape stays the same — an emoji scale
+ * rescored, a column repurposed — which no structural check can catch. Everything else is
+ * caught field by field in `restorableChanges`, so this is a last resort: bumping it throws
+ * away every user's unsaved work, not only the parts that no longer fit.
+ */
+const DRAFT_VERSION = 4;
+
+/**
  * Drafts are namespaced per user and per brand — a shared key would make the draft of
  * one brand (or of "create new") bleed into the edit form of another.
  */
@@ -18,7 +28,8 @@ export function draftKey(userId: string, brandProfileId?: string): string {
 
 /**
  * The stored entry is only trusted as far as its shape holds up: anything that isn't a
- * non-empty set of changes is treated as no draft at all, whoever or whatever wrote it.
+ * non-empty set of changes stamped with the current version is treated as no draft at all,
+ * whoever or whatever wrote it.
  */
 export function readDraft(key: string): BrandWizardDraft | null {
   const saved = localStorage.getItem(key);
@@ -26,8 +37,10 @@ export function readDraft(key: string): BrandWizardDraft | null {
 
   try {
     const parsed = JSON.parse(saved);
+    if (parsed?.version !== DRAFT_VERSION) return null;
+
     const changes =
-      parsed?.changes && typeof parsed.changes === "object" ? parsed.changes : undefined;
+      parsed.changes && typeof parsed.changes === "object" ? parsed.changes : undefined;
     if (!changes || Object.keys(changes).length === 0) return null;
 
     return { step: Number.isInteger(parsed.step) ? parsed.step : 0, changes };
@@ -43,28 +56,27 @@ export function writeDraft(key: string, draft: BrandWizardDraft): void {
     localStorage.removeItem(key);
     return;
   }
-  localStorage.setItem(key, JSON.stringify(draft));
+  localStorage.setItem(key, JSON.stringify({ version: DRAFT_VERSION, ...draft }));
 }
 
-/** Lists tell themselves apart from the objects they are; `typeof` covers the rest. */
-const shapeOf = (value: unknown) => (Array.isArray(value) ? "list" : typeof value);
-
 /**
- * Drafts outlive the form that wrote them. The values the wizard seeds itself with are both
- * the fields it still has and the shape each one holds, so an edit is restored only where it
- * matches its seed: a field the form dropped has no seed at all, and one that changed shape no
- * longer matches its own. Both go quietly; the rest of the draft is still unsaved work.
+ * Drafts outlive the form that wrote them. An edit is restored only where the field registry
+ * can still read it whole: a field the form has dropped is no longer a field, and one whose
+ * entries changed no longer parses. Both go, and the rest of the draft is still unsaved work.
  *
- * Shapes, not structure — a list whose entries changed still reads as a list. Changing what an
- * entry holds means tolerating both forms on read, the way `parseList` does, or renaming the
- * field so its old drafts stop matching.
+ * Whole, not partial — a list that parses with entries missing is refused rather than trimmed,
+ * because restoring three colours out of four and then saving would delete the fourth on the
+ * user's behalf. Restoring the parsed value rather than the stored one means the form only ever
+ * holds values it could have produced itself.
  */
-export function restorableChanges(
-  changes: Record<string, unknown>,
-  baseline: Record<string, unknown>,
-): Record<string, unknown> {
+export function restorableChanges(changes: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(changes).filter(([field, value]) => shapeOf(value) === shapeOf(baseline[field])),
+    Object.entries(changes).flatMap(([field, value]) => {
+      if (!isBrandField(field)) return [];
+
+      const parsed = parseWholeField(field, value);
+      return parsed === undefined ? [] : [[field, parsed] as const];
+    }),
   );
 }
 
@@ -113,14 +125,22 @@ function canonicalize(value: unknown): unknown {
   );
 }
 
+/**
+ * Either side of a comparison: the form as it stands, or the brand it was opened with. Loose
+ * on purpose — the values being compared are whatever the fields hold, not one shape.
+ */
+export type FieldValues = Partial<Record<BrandFieldName, unknown>>;
+
 /** The subset of `current` that differs from `baseline`, keyed by field name. */
 export function changedFields(
-  current: Record<string, unknown>,
-  baseline: Record<string, unknown>,
+  current: FieldValues,
+  baseline: FieldValues,
 ): Record<string, unknown> {
+  const previous = baseline as Record<string, unknown>;
+
   return Object.fromEntries(
     Object.entries(current).filter(
-      ([key, value]) => normalizeValue(value) !== normalizeValue(baseline[key]),
+      ([key, value]) => normalizeValue(value) !== normalizeValue(previous[key]),
     ),
   );
 }
@@ -137,12 +157,14 @@ export type FieldChanges = Record<string, FieldChange | undefined>;
 /** Pairs each edited field's current value with the one the wizard was opened with. */
 export function previousValues(
   changes: Record<string, unknown>,
-  baseline: Record<string, unknown>,
+  baseline: FieldValues,
 ): FieldChanges {
+  const previous = baseline as Record<string, unknown>;
+
   return Object.fromEntries(
     Object.entries(changes).map(([field, value]) => [
       field,
-      { original: baseline[field], current: value },
+      { original: previous[field], current: value },
     ]),
   );
 }

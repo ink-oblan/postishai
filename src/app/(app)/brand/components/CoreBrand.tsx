@@ -1,7 +1,7 @@
 "use client";
 
+import type { BrandFormData } from "@/lib/brand-fields";
 import type { FieldChanges } from "../lib/draft";
-import type { BrandFormData } from "./BrandSetupWizard";
 import { ValidatedInput } from "./ValidatedInput";
 import { ValidatedTextarea } from "./ValidatedTextarea";
 

@@ -1,7 +1,10 @@
-import { parseList } from "./list-field";
-
-/** Level 0 says what it means on its own — "None" reads as "nothing picked yet" out of context. */
-export const EMOJI_LEVEL_LABELS = ["No emojis", "Moderate", "High", "Very High"] as const;
+import {
+  BRAND_FIELDS,
+  type BrandFieldKind,
+  EMOJI_LEVEL_LABELS,
+  isBrandField,
+  parseList,
+} from "@/lib/brand-fields";
 
 export const EMPTY_LABEL = "Empty";
 
@@ -73,31 +76,36 @@ function withUniqueKeys(entries: FieldEntry[]): FieldEntry[] {
   });
 }
 
-function textValue(field: string, value: unknown): string {
+function textValue(kind: BrandFieldKind, value: unknown): string {
   if (value === null || value === undefined || value === "") return EMPTY_LABEL;
 
-  switch (field) {
-    case "youFormality":
+  switch (kind) {
+    case "flag":
       return value ? "Casual" : "Formal";
-    case "emojiLevel":
+    case "level":
       return EMOJI_LEVEL_LABELS[Number(value)] ?? String(value);
     default:
       return String(value);
   }
 }
 
-/** Human-readable shape of a field value, for the "Changed" badge's diff. */
+/**
+ * Human-readable shape of a field value, for the "Changed" badge's diff. Deliberately more
+ * tolerant than the registry's `parse`: this renders what a value *is*, including the entries
+ * an older draft or row holds that the form itself would no longer accept.
+ */
 export function previewFieldValue(field: string, value: unknown): FieldPreview {
-  switch (field) {
+  const kind = isBrandField(field) ? BRAND_FIELDS[field].kind : "text";
+
+  switch (kind) {
     case "colors":
       return { kind: "entries", entries: withUniqueKeys(colorEntries(value)) };
-    case "typography":
+    case "fonts":
       return { kind: "entries", entries: withUniqueKeys(fontEntries(value)) };
-    case "logoPath":
-    case "patterns":
+    case "assets":
       return { kind: "entries", entries: withUniqueKeys(assetEntries(value)) };
     default:
-      return { kind: "text", text: textValue(field, value) };
+      return { kind: "text", text: textValue(kind, value) };
   }
 }
 

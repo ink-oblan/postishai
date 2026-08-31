@@ -2,35 +2,29 @@ import type { BrandProfile, Prisma } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { extractAssetIds } from "@/lib/brand-assets";
+import {
+  ASSET_FIELDS,
+  BRAND_FIELD_NAMES,
+  type BrandFieldName,
+  invalidFieldMessage,
+  isListField,
+  parseWholeField,
+  REQUIRED_FIELDS,
+  validateFieldLimits,
+} from "@/lib/brand-fields";
 import { prisma } from "@/lib/db";
-
-const MAX_TEXT_LENGTH = 2_000;
-const MAX_JSON_LENGTH = 100_000;
-
-/** Free-text columns the wizard is allowed to write. */
-const TEXT_FIELDS = [
-  "brandName",
-  "topic",
-  "targetAudience",
-  "mission",
-  "photoStyle",
-  "voiceStyle",
-  "brandVocabulary",
-  "videoAnimations",
-  "videoTransitions",
-] as const;
-
-/** Json columns, each holding a list of entries (colours, fonts, uploaded assets). */
-const JSON_FIELDS = ["colors", "typography", "logoPath", "patterns"] as const;
-
-const REQUIRED_FIELDS = ["brandName", "targetAudience", "topic"] as const;
+import { deleteFile } from "@/lib/storage";
 
 type BrandProfileInput = Omit<Prisma.BrandProfileUncheckedCreateInput, "id" | "userId">;
 
 /**
- * Build the Prisma payload from an explicit allow-list. Never spread the request body:
- * unknown keys would otherwise let a caller write `userId`, relation connects, or any
- * other column on the model.
+ * Build the Prisma payload from the field registry, which is an allow-list by construction.
+ * Never spread the request body: unknown keys would otherwise let a caller write `userId`,
+ * relation connects, or any other column on the model.
+ *
+ * Each value has to survive its field's parser whole. Refusing a partial parse is what keeps
+ * a stale client from writing entries no reader can make sense of — a list is stored as the
+ * caller meant it or not at all.
  */
 function parseBrandProfileInput(body: unknown): { data: BrandProfileInput } | { error: string } {
   if (typeof body !== "object" || body === null) {
@@ -39,51 +33,21 @@ function parseBrandProfileInput(body: unknown): { data: BrandProfileInput } | { 
   const input = body as Record<string, unknown>;
   const data: Record<string, unknown> = {};
 
-  for (const field of TEXT_FIELDS) {
-    const value = input[field];
-    if (value === undefined || value === null) continue;
-    if (typeof value !== "string") return { error: `${field} must be a string` };
-    if (value.length > MAX_TEXT_LENGTH) {
-      return { error: `${field} exceeds ${MAX_TEXT_LENGTH} characters` };
-    }
-    data[field] = value;
-  }
-
-  for (const field of JSON_FIELDS) {
+  for (const field of BRAND_FIELD_NAMES) {
     const raw = input[field];
-    // The wizard seeds untouched list fields with "", meaning "not set".
-    if (raw === undefined || raw === null || raw === "") continue;
+    // Absent means "not sent", so a partial update leaves the column alone. The wizard also
+    // seeds untouched list fields with "", which older clients still post as "not set" —
+    // text fields keep it, since "" is how the user clears one.
+    if (raw === undefined || raw === null) continue;
+    if (raw === "" && isListField(field)) continue;
 
-    let value = raw;
-    if (typeof value === "string") {
-      // Tolerated for JSON sent as text; decoded so the column stores a real array
-      // rather than a string that every reader would have to unwrap again.
-      try {
-        value = JSON.parse(value);
-      } catch {
-        return { error: `${field} must be valid JSON` };
-      }
-    }
-    if (!Array.isArray(value)) return { error: `${field} must be a list` };
-    if (JSON.stringify(value).length > MAX_JSON_LENGTH) {
-      return { error: `${field} exceeds ${MAX_JSON_LENGTH} characters` };
-    }
+    const value = parseWholeField(field, raw);
+    if (value === undefined) return { error: invalidFieldMessage(field) };
+
+    const limitError = validateFieldLimits(field, value);
+    if (limitError) return { error: limitError.message };
+
     data[field] = value;
-  }
-
-  if (input.youFormality !== undefined) {
-    if (typeof input.youFormality !== "boolean") {
-      return { error: "youFormality must be a boolean" };
-    }
-    data.youFormality = input.youFormality;
-  }
-
-  if (input.emojiLevel !== undefined) {
-    const level = input.emojiLevel;
-    if (typeof level !== "number" || !Number.isInteger(level) || level < 0 || level > 3) {
-      return { error: "emojiLevel must be an integer between 0 and 3" };
-    }
-    data.emojiLevel = level;
   }
 
   for (const field of REQUIRED_FIELDS) {
@@ -95,10 +59,7 @@ function parseBrandProfileInput(body: unknown): { data: BrandProfileInput } | { 
   return { data: data as BrandProfileInput };
 }
 
-/** The three wizard fields whose entries can carry an uploaded asset. */
-const ASSET_FIELDS = ["logoPath", "patterns", "typography"] as const;
-
-function referencedAssetIds(source: Partial<Record<(typeof ASSET_FIELDS)[number], unknown>>) {
+function referencedAssetIds(source: Partial<Record<BrandFieldName, unknown>>) {
   return [...new Set(ASSET_FIELDS.flatMap((field) => extractAssetIds(source[field])))];
 }
 
@@ -175,6 +136,12 @@ export const DELETE = withAuth(async function DELETE(request: NextRequest, _cont
     return NextResponse.json({ error: "Missing brandProfileId parameter" }, { status: 400 });
   }
 
+  // Read storage paths before the cascade delete removes the BrandAsset rows that point to them.
+  const assets = await prisma.brandAsset.findMany({
+    where: { userId, brandProfileId },
+    select: { storagePath: true },
+  });
+
   const { count } = await prisma.brandProfile.deleteMany({
     where: { id: brandProfileId, userId },
   });
@@ -182,6 +149,8 @@ export const DELETE = withAuth(async function DELETE(request: NextRequest, _cont
   if (count === 0) {
     return NextResponse.json({ error: "Brand not found" }, { status: 404 });
   }
+
+  await Promise.all(assets.map((asset) => deleteFile(asset.storagePath).catch(() => null)));
 
   return NextResponse.json({ success: true });
 });

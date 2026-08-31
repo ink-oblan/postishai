@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {
   CopyObjectCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -156,6 +157,24 @@ export async function archiveFile(relativePath: string): Promise<string | null> 
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
+  }
+}
+
+export async function deleteFile(relativePath: string): Promise<void> {
+  if (config.storageMode === "s3") {
+    await getS3Client().send(
+      new DeleteObjectCommand({
+        Bucket: s3Bucket(),
+        Key: storageObjectKey(relativePath),
+      }),
+    );
+    return;
+  }
+
+  try {
+    await fs.unlink(storagePath(relativePath));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 }
 

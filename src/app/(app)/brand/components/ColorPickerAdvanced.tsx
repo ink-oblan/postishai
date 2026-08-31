@@ -188,15 +188,12 @@ export function ColorPickerAdvanced({
         cursor: pointer;
         box-shadow: 0 0 2px rgba(0,0,0,0.3);
       }
-      input[type="range"]::-moz-range-track {
-        background: transparent;
-        border: none;
-      }
-
       .slider-r::-webkit-slider-runnable-track {
         background: linear-gradient(90deg, rgb(0, ${g}, ${b}), rgb(255, ${g}, ${b}));
       }
       .slider-r::-moz-range-track {
+        width: 100%;
+        height: 8px;
         background: linear-gradient(90deg, rgb(0, ${g}, ${b}), rgb(255, ${g}, ${b}));
       }
       .slider-r::-webkit-slider-thumb {
@@ -223,6 +220,8 @@ export function ColorPickerAdvanced({
         background: linear-gradient(90deg, rgb(${r}, 0, ${b}), rgb(${r}, 255, ${b}));
       }
       .slider-g::-moz-range-track {
+        width: 100%;
+        height: 8px;
         background: linear-gradient(90deg, rgb(${r}, 0, ${b}), rgb(${r}, 255, ${b}));
       }
       .slider-g::-webkit-slider-thumb {
@@ -236,6 +235,8 @@ export function ColorPickerAdvanced({
         background: linear-gradient(90deg, rgb(${r}, ${g}, 0), rgb(${r}, ${g}, 255));
       }
       .slider-b::-moz-range-track {
+        width: 100%;
+        height: 8px;
         background: linear-gradient(90deg, rgb(${r}, ${g}, 0), rgb(${r}, ${g}, 255));
       }
       .slider-b::-webkit-slider-thumb {
@@ -249,6 +250,8 @@ export function ColorPickerAdvanced({
         background: linear-gradient(90deg, hsl(0, ${s}%, ${l}%), hsl(60, ${s}%, ${l}%), hsl(120, ${s}%, ${l}%), hsl(180, ${s}%, ${l}%), hsl(240, ${s}%, ${l}%), hsl(300, ${s}%, ${l}%), hsl(360, ${s}%, ${l}%));
       }
       .slider-h::-moz-range-track {
+        width: 100%;
+        height: 8px;
         background: linear-gradient(90deg, hsl(0, ${s}%, ${l}%), hsl(60, ${s}%, ${l}%), hsl(120, ${s}%, ${l}%), hsl(180, ${s}%, ${l}%), hsl(240, ${s}%, ${l}%), hsl(300, ${s}%, ${l}%), hsl(360, ${s}%, ${l}%));
       }
       .slider-h::-webkit-slider-thumb {
@@ -262,6 +265,8 @@ export function ColorPickerAdvanced({
         background: linear-gradient(90deg, hsl(${h}, 0%, ${l}%), hsl(${h}, 100%, ${l}%));
       }
       .slider-s::-moz-range-track {
+        width: 100%;
+        height: 8px;
         background: linear-gradient(90deg, hsl(${h}, 0%, ${l}%), hsl(${h}, 100%, ${l}%));
       }
       .slider-s::-webkit-slider-thumb {
@@ -275,6 +280,8 @@ export function ColorPickerAdvanced({
         background: linear-gradient(90deg, hsl(${h}, ${s}%, 0%), hsl(${h}, ${s}%, 50%), hsl(${h}, ${s}%, 100%));
       }
       .slider-l::-moz-range-track {
+        width: 100%;
+        height: 8px;
         background: linear-gradient(90deg, hsl(${h}, ${s}%, 0%), hsl(${h}, ${s}%, 50%), hsl(${h}, ${s}%, 100%));
       }
       .slider-l::-webkit-slider-thumb {
