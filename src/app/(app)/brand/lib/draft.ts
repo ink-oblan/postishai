@@ -1,4 +1,9 @@
-import { type BrandFieldName, isBrandField, parseWholeField } from "@/lib/brand-fields";
+import {
+  BRAND_FIELDS,
+  type BrandFieldName,
+  isBrandField,
+  parseWholeField,
+} from "@/lib/brand-fields";
 
 /**
  * A draft holds only the fields that drift from what the wizard was opened with — the saved
@@ -78,6 +83,14 @@ export function restorableChanges(changes: Record<string, unknown>): Record<stri
       return parsed === undefined ? [] : [[field, parsed] as const];
     }),
   );
+}
+
+export function firstChangedStep(changes: Record<string, unknown>): number | null {
+  const steps = Object.keys(changes)
+    .filter(isBrandField)
+    .map((field) => BRAND_FIELDS[field].step);
+
+  return steps.length === 0 ? null : Math.min(...steps);
 }
 
 /**

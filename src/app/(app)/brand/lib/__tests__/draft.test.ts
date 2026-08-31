@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   changedFields,
   draftKey,
+  firstChangedStep,
   previousValues,
   readDraft,
   restorableChanges,
@@ -192,6 +193,22 @@ describe("restorableChanges", () => {
 
   it("ignores a field the draft never touched", () => {
     expect(restorableChanges({})).toEqual({});
+  });
+});
+
+describe("firstChangedStep", () => {
+  it("points at the earliest step holding an edit, whatever order they were made in", () => {
+    expect(firstChangedStep({ voiceStyle: "Warm", photoStyle: "Bright" })).toBe(1);
+    expect(firstChangedStep({ voiceStyle: "Warm", brandName: "Acme Co" })).toBe(0);
+  });
+
+  it("ignores fields the form no longer has", () => {
+    expect(firstChangedStep({ retired: "gone", voiceStyle: "Warm" })).toBe(2);
+  });
+
+  it("has no step to offer when nothing is left to restore", () => {
+    expect(firstChangedStep({})).toBeNull();
+    expect(firstChangedStep({ retired: "gone" })).toBeNull();
   });
 });
 

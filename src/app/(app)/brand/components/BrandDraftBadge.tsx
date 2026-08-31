@@ -22,6 +22,7 @@ export function BrandDraftBadge({ userId, brandId }: BrandDraftBadgeProps) {
   return (
     <UnsavedDraftPill
       label="Unsaved changes"
+      resumeHref={`/brand/edit?id=${brandId}`}
       discardDescription="The edits you made to this brand but never saved will be lost. The saved brand itself stays untouched."
       onDiscard={() => {
         localStorage.removeItem(storageKey);

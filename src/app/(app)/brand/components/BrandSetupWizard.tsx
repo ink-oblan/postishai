@@ -8,6 +8,7 @@ import { type BrandFormData, seedFormData } from "@/lib/brand-fields";
 import {
   changedFields,
   draftKey,
+  firstChangedStep,
   previousValues,
   readDraft,
   restorableChanges,
@@ -31,6 +32,7 @@ const STEPS = ["Core Brand", "Visual Identity", "Tone of Voice", "Video & Meanin
 export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps) {
   const router = useRouter();
   const storageKey = draftKey(userId, initialData?.id);
+  const isEditing = initialData !== null;
   const savedFormData = useMemo(() => seedFormData(initialData), [initialData]);
   const [currentStep, setCurrentStep] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -49,11 +51,13 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   useEffect(() => {
     const draft = readDraft(storageKey);
     if (draft) {
-      if (draft.step >= 0 && draft.step < STEPS.length) {
-        setCurrentStep(draft.step);
+      const restorable = restorableChanges(draft.changes);
+
+      const resumeStep = (isEditing ? firstChangedStep(restorable) : null) ?? draft.step;
+      if (resumeStep >= 0 && resumeStep < STEPS.length) {
+        setCurrentStep(resumeStep);
       }
 
-      const restorable = restorableChanges(draft.changes);
       const dropped = Object.keys(draft.changes).length - Object.keys(restorable).length;
       if (dropped > 0) {
         toast.warning(
@@ -71,7 +75,7 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
     }
 
     setIsHydrated(true);
-  }, [storageKey]);
+  }, [storageKey, isEditing]);
 
   useEffect(() => {
     // A save clears the draft; re-persisting on the way out would resurrect it.
