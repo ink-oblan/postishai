@@ -58,7 +58,7 @@ function PropLabel({ children }: { children: React.ReactNode }) {
 
 function PropValue({ children }: { children: React.ReactNode }) {
   return (
-    <p className="font-medium text-sm">
+    <p className="break-words font-medium text-sm">
       {children || <span className="text-muted-foreground">—</span>}
     </p>
   );
@@ -191,7 +191,9 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
               className="h-8 text-sm"
             />
           ) : (
-            <h1 className="truncate font-semibold text-xl">{avatar.name}</h1>
+            <h1 className="truncate font-semibold text-xl" title={avatar.name}>
+              {avatar.name}
+            </h1>
           )}
         </div>
         <div className="shrink-0 sm:mt-5">
@@ -351,7 +353,7 @@ export function AvatarEditPanel({ avatar }: { avatar: AvatarData }) {
         )}
 
         {/* Voice */}
-        <div>
+        <div className="min-w-0">
           <PropLabel>Voice</PropLabel>
           {editing ? (
             <AvatarVoiceField

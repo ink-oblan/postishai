@@ -140,12 +140,13 @@ function TokenEditor({
             type="button"
             onClick={() => onChange(tokens.filter((value) => value !== token))}
             aria-label={`Remove ${label} ${token}`}
+            className="min-w-0 max-w-full"
           >
             <Badge
               variant="secondary"
-              className="h-auto cursor-pointer gap-1 rounded-full px-2.5 py-1 font-medium text-xs transition-colors hover:bg-muted"
+              className="h-auto max-w-full cursor-pointer gap-1 rounded-full px-2.5 py-1 font-medium text-xs transition-colors hover:bg-muted"
             >
-              <span>
+              <span className="min-w-0 truncate">
                 {prefix}
                 {token}
               </span>
@@ -288,14 +289,17 @@ export function CaptionTagsField({
       ) : (
         <div className="space-y-2">
           {caption ? (
-            <p className="whitespace-pre-wrap text-sm">{caption}</p>
+            <p className="whitespace-pre-wrap break-words text-sm">{caption}</p>
           ) : (
             <p className="text-muted-foreground text-sm">{emptyText}</p>
           )}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {tags.map((tag) => (
-                <span key={tag} className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                <span
+                  key={tag}
+                  className="max-w-full break-all rounded bg-muted px-1.5 py-0.5 text-xs"
+                >
                   {tagPrefix}
                   {tag}
                 </span>

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { clampAvatarVariationLabel } from "@/lib/avatar-variation-label";
 import { prisma } from "@/lib/db";
 import { archiveFile } from "@/lib/storage";
 
@@ -21,12 +22,12 @@ export const PATCH = withAuth(async function PATCH(
   if (!variation) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = (await req.json()) as { label?: string };
-  const { label } = body;
-  if (!label?.trim()) return NextResponse.json({ error: "Label required" }, { status: 400 });
+  const label = body.label ? clampAvatarVariationLabel(body.label) : "";
+  if (!label) return NextResponse.json({ error: "Label required" }, { status: 400 });
 
   const updated = await prisma.avatarVariation.update({
     where: { id: variationId },
-    data: { label: label.trim() },
+    data: { label },
   });
 
   return NextResponse.json(updated);

@@ -121,7 +121,7 @@ export function AvatarVoiceField({
 
   if (readOnly) {
     return (
-      <div className={cn("flex items-center gap-2", className)}>
+      <div className={cn("flex min-w-0 items-center gap-2", className)}>
         {selectedVoice?.preview_audio && (
           <button
             type="button"
@@ -137,7 +137,10 @@ export function AvatarVoiceField({
           </button>
         )}
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate font-medium text-sm">
+          <span
+            className="truncate font-medium text-sm"
+            title={selectedVoice?.name.trim() || value}
+          >
             {selectedVoice?.name.trim() || value || (
               <span className="text-muted-foreground">—</span>
             )}
@@ -152,9 +155,9 @@ export function AvatarVoiceField({
   const triggerH = size === "sm" ? "h-8" : "h-9";
 
   return (
-    <div ref={containerRef} className={cn("flex items-center gap-2", className)}>
+    <div ref={containerRef} className={cn("flex min-w-0 items-center gap-2", className)}>
       {/* Trigger + dropdown wrapper */}
-      <div ref={triggerWrapRef} className="relative flex-1">
+      <div ref={triggerWrapRef} className="relative min-w-0 flex-1">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}

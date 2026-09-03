@@ -129,14 +129,14 @@ export function DashboardContent({ data }: { data: DashboardData }) {
                   href={`/posts/${post.id}`}
                   className="group flex items-center justify-between border-border border-b px-5 py-4 transition-colors duration-150 last:border-b-0 hover:bg-muted/40"
                 >
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <div className="flex min-w-0 items-center gap-2">
                       <p className="truncate font-medium text-sm transition-colors group-hover:text-primary">
                         {post.title}
                       </p>
                       <PlatformChip platform={post.type} />
                     </div>
-                    <p className="text-muted-foreground text-xs">{post.avatar?.name}</p>
+                    <p className="truncate text-muted-foreground text-xs">{post.avatar?.name}</p>
                   </div>
                   <StatusPip status={post.status} />
                 </Link>

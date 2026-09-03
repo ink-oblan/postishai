@@ -37,9 +37,11 @@ export function ConfirmDialog({
         >
           {icon}
         </div>
-        <AlertDialog.Title className="font-semibold text-base">{title}</AlertDialog.Title>
+        <AlertDialog.Title className="min-w-0 break-words font-semibold text-base">
+          {title}
+        </AlertDialog.Title>
       </div>
-      <AlertDialog.Description className="mb-6 pl-12 text-muted-foreground text-sm">
+      <AlertDialog.Description className="mb-6 break-words pl-12 text-muted-foreground text-sm">
         {description}
       </AlertDialog.Description>
       <div className="flex justify-end gap-2">
