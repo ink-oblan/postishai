@@ -4,6 +4,7 @@ import { AlertCircle, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { readStorage, removeStorage, writeStorage } from "@/lib/safe-storage";
 
 interface BrandPromptProps {
   hasBrandProfile: boolean;
@@ -17,12 +18,12 @@ export function BrandPrompt({ hasBrandProfile }: BrandPromptProps) {
 
   useEffect(() => {
     setMounted(true);
-    const savedDismissed = localStorage.getItem(DISMISS_KEY) === "true";
+    const savedDismissed = readStorage(DISMISS_KEY) === "true";
     setDismissed(savedDismissed);
   }, []);
 
   const handleDismiss = () => {
-    localStorage.setItem(DISMISS_KEY, "true");
+    writeStorage(DISMISS_KEY, "true");
     setDismissed(true);
   };
 
@@ -33,7 +34,7 @@ export function BrandPrompt({ hasBrandProfile }: BrandPromptProps) {
 
   // Hide if brand profile exists (clear dismiss flag) or if user dismissed it
   if (hasBrandProfile) {
-    localStorage.removeItem(DISMISS_KEY);
+    removeStorage(DISMISS_KEY);
     return null;
   }
 

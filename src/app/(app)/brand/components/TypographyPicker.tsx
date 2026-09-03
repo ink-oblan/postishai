@@ -20,13 +20,15 @@ import {
   getBuiltinFontByName,
 } from "../lib/builtin-fonts";
 import type { FieldChanges } from "../lib/draft";
-import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS } from "./FieldStatus";
+import type { StepValidation } from "../lib/validation";
+import { FieldStatusIcon, fieldStatus, TONE_BLOCK_CLASS } from "./FieldStatus";
 
 interface TypographyPickerProps {
   fonts: FontItem[];
   onChange: (fonts: FontItem[]) => void;
   maxFonts?: number;
   changes?: FieldChanges;
+  validation?: StepValidation;
 }
 
 export function TypographyPicker({
@@ -34,6 +36,7 @@ export function TypographyPicker({
   onChange,
   maxFonts = fieldLimits("typography").max,
   changes,
+  validation,
 }: TypographyPickerProps) {
   const [fontSearch, setFontSearch] = useState<string>("");
   const [isFocused, setIsFocused] = useState<boolean>(false);
@@ -60,11 +63,18 @@ export function TypographyPicker({
     onChange(fonts.filter((f) => f.id !== id));
   };
 
+  const isAlreadyAdded = (name: string) =>
+    fonts.some(
+      (font) => font.source === "uploaded" && font.name.toLowerCase() === name.toLowerCase(),
+    );
+
+  const rejectDuplicateFont = (file: File) =>
+    isAlreadyAdded(file.name) ? `${file.name} is already in your typefaces` : null;
+
   const handleCustomFontFilesChange = (newFiles: UploadedFile[]) => {
-    setCustomFontFiles(newFiles);
-    // Add new fonts from the uploaded files
     const newFonts = newFiles
-      .filter((f) => !fonts.some((font) => font.name === f.name && font.source === "uploaded"))
+      .filter((f) => !isAlreadyAdded(f.name))
+      .slice(0, maxFonts - fonts.length)
       .map((f) => ({
         id: f.id,
         name: f.name,
@@ -72,23 +82,22 @@ export function TypographyPicker({
         assetId: f.assetId,
       }));
 
-    if (newFonts.length > 0 && fonts.length + newFonts.length <= maxFonts) {
-      onChange([...fonts, ...newFonts]);
-      setCustomFontFiles([]);
+    // The uploader is a staging area only: every accepted file moves into the list above, and
+    // anything left over is dropped rather than parked next to the upload button.
+    for (const f of newFiles) {
+      if (f.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(f.previewUrl);
     }
+    setCustomFontFiles([]);
+
+    if (newFonts.length > 0) onChange([...fonts, ...newFonts]);
   };
 
   const minFonts = fieldLimits("typography").min;
   const missing = Math.max(minFonts - fonts.length, 0);
-  const isValid = missing === 0;
-  const tone = fieldTone({
-    invalid: !isValid,
-    changed: Boolean(changes?.typography),
-    filled: true,
-  });
+  const { tone, message } = fieldStatus("typography", { value: fonts, changes, validation });
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-brand-field="typography">
       <Label>
         Typefaces <span className="text-destructive">*</span>
       </Label>
@@ -177,6 +186,7 @@ export function TypographyPicker({
                 maxFileSizeBytes={MAX_BRAND_ASSET_SIZE_BYTES.font}
                 required={false}
                 fileType="font"
+                rejectFile={rejectDuplicateFont}
               />
             </div>
           )}
@@ -184,7 +194,7 @@ export function TypographyPicker({
           {/* Info hint */}
           <div
             className={`space-y-1 pt-2 text-center text-xs ${
-              isValid ? "text-muted-foreground" : "font-medium text-red-500"
+              message ? "font-medium text-red-500" : "text-muted-foreground"
             }`}
           >
             <p>
@@ -194,8 +204,8 @@ export function TypographyPicker({
                 : `up to ${maxFonts - fonts.length} more typeface${maxFonts - fonts.length === 1 ? "" : "s"}`}{" "}
               ({minFonts}–{maxFonts} total)
             </p>
-            <p className={isValid ? "text-xs opacity-75" : "text-red-500 text-xs"}>
-              At least {minFonts} typeface{minFonts === 1 ? "" : "s"} required
+            <p className={message ? "text-red-500 text-xs" : "text-xs opacity-75"}>
+              {message ?? `At least ${minFonts} typeface${minFonts === 1 ? "" : "s"} required`}
             </p>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { removeStorage } from "@/lib/safe-storage";
 import { draftKey, readDraft } from "../lib/draft";
 import { UnsavedDraftPill } from "./UnsavedDraftPill";
 
@@ -25,7 +26,7 @@ export function BrandDraftBadge({ userId, brandId }: BrandDraftBadgeProps) {
       resumeHref={`/brand/edit?id=${brandId}`}
       discardDescription="The edits you made to this brand but never saved will be lost. The saved brand itself stays untouched."
       onDiscard={() => {
-        localStorage.removeItem(storageKey);
+        removeStorage(storageKey);
         setHasDraft(false);
       }}
     />

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { removeStorage } from "@/lib/safe-storage";
 import { draftKey, readDraft } from "../lib/draft";
 import { ResumeDraftButton } from "./ResumeDraftButton";
 
@@ -19,7 +20,7 @@ export function NewBrandButton({ userId }: NewBrandButtonProps) {
   }, [storageKey]);
 
   const handleDiscard = () => {
-    localStorage.removeItem(storageKey);
+    removeStorage(storageKey);
     setHasDraft(false);
   };
 

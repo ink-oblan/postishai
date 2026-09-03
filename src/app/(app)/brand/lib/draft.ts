@@ -4,6 +4,7 @@ import {
   isBrandField,
   parseWholeField,
 } from "@/lib/brand-fields";
+import { readStorage, removeStorage, writeStorage } from "@/lib/safe-storage";
 
 /**
  * A draft holds only the fields that drift from what the wizard was opened with — the saved
@@ -37,7 +38,7 @@ export function draftKey(userId: string, brandProfileId?: string): string {
  * whoever or whatever wrote it.
  */
 export function readDraft(key: string): BrandWizardDraft | null {
-  const saved = localStorage.getItem(key);
+  const saved = readStorage(key);
   if (!saved) return null;
 
   try {
@@ -58,10 +59,10 @@ export function readDraft(key: string): BrandWizardDraft | null {
 /** An empty diff clears the entry, so presence never outlives the edits it stands for. */
 export function writeDraft(key: string, draft: BrandWizardDraft): void {
   if (Object.keys(draft.changes).length === 0) {
-    localStorage.removeItem(key);
+    removeStorage(key);
     return;
   }
-  localStorage.setItem(key, JSON.stringify({ version: DRAFT_VERSION, ...draft }));
+  writeStorage(key, JSON.stringify({ version: DRAFT_VERSION, ...draft }));
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import type { BrandFormData } from "@/lib/brand-fields";
 import type { FieldChanges } from "../lib/draft";
+import type { StepValidation } from "../lib/validation";
 import { ValidatedInput } from "./ValidatedInput";
 import { ValidatedTextarea } from "./ValidatedTextarea";
 
@@ -9,9 +10,10 @@ interface CoreBrandProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
   changes?: FieldChanges;
+  validation?: StepValidation;
 }
 
-export function CoreBrand({ formData, onUpdate, changes }: CoreBrandProps) {
+export function CoreBrand({ formData, onUpdate, changes, validation }: CoreBrandProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -28,6 +30,7 @@ export function CoreBrand({ formData, onUpdate, changes }: CoreBrandProps) {
           placeholder="Your brand name"
           fieldName="brandName"
           changes={changes}
+          validation={validation}
           required
         />
 
@@ -39,6 +42,7 @@ export function CoreBrand({ formData, onUpdate, changes }: CoreBrandProps) {
           placeholder="e.g., Sustainable Fashion, Tech Education, Fitness"
           fieldName="topic"
           changes={changes}
+          validation={validation}
           required
         />
 
@@ -50,6 +54,7 @@ export function CoreBrand({ formData, onUpdate, changes }: CoreBrandProps) {
           placeholder="Who are you trying to reach? Describe your ideal customer or follower."
           fieldName="targetAudience"
           changes={changes}
+          validation={validation}
           rows={3}
           required
         />
@@ -62,6 +67,7 @@ export function CoreBrand({ formData, onUpdate, changes }: CoreBrandProps) {
           placeholder="What is your brand's purpose or main message?"
           fieldName="mission"
           changes={changes}
+          validation={validation}
           rows={3}
         />
       </div>

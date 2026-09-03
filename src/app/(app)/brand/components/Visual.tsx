@@ -10,8 +10,9 @@ import {
 } from "@/lib/brand-assets";
 import type { BrandAssetRef, BrandFormData, ColorItem, FontItem } from "@/lib/brand-fields";
 import type { FieldChanges } from "../lib/draft";
+import type { StepValidation } from "../lib/validation";
 import { ColorPalettePicker } from "./ColorPalettePicker";
-import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS } from "./FieldStatus";
+import { FieldStatusIcon, fieldStatus, TONE_BLOCK_CLASS } from "./FieldStatus";
 import { TypographyPicker } from "./TypographyPicker";
 import { ValidatedTextarea } from "./ValidatedTextarea";
 
@@ -19,13 +20,14 @@ interface VisualProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
   changes?: FieldChanges;
+  validation?: StepValidation;
 }
 
 function persistedAsset(file: UploadedFile): BrandAssetRef {
   return { id: file.id, name: file.name, assetId: file.assetId };
 }
 
-export function Visual({ formData, onUpdate, changes }: VisualProps) {
+export function Visual({ formData, onUpdate, changes, validation }: VisualProps) {
   const colorIdCounter = useRef(0);
 
   const normalizeColors = (parsed: ColorItem[]) => {
@@ -69,15 +71,8 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
     onUpdate({ logoPath: newLogos.map(persistedAsset) });
   };
 
-  const logoTone = fieldTone({
-    changed: Boolean(changes?.logoPath),
-    filled: logoFiles.length >= 1,
-  });
-
-  const patternsTone = fieldTone({
-    changed: Boolean(changes?.patterns),
-    filled: patternFiles.length >= 1,
-  });
+  const logo = fieldStatus("logoPath", { value: logoFiles, changes, validation });
+  const patterns = fieldStatus("patterns", { value: patternFiles, changes, validation });
 
   return (
     <div className="space-y-6">
@@ -90,10 +85,20 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
 
       <div className="space-y-4">
         {/* Color Palette */}
-        <ColorPalettePicker colors={colors} onChange={handleColorsChange} changes={changes} />
+        <ColorPalettePicker
+          colors={colors}
+          onChange={handleColorsChange}
+          changes={changes}
+          validation={validation}
+        />
 
         {/* Typography - Built-in fonts and custom font upload */}
-        <TypographyPicker fonts={fonts} onChange={handleFontsChange} changes={changes} />
+        <TypographyPicker
+          fonts={fonts}
+          onChange={handleFontsChange}
+          changes={changes}
+          validation={validation}
+        />
 
         {/* Photo Style */}
         <ValidatedTextarea
@@ -104,19 +109,20 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
           placeholder="e.g., Bright and energetic, Minimalist, Dark and moody"
           fieldName="photoStyle"
           changes={changes}
+          validation={validation}
           rows={2}
         />
 
         {/* Logo */}
-        <div className="space-y-2">
+        <div className="space-y-2" data-brand-field="logoPath">
           <Label>Logo</Label>
-          <div className={`rounded-lg border p-4 ${TONE_BLOCK_CLASS[logoTone]}`}>
+          <div className={`rounded-lg border p-4 ${TONE_BLOCK_CLASS[logo.tone]}`}>
             <div className="mb-4 flex items-start justify-between">
               <p className="flex-1 text-muted-foreground text-xs">
                 Upload PNG logos that represent your brand. These will be used in generated content.
               </p>
               <FieldStatusIcon
-                tone={logoTone}
+                tone={logo.tone}
                 field="logoPath"
                 changes={changes}
                 className="ml-2"
@@ -135,15 +141,15 @@ export function Visual({ formData, onUpdate, changes }: VisualProps) {
         </div>
 
         {/* Patterns */}
-        <div className="space-y-2">
+        <div className="space-y-2" data-brand-field="patterns">
           <Label>Patterns & Decorative Elements</Label>
-          <div className={`rounded-lg border p-4 ${TONE_BLOCK_CLASS[patternsTone]}`}>
+          <div className={`rounded-lg border p-4 ${TONE_BLOCK_CLASS[patterns.tone]}`}>
             <div className="mb-4 flex items-start justify-between">
               <p className="flex-1 text-muted-foreground text-xs">
                 Upload PNG patterns and decorative elements to enhance your brand's visual identity.
               </p>
               <FieldStatusIcon
-                tone={patternsTone}
+                tone={patterns.tone}
                 field="patterns"
                 changes={changes}
                 className="ml-2"

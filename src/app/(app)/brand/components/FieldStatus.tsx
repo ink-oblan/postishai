@@ -2,6 +2,7 @@
 
 import { AlertCircle, CheckCircle2, type LucideIcon, SquarePen } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
+import { type BrandFieldName, isFieldSet } from "@/lib/brand-fields";
 import { cn } from "@/lib/utils";
 import type { FieldChange, FieldChanges } from "../lib/draft";
 import {
@@ -15,6 +16,7 @@ import {
   type TextSegment,
   truncate,
 } from "../lib/field-preview";
+import { type StepValidation, shownError } from "../lib/validation";
 
 export type FieldTone = "invalid" | "changed" | "valid" | "neutral";
 
@@ -22,22 +24,35 @@ const MAX_PREVIEW_CHARS = 200;
 /** Beyond this the chips wrap into a wall; the count carries the rest. */
 const MAX_PREVIEW_ENTRIES = 8;
 
+export interface FieldStatus {
+  tone: FieldTone;
+  /** The error to print under the field, or nothing while it is only unfinished. */
+  message: string | null;
+}
+
 /**
- * An unsaved edit re-tints the status indicator the field already has rather than adding a
- * second marker. Invalid still wins over changed — that is what blocks saving.
+ * How a field presents itself: red for a problem it is being told about, amber for an unsaved
+ * edit, green once it holds a value that passes, and nothing at all until it holds one.
+ *
+ * An unsaved edit re-tints the indicator the field already has rather than adding a second
+ * marker. Red still wins over amber — that is what blocks the step. Green is withheld from a
+ * field with a latent error even while that error stays quiet, so a palette one colour short
+ * never claims to be done.
  */
-export function fieldTone({
-  invalid = false,
-  changed,
-  filled,
-}: {
-  invalid?: boolean;
-  changed: boolean;
-  filled: boolean;
-}): FieldTone {
-  if (invalid) return "invalid";
-  if (changed) return "changed";
-  return filled ? "valid" : "neutral";
+export function fieldStatus(
+  field: BrandFieldName,
+  {
+    value,
+    changes,
+    validation,
+  }: { value: unknown; changes?: FieldChanges; validation?: StepValidation },
+): FieldStatus {
+  const error = shownError(validation, field);
+  if (error) return { tone: "invalid", message: error.message };
+  if (changes?.[field]) return { tone: "changed", message: null };
+
+  const passes = isFieldSet(field, value) && !validation?.errors[field];
+  return { tone: passes ? "valid" : "neutral", message: null };
 }
 
 /** Border/ring classes for a bare input or textarea. */

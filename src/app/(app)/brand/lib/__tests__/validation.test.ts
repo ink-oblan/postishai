@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { seedFormData } from "@/lib/brand-fields";
-import { isStepValid, validateStep } from "../validation";
+import {
+  firstInvalidStep,
+  isStepValid,
+  shownError,
+  stepValidation,
+  validateStep,
+} from "../validation";
 
 /** A brand filled in far enough to clear every step. */
 const complete = {
@@ -13,6 +19,8 @@ const complete = {
     { id: "c2", name: "Leaf", hex: "#00ff00" },
   ],
   typography: [{ id: "f1", name: "Inter", source: "builtin" as const }],
+  youFormality: true,
+  emojiLevel: 1,
 };
 
 describe("validateStep", () => {
@@ -73,5 +81,51 @@ describe("validateStep", () => {
 
   it("passes a full set of valid hex codes", () => {
     expect(validateStep(1, complete)).toEqual([]);
+  });
+
+  it("holds step 3 until both tone questions have been answered", () => {
+    expect(validateStep(2, { ...complete, youFormality: null })).toMatchObject([
+      { field: "youFormality", kind: "incomplete" },
+    ]);
+    expect(validateStep(2, { ...complete, emojiLevel: null })).toMatchObject([
+      { field: "emojiLevel", kind: "incomplete" },
+    ]);
+    // Both ends of each scale are answers, not absent ones.
+    expect(validateStep(2, { ...complete, youFormality: false, emojiLevel: 0 })).toEqual([]);
+  });
+});
+
+describe("shownError", () => {
+  const unfinished = { ...complete, brandName: "", photoStyle: "x".repeat(301) };
+
+  it("keeps an unfinished field quiet until the user tries to move on", () => {
+    expect(shownError(stepValidation(0, unfinished, false), "brandName")).toBeNull();
+    expect(shownError(stepValidation(0, unfinished, true), "brandName")).toMatchObject({
+      field: "brandName",
+    });
+  });
+
+  it("says so straight away when a value is wrong rather than unfinished", () => {
+    expect(shownError(stepValidation(1, unfinished, false), "photoStyle")).toMatchObject({
+      field: "photoStyle",
+      kind: "invalid",
+    });
+  });
+
+  it("has nothing to say about a field that passes", () => {
+    expect(shownError(stepValidation(0, complete, true), "brandName")).toBeNull();
+  });
+});
+
+describe("firstInvalidStep", () => {
+  it("finds the step a save has to go back to", () => {
+    expect(firstInvalidStep(complete, 4)).toBeNull();
+    expect(firstInvalidStep({ ...complete, brandName: "" }, 4)).toBe(0);
+    expect(firstInvalidStep({ ...complete, typography: [] }, 4)).toBe(1);
+    expect(firstInvalidStep({ ...complete, emojiLevel: null }, 4)).toBe(2);
+  });
+
+  it("reports the earliest one, not the one the user is looking at", () => {
+    expect(firstInvalidStep({ ...complete, brandName: "", emojiLevel: null }, 4)).toBe(0);
   });
 });

@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type ColorItem, fieldLimits, isValidHexColor } from "@/lib/brand-fields";
 import type { FieldChanges } from "../lib/draft";
+import type { StepValidation } from "../lib/validation";
 import { ColorPickerAdvanced } from "./ColorPickerAdvanced";
-import { FieldStatusIcon, fieldTone, TONE_BLOCK_CLASS } from "./FieldStatus";
+import { FieldStatusIcon, fieldStatus, TONE_BLOCK_CLASS } from "./FieldStatus";
 
 const PRESET_COLORS = [
   // Reds
@@ -51,6 +52,7 @@ interface ColorPalettePickerProps {
   onChange: (colors: ColorItem[]) => void;
   maxColors?: number;
   changes?: FieldChanges;
+  validation?: StepValidation;
 }
 
 export function ColorPalettePicker({
@@ -58,6 +60,7 @@ export function ColorPalettePicker({
   onChange,
   maxColors = fieldLimits("colors").max,
   changes,
+  validation,
 }: ColorPalettePickerProps) {
   const [expandedColorId, setExpandedColorId] = useState<string | null>(null);
   const colorIdCounter = useRef(0);
@@ -91,12 +94,10 @@ export function ColorPalettePicker({
 
   const minColors = fieldLimits("colors").min;
   const missing = Math.max(minColors - colors.length, 0);
-  const hasInvalidHex = colors.some((color) => !isValidHexColor(color.hex));
-  const isValid = missing === 0 && !hasInvalidHex;
-  const tone = fieldTone({ invalid: !isValid, changed: Boolean(changes?.colors), filled: true });
+  const { tone, message } = fieldStatus("colors", { value: colors, changes, validation });
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-brand-field="colors">
       <Label>
         Color Palette <span className="text-destructive">*</span>
       </Label>
@@ -236,7 +237,7 @@ export function ColorPalettePicker({
           {/* Info hint */}
           <div
             className={`space-y-1 pt-2 text-center text-xs ${
-              isValid ? "text-muted-foreground" : "font-medium text-red-500"
+              message ? "font-medium text-red-500" : "text-muted-foreground"
             }`}
           >
             <p>
@@ -246,8 +247,8 @@ export function ColorPalettePicker({
                 : `up to ${maxColors - colors.length} more color${maxColors - colors.length === 1 ? "" : "s"}`}{" "}
               ({minColors}–{maxColors} total)
             </p>
-            <p className={isValid ? "text-xs opacity-75" : "text-red-500 text-xs"}>
-              Primary & Secondary required
+            <p className={message ? "text-red-500 text-xs" : "text-xs opacity-75"}>
+              {message ?? "Primary & Secondary required"}
             </p>
           </div>
         </div>

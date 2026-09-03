@@ -5,7 +5,7 @@
  */
 
 export const MAX_TEXT_LENGTH = 2_000;
-export const MAX_JSON_LENGTH = 100_000;
+const MAX_JSON_LENGTH = 100_000;
 
 /** Level 0 says what it means on its own — "None" reads as "nothing picked yet" out of context. */
 export const EMOJI_LEVEL_LABELS = ["No emojis", "Moderate", "High", "Very High"] as const;
@@ -45,8 +45,9 @@ export interface BrandFormData {
   logoPath: BrandAssetRef[];
   patterns: BrandAssetRef[];
   photoStyle: string;
-  youFormality: boolean;
-  emojiLevel: number;
+  /** `null` until the user picks — neither side of the choice can stand in for "not asked yet". */
+  youFormality: boolean | null;
+  emojiLevel: number | null;
   voiceStyle: string;
   brandVocabulary: string;
   videoAnimations: string;
@@ -106,7 +107,7 @@ function str(value: unknown): string | undefined {
  * List fields arrive already parsed — from a Json column, or from a client sending real JSON —
  * or as the JSON string older clients and rows still carry. Anything else holds no list.
  */
-export function asList(value: unknown): unknown[] | undefined {
+function asList(value: unknown): unknown[] | undefined {
   if (Array.isArray(value)) return value;
   if (typeof value !== "string" || value === "") return undefined;
 
@@ -246,20 +247,22 @@ export const BRAND_FIELDS: { [K in BrandFieldName]: BrandFieldSpec<BrandFormData
   },
   photoStyle: { ...text, step: 1, label: "Photo Style", limits: { min: 0, max: 300 } },
 
+  // Both open unset rather than on a default: a brand's tone is worth a deliberate choice, and
+  // seeding one would let the user skip past the question without ever seeing it.
   youFormality: {
     kind: "flag",
     step: 2,
-    label: "Formality",
-    seed: () => false,
+    label: "Formality Level",
+    required: true,
+    seed: () => null,
     parse: parseFlag,
   },
   emojiLevel: {
     kind: "level",
     step: 2,
-    label: "Emoji Usage",
-    // The wizard opens on "Moderate" rather than the column default, so a brand created
-    // without touching the control still reads as a deliberate middle setting.
-    seed: () => 1,
+    label: "Emoji & Hashtag Level",
+    required: true,
+    seed: () => null,
     parse: parseLevel,
   },
   voiceStyle: { ...text, step: 2, label: "Brand Voice Style", limits: { min: 0, max: 300 } },
@@ -293,8 +296,6 @@ export const ASSET_FIELDS = BRAND_FIELD_NAMES.filter(
   (field) => BRAND_FIELDS[field].kind === "fonts" || BRAND_FIELDS[field].kind === "assets",
 );
 
-export const REQUIRED_FIELDS = BRAND_FIELD_NAMES.filter((field) => BRAND_FIELDS[field].required);
-
 /** What the API answers with when a field arrives in a shape this form can't take. */
 export function invalidFieldMessage(field: BrandFieldName): string {
   switch (BRAND_FIELDS[field].kind) {
@@ -309,8 +310,17 @@ export function invalidFieldMessage(field: BrandFieldName): string {
   }
 }
 
-export interface FieldLimitError {
+/**
+ * Whether the value is merely unfinished or actually wrong. The wizard surfaces the two at
+ * different moments: being unfinished is the normal state of a form halfway through being
+ * filled in, so it waits until the user tries to move on, while a value that is wrong however
+ * long they keep typing is worth saying at once.
+ */
+export type FieldErrorKind = "incomplete" | "invalid";
+
+export interface BrandFieldError {
   field: BrandFieldName;
+  kind: FieldErrorKind;
   message: string;
   current: number;
   required: number;
@@ -344,21 +354,56 @@ function excess(field: BrandFieldName, max: number): string {
  * Shared by the wizard, which uses it to gate step navigation, and the API route, which is the
  * authoritative check — the wizard's is UX only and a raw request can bypass it.
  */
-export function validateFieldLimits(field: BrandFieldName, value: unknown): FieldLimitError | null {
+function validateFieldLimits(field: BrandFieldName, value: unknown): BrandFieldError | null {
   const limits = BRAND_FIELDS[field].limits;
   if (!limits) return null;
 
   const current = measure(field, value);
 
   if (current < limits.min) {
-    return { field, message: shortfall(field, limits.min), current, required: limits.min };
+    const message = shortfall(field, limits.min);
+    return { field, kind: "incomplete", message, current, required: limits.min };
   }
 
   if (current > limits.max) {
-    return { field, message: excess(field, limits.max), current, required: limits.max };
+    const message = excess(field, limits.max);
+    return { field, kind: "invalid", message, current, required: limits.max };
   }
 
   return null;
+}
+
+/**
+ * Whether the field holds a value at all. Each kind spells "unset" differently, and for the two
+ * choice fields it is neither falsy nor empty — `false` and `0` are answers, `null` is not.
+ */
+export function isFieldSet(field: BrandFieldName, value: unknown): boolean {
+  switch (BRAND_FIELDS[field].kind) {
+    case "flag":
+    case "level":
+      return value !== null && value !== undefined;
+    case "text":
+      return typeof value === "string" && value.trim().length > 0;
+    default:
+      return parseList(value).length > 0;
+  }
+}
+
+/**
+ * Everything the registry knows about a single value: that it is there at all, and that it sits
+ * within its bounds. Required comes first so an untouched field is reported as unanswered rather
+ * than as one character short of a minimum it never had a chance to meet.
+ */
+export function validateField(field: BrandFieldName, value: unknown): BrandFieldError | null {
+  const spec = BRAND_FIELDS[field];
+
+  if (spec.required && !isFieldSet(field, value)) {
+    const required = spec.limits?.min ?? 1;
+    const message = `${spec.label} is required`;
+    return { field, kind: "incomplete", message, current: 0, required };
+  }
+
+  return validateFieldLimits(field, value);
 }
 
 /**

@@ -2,15 +2,17 @@
 
 import type { BrandFormData } from "@/lib/brand-fields";
 import type { FieldChanges } from "../lib/draft";
+import type { StepValidation } from "../lib/validation";
 import { ValidatedTextarea } from "./ValidatedTextarea";
 
 interface VideoProps {
   formData: BrandFormData;
   onUpdate: (updates: Partial<BrandFormData>) => void;
   changes?: FieldChanges;
+  validation?: StepValidation;
 }
 
-export function Video({ formData, onUpdate, changes }: VideoProps) {
+export function Video({ formData, onUpdate, changes, validation }: VideoProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -27,6 +29,7 @@ export function Video({ formData, onUpdate, changes }: VideoProps) {
           placeholder="e.g., Smooth fade-ins, Kinetic text animations, Minimal transitions"
           fieldName="videoAnimations"
           changes={changes}
+          validation={validation}
           rows={2}
         />
 
@@ -38,6 +41,7 @@ export function Video({ formData, onUpdate, changes }: VideoProps) {
           placeholder="e.g., Cross fade, Slide left, Zoom in, Cut"
           fieldName="videoTransitions"
           changes={changes}
+          validation={validation}
           rows={2}
         />
 

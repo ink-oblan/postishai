@@ -7,7 +7,6 @@ interface WizardNavigationProps {
   onPrev: () => void;
   onSave: () => void;
   isSaving: boolean;
-  isStepValid: boolean;
 }
 
 export function WizardNavigation({
@@ -17,10 +16,9 @@ export function WizardNavigation({
   onPrev,
   onSave,
   isSaving,
-  isStepValid,
 }: WizardNavigationProps) {
   return (
-    <div className="mt-8 flex justify-between gap-4">
+    <div className="mt-8 flex items-center justify-between gap-4">
       {currentStep > 0 && (
         <Button variant="outline" onClick={onPrev} className="min-w-32">
           Previous
@@ -29,22 +27,17 @@ export function WizardNavigation({
 
       <div className="flex-1" />
 
+      {/*
+        Both buttons stay enabled: the click is what tells the wizard the user considers the step
+        finished, which is when it starts marking the fields that aren't. A disabled button would
+        leave nothing to press and nothing to explain why.
+      */}
       {currentStep === totalSteps - 1 ? (
-        <Button
-          onClick={onSave}
-          disabled={isSaving || !isStepValid}
-          className="min-w-32"
-          title={!isStepValid ? "Please complete all required fields" : ""}
-        >
+        <Button onClick={onSave} disabled={isSaving} className="min-w-32">
           {isSaving ? "Saving..." : "Save Profile"}
         </Button>
       ) : (
-        <Button
-          onClick={onNext}
-          disabled={!isStepValid}
-          className="min-w-32"
-          title={!isStepValid ? "Please complete all required fields before proceeding" : ""}
-        >
+        <Button onClick={onNext} className="min-w-32">
           Next
         </Button>
       )}

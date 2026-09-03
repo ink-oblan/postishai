@@ -4,7 +4,8 @@ import type { BrandProfile } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { type BrandFormData, seedFormData } from "@/lib/brand-fields";
+import { type BrandFieldName, type BrandFormData, seedFormData } from "@/lib/brand-fields";
+import { removeStorage } from "@/lib/safe-storage";
 import {
   changedFields,
   draftKey,
@@ -14,7 +15,7 @@ import {
   restorableChanges,
   writeDraft,
 } from "../lib/draft";
-import { isStepValid } from "../lib/validation";
+import { firstInvalidStep, stepValidation, validateStep } from "../lib/validation";
 import { CoreBrand } from "./CoreBrand";
 import { Video } from "./Video";
 import { Visual } from "./Visual";
@@ -29,6 +30,21 @@ interface BrandSetupWizardProps {
 
 const STEPS = ["Core Brand", "Visual Identity", "Tone of Voice", "Video & Meaning"];
 
+/**
+ * Brings a field into view and hands it the caret. Fields tag their own wrapper rather than
+ * relying on the input's id, because two of them — the palette and the typefaces — are whole
+ * pickers with no single input to point at.
+ */
+function focusField(field: BrandFieldName): void {
+  const wrapper = document.querySelector<HTMLElement>(`[data-brand-field="${field}"]`);
+  if (!wrapper) return;
+
+  wrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+  wrapper
+    .querySelector<HTMLElement>("input, textarea, select, button")
+    ?.focus({ preventScroll: true });
+}
+
 export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps) {
   const router = useRouter();
   const storageKey = draftKey(userId, initialData?.id);
@@ -38,6 +54,8 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   const [isHydrated, setIsHydrated] = useState(false);
   const [formData, setFormData] = useState<BrandFormData>(savedFormData);
   const [isSaving, setIsSaving] = useState(false);
+  const [attemptedSteps, setAttemptedSteps] = useState<ReadonlySet<number>>(new Set());
+  const [pendingFocus, setPendingFocus] = useState<BrandFieldName | null>(null);
 
   const changes = useMemo(() => changedFields(formData, savedFormData), [formData, savedFormData]);
 
@@ -83,7 +101,25 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
     writeDraft(storageKey, { step: currentStep, changes });
   }, [storageKey, currentStep, changes, isHydrated, isSaving]);
 
+  // Runs after the step it points at has rendered, so a jump between steps lands on the field.
+  useEffect(() => {
+    if (!pendingFocus) return;
+    focusField(pendingFocus);
+    setPendingFocus(null);
+  }, [pendingFocus]);
+
+  const markAttempted = (steps: number[]) => {
+    setAttemptedSteps((prev) => new Set([...prev, ...steps]));
+  };
+
   const handleNext = () => {
+    const errors = validateStep(currentStep, formData);
+    if (errors.length > 0) {
+      markAttempted([currentStep]);
+      setPendingFocus(errors[0].field);
+      return;
+    }
+
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     }
@@ -100,6 +136,23 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   };
 
   const handleSave = async () => {
+    // Every step, not just this one — navigation no longer blocks on an unfinished step, so
+    // the user can reach the end with a required field still empty two steps back.
+    const invalidStep = firstInvalidStep(formData, STEPS.length);
+    if (invalidStep !== null) {
+      const [firstError] = validateStep(invalidStep, formData);
+      markAttempted(STEPS.map((_, step) => step));
+      setCurrentStep(invalidStep);
+      setPendingFocus(firstError.field);
+
+      if (invalidStep !== currentStep) {
+        toast.error(`${STEPS[invalidStep]} isn't finished yet`, {
+          description: firstError.message,
+        });
+      }
+      return;
+    }
+
     setIsSaving(true);
     try {
       const response = await fetch("/api/brand-profile", {
@@ -116,7 +169,7 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
         throw new Error(error || "Failed to save brand profile");
       }
 
-      localStorage.removeItem(storageKey);
+      removeStorage(storageKey);
       router.push("/brand");
       router.refresh();
     } catch (error) {
@@ -126,7 +179,10 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
     }
   };
 
-  const isCurrentStepValid = isStepValid(currentStep, formData);
+  const validation = useMemo(
+    () => stepValidation(currentStep, formData, attemptedSteps.has(currentStep)),
+    [currentStep, formData, attemptedSteps],
+  );
 
   if (!isHydrated) {
     return (
@@ -145,16 +201,36 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
 
       <div className="mt-8 rounded-lg border border-border bg-card p-8">
         {currentStep === 0 && (
-          <CoreBrand formData={formData} onUpdate={handleUpdateFormData} changes={fieldChanges} />
+          <CoreBrand
+            formData={formData}
+            onUpdate={handleUpdateFormData}
+            changes={fieldChanges}
+            validation={validation}
+          />
         )}
         {currentStep === 1 && (
-          <Visual formData={formData} onUpdate={handleUpdateFormData} changes={fieldChanges} />
+          <Visual
+            formData={formData}
+            onUpdate={handleUpdateFormData}
+            changes={fieldChanges}
+            validation={validation}
+          />
         )}
         {currentStep === 2 && (
-          <Voice formData={formData} onUpdate={handleUpdateFormData} changes={fieldChanges} />
+          <Voice
+            formData={formData}
+            onUpdate={handleUpdateFormData}
+            changes={fieldChanges}
+            validation={validation}
+          />
         )}
         {currentStep === 3 && (
-          <Video formData={formData} onUpdate={handleUpdateFormData} changes={fieldChanges} />
+          <Video
+            formData={formData}
+            onUpdate={handleUpdateFormData}
+            changes={fieldChanges}
+            validation={validation}
+          />
         )}
       </div>
 
@@ -165,7 +241,6 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
         onPrev={handlePrev}
         onSave={handleSave}
         isSaving={isSaving}
-        isStepValid={isCurrentStepValid}
       />
     </div>
   );

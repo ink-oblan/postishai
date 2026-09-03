@@ -3,13 +3,13 @@ import {
   ASSET_FIELDS,
   BRAND_FIELD_NAMES,
   isBrandField,
+  isFieldSet,
   isListField,
   isValidHexColor,
   MAX_TEXT_LENGTH,
   parseWholeField,
-  REQUIRED_FIELDS,
   seedFormData,
-  validateFieldLimits,
+  validateField,
 } from "../brand-fields";
 
 describe("seedFormData", () => {
@@ -18,17 +18,18 @@ describe("seedFormData", () => {
 
     expect(seeded.brandName).toBe("");
     expect(seeded.colors).toEqual([]);
-    expect(seeded.youFormality).toBe(false);
-    // Not the column default of 0: the wizard opens on "Moderate".
-    expect(seeded.emojiLevel).toBe(1);
+    // Unset rather than on a default: the user has to answer the two tone questions themselves.
+    expect(seeded.youFormality).toBeNull();
+    expect(seeded.emojiLevel).toBeNull();
   });
 
   it("gives each seed its own list, so one brand's edits can't reach another's", () => {
     expect(seedFormData(null).colors).not.toBe(seedFormData(null).colors);
   });
 
-  it("keeps a saved level of 0 rather than falling back to the default", () => {
+  it("keeps a saved level of 0, which is an answer and not an absent one", () => {
     expect(seedFormData({ emojiLevel: 0 }).emojiLevel).toBe(0);
+    expect(seedFormData({ youFormality: false }).youFormality).toBe(false);
   });
 
   it("reads null columns as the empty values the form shows", () => {
@@ -120,40 +121,6 @@ describe("parseWholeField", () => {
   });
 });
 
-describe("validateFieldLimits", () => {
-  it("passes a field with no declared bounds, however long it runs", () => {
-    expect(validateFieldLimits("logoPath", [])).toBeNull();
-  });
-
-  it("rejects a required field that parsed but falls short of its minimum", () => {
-    expect(validateFieldLimits("brandName", "Ac")).toMatchObject({
-      field: "brandName",
-      current: 2,
-      required: 3,
-    });
-  });
-
-  it("rejects a value that clears its minimum but exceeds its maximum", () => {
-    expect(validateFieldLimits("photoStyle", "x".repeat(301))).toMatchObject({
-      field: "photoStyle",
-      current: 301,
-      required: 300,
-    });
-  });
-
-  it("lets an optional field's bounds pass when it's empty", () => {
-    expect(validateFieldLimits("photoStyle", "")).toBeNull();
-  });
-
-  it("counts entries, not characters, for a list field", () => {
-    expect(validateFieldLimits("colors", [{ hex: "#ff0000" }])).toMatchObject({
-      field: "colors",
-      current: 1,
-      required: 2,
-    });
-  });
-});
-
 describe("isValidHexColor", () => {
   it("accepts the shorthand and full forms the pickers emit", () => {
     expect(isValidHexColor("#fff")).toBe(true);
@@ -188,8 +155,82 @@ describe("the registry itself", () => {
     ]);
   });
 
-  it("derives the fields the API insists on and the ones that carry assets", () => {
-    expect(REQUIRED_FIELDS).toEqual(["brandName", "topic", "targetAudience"]);
+  it("derives the fields that carry assets", () => {
     expect(ASSET_FIELDS).toEqual(["typography", "logoPath", "patterns"]);
+  });
+});
+
+describe("isFieldSet", () => {
+  it("reads the two choice fields by whether they were answered, not by truthiness", () => {
+    expect(isFieldSet("youFormality", false)).toBe(true);
+    expect(isFieldSet("emojiLevel", 0)).toBe(true);
+    expect(isFieldSet("youFormality", null)).toBe(false);
+    expect(isFieldSet("emojiLevel", null)).toBe(false);
+  });
+
+  it("takes whitespace as an unfilled text field", () => {
+    expect(isFieldSet("brandName", "Acme")).toBe(true);
+    expect(isFieldSet("brandName", "   ")).toBe(false);
+    expect(isFieldSet("brandName", "")).toBe(false);
+  });
+
+  it("takes an empty list as unset", () => {
+    expect(isFieldSet("colors", [{ hex: "#ff0000" }])).toBe(true);
+    expect(isFieldSet("colors", [])).toBe(false);
+    expect(isFieldSet("colors", null)).toBe(false);
+  });
+});
+
+describe("validateField", () => {
+  it("reports an untouched required field as unanswered, not as too short", () => {
+    expect(validateField("brandName", "")).toMatchObject({
+      field: "brandName",
+      kind: "incomplete",
+      message: "Brand Name is required",
+    });
+  });
+
+  it("falls through to the bounds once the field holds something", () => {
+    expect(validateField("brandName", "Ac")).toMatchObject({
+      kind: "incomplete",
+      current: 2,
+      required: 3,
+    });
+    expect(validateField("brandName", "Acme")).toBeNull();
+  });
+
+  it("holds a brand whose tone questions were never answered", () => {
+    expect(validateField("youFormality", null)).toMatchObject({ kind: "incomplete" });
+    expect(validateField("emojiLevel", null)).toMatchObject({ kind: "incomplete" });
+
+    expect(validateField("youFormality", false)).toBeNull();
+    expect(validateField("emojiLevel", 0)).toBeNull();
+  });
+
+  it("separates a value still being filled in from one that is wrong", () => {
+    expect(validateField("photoStyle", "x".repeat(301))).toMatchObject({
+      field: "photoStyle",
+      kind: "invalid",
+      current: 301,
+      required: 300,
+    });
+  });
+
+  it("counts entries, not characters, for a list field", () => {
+    expect(validateField("colors", [{ hex: "#ff0000" }])).toMatchObject({
+      field: "colors",
+      kind: "incomplete",
+      current: 1,
+      required: 2,
+    });
+  });
+
+  it("passes a field with no declared bounds, however long it runs", () => {
+    expect(validateField("logoPath", [])).toBeNull();
+  });
+
+  it("leaves an optional field alone when it's empty", () => {
+    expect(validateField("photoStyle", "")).toBeNull();
+    expect(validateField("logoPath", [])).toBeNull();
   });
 });

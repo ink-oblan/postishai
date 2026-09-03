@@ -9,9 +9,8 @@ import {
   invalidFieldMessage,
   isListField,
   parseWholeField,
-  REQUIRED_FIELDS,
   seedFormData,
-  validateFieldLimits,
+  validateField,
 } from "@/lib/brand-fields";
 import { prisma } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
@@ -52,14 +51,9 @@ function parseBrandProfileInput(body: unknown): { data: BrandProfileInput } | { 
 }
 
 function brandProfileError(effective: Partial<Record<BrandFieldName, unknown>>): string | null {
-  const missing = REQUIRED_FIELDS.filter((field) => !effective[field]);
-  if (missing.length > 0) {
-    return `Missing required fields: ${missing.join(", ")}`;
-  }
-
   for (const field of BRAND_FIELD_NAMES) {
-    const limitError = validateFieldLimits(field, effective[field]);
-    if (limitError) return limitError.message;
+    const error = validateField(field, effective[field]);
+    if (error) return error.message;
   }
 
   return null;
@@ -142,6 +136,15 @@ export const POST = withAuth(async function POST(request: NextRequest, _context,
   await linkAssets(userId, brandProfile);
 
   return NextResponse.json(brandProfile);
+});
+
+export const GET = withAuth(async function GET(_request: NextRequest, _context, { userId }) {
+  const brandProfiles = await prisma.brandProfile.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+  });
+
+  return NextResponse.json(brandProfiles);
 });
 
 export const DELETE = withAuth(async function DELETE(request: NextRequest, _context, { userId }) {

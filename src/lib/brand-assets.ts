@@ -3,7 +3,7 @@
  * the API routes enforce the same limits from one place.
  */
 
-export const BRAND_ASSET_TYPES = ["logo", "pattern", "font"] as const;
+const BRAND_ASSET_TYPES = ["logo", "pattern", "font"] as const;
 
 export type BrandAssetType = (typeof BRAND_ASSET_TYPES)[number];
 

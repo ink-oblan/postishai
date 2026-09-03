@@ -138,24 +138,21 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
 }
 
-function getComplementaryColor(hex: string): string {
-  const { h, s, l } = hexToHsl(hex);
-  const complementaryHue = (h + 180) % 360;
-  return hslToHex(complementaryHue, s, l);
-}
+const HARMONIES = [
+  { label: "Complementary", hueOffsets: [180] },
+  { label: "Triadic", hueOffsets: [120, 240] },
+  { label: "Analogous", hueOffsets: [-30, 30] },
+];
 
-function getTriadicColors(hex: string): string[] {
+function getHarmonies(hex: string): { label: string; colors: { offset: number; hex: string }[] }[] {
   const { h, s, l } = hexToHsl(hex);
-  const color1 = hslToHex((h + 120) % 360, s, l);
-  const color2 = hslToHex((h + 240) % 360, s, l);
-  return [color1, color2];
-}
-
-function getAnalogousColors(hex: string): string[] {
-  const { h, s, l } = hexToHsl(hex);
-  const color1 = hslToHex((h - 30 + 360) % 360, s, l);
-  const color2 = hslToHex((h + 30) % 360, s, l);
-  return [color1, color2];
+  return HARMONIES.map(({ label, hueOffsets }) => ({
+    label,
+    colors: hueOffsets.map((offset) => ({
+      offset,
+      hex: hslToHex((h + offset + 360) % 360, s, l),
+    })),
+  }));
 }
 
 function getContrastColor(hex: string): string {
@@ -171,10 +168,8 @@ export function ColorPickerAdvanced({
   isMaxReached,
 }: ColorPickerAdvancedProps) {
   const styleRef = useRef<HTMLStyleElement>(null);
-  const keyCounterRef = useRef(0);
   const { h, s, l } = hexToHsl(value);
   const { r, g, b } = hexToRgb(value);
-  const complementaryColor = getComplementaryColor(value);
 
   const [mounted, setMounted] = useState(false);
 
@@ -472,63 +467,27 @@ export function ColorPickerAdvanced({
 
       {/* Harmony colors */}
       <div className="space-y-4 rounded-lg border border-border bg-muted p-4">
-        {/* Complementary */}
-        <div>
-          <Label className="mb-2 block font-semibold text-xs">Complementary</Label>
-          <button
-            type="button"
-            disabled={isMaxReached}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddColor?.(complementaryColor);
-            }}
-            className={`h-8 w-full rounded border-2 border-border transition-all ${isMaxReached ? "cursor-not-allowed opacity-50" : "hover:scale-105"}`}
-            style={{ backgroundColor: complementaryColor }}
-            title={complementaryColor}
-          />
-        </div>
-
-        {/* Triadic */}
-        <div>
-          <Label className="mb-2 block font-semibold text-xs">Triadic</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {getTriadicColors(value).map((color) => (
-              <button
-                key={`triadic-${color}-${++keyCounterRef.current}`}
-                type="button"
-                disabled={isMaxReached}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddColor?.(color);
-                }}
-                className={`h-8 rounded border-2 border-border transition-all ${isMaxReached ? "cursor-not-allowed opacity-50" : "hover:scale-105"}`}
-                style={{ backgroundColor: color }}
-                title={color}
-              />
-            ))}
+        {getHarmonies(value).map(({ label, colors }) => (
+          <div key={label}>
+            <Label className="mb-2 block font-semibold text-xs">{label}</Label>
+            <div className={`grid gap-2 ${colors.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+              {colors.map(({ offset, hex }) => (
+                <button
+                  key={`${label}-${offset}`}
+                  type="button"
+                  disabled={isMaxReached}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddColor?.(hex);
+                  }}
+                  className={`h-8 w-full rounded border-2 border-border transition-all ${isMaxReached ? "cursor-not-allowed opacity-50" : "hover:scale-105"}`}
+                  style={{ backgroundColor: hex }}
+                  title={hex}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-
-        {/* Analogous */}
-        <div>
-          <Label className="mb-2 block font-semibold text-xs">Analogous</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {getAnalogousColors(value).map((color) => (
-              <button
-                key={`analogous-${color}-${++keyCounterRef.current}`}
-                type="button"
-                disabled={isMaxReached}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddColor?.(color);
-                }}
-                className={`h-8 rounded border-2 border-border transition-all ${isMaxReached ? "cursor-not-allowed opacity-50" : "hover:scale-105"}`}
-                style={{ backgroundColor: color }}
-                title={color}
-              />
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );

@@ -31,6 +31,8 @@ interface FileUploaderProps {
   required?: boolean;
   computeCropFlags?: (files: UploadedFile[]) => UploadedFile[]; // Optional callback to compute willCrop flags
   fileType?: "logo" | "pattern" | "font"; // For server-side upload organization
+  /** Returns an error message to reject a selected file before it is uploaded, or null to accept it. */
+  rejectFile?: (file: File) => string | null;
 }
 
 export function FileUploader({
@@ -45,6 +47,7 @@ export function FileUploader({
   required = false,
   computeCropFlags,
   fileType,
+  rejectFile,
 }: FileUploaderProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const filesRef = useRef<UploadedFile[]>(files);
@@ -142,6 +145,23 @@ export function FileUploader({
     if (oversizedFiles.length > 0) {
       toast.error(`File too large. Maximum: ${(maxFileSizeBytes / 1024 / 1024).toFixed(1)}MB`);
       selectedFiles = selectedFiles.filter((f) => f.size <= maxFileSizeBytes);
+      if (selectedFiles.length === 0) return;
+    }
+
+    // Reject files the caller does not want (duplicates, say) before anything is uploaded,
+    // including repeats within this same selection.
+    if (rejectFile) {
+      const seen = new Set(files.map((f) => f.name.toLowerCase()));
+      selectedFiles = selectedFiles.filter((f) => {
+        const key = f.name.toLowerCase();
+        const reason = seen.has(key) ? `${f.name} was already added` : rejectFile(f);
+        if (reason) {
+          toast.error(reason);
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
       if (selectedFiles.length === 0) return;
     }
 
