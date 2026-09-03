@@ -279,7 +279,8 @@ export function PostWizard() {
                       key={v.id}
                       type="button"
                       onClick={() => update({ avatarVariationId: v.id })}
-                      className={`h-7 rounded-md border px-2.5 font-medium text-xs transition-colors ${
+                      title={v.label}
+                      className={`h-7 max-w-full truncate rounded-md border px-2.5 font-medium text-xs transition-colors ${
                         data.avatarVariationId === v.id
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-background hover:bg-muted"

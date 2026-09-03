@@ -16,7 +16,7 @@ export const STATUS_PIP_CONFIG: Record<string, { dot: string; label: string }> =
 export function StatusPip({ status }: { status: string }) {
   const cfg = STATUS_PIP_CONFIG[status] ?? STATUS_PIP_CONFIG.DRAFT;
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex shrink-0 items-center gap-1.5">
       <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.dot}`} />
       <span className="hidden text-muted-foreground text-xs sm:inline">{cfg.label}</span>
     </div>

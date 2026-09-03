@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { generateAvatarVariationLabel } from "@/lib/avatar-variation-label";
-import { VARIATION_STATUS } from "@/lib/constants";
+import { AVATAR_VARIATION_LABEL_MAX_LENGTH, VARIATION_STATUS } from "@/lib/constants";
 import { POLLING } from "@/lib/polling-config";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +52,13 @@ interface ImageModel {
 }
 
 type VariationScope = "clothes" | "background" | "pose" | "all";
+
+const LABEL_INPUT_MAX_HEIGHT = 72;
+
+function autoSizeLabelInput(el: HTMLTextAreaElement) {
+  el.style.height = "auto";
+  el.style.height = `${Math.min(el.scrollHeight, LABEL_INPUT_MAX_HEIGHT)}px`;
+}
 
 interface Props {
   avatarId: string;
@@ -360,8 +367,7 @@ export function AvatarVariationsPanel({
   useEffect(() => {
     const el = editingInputRef.current;
     if (editingLabelId && el) {
-      el.style.height = "auto";
-      el.style.height = `${el.scrollHeight}px`;
+      autoSizeLabelInput(el);
       el.focus();
       el.setSelectionRange(el.value.length, el.value.length);
     }
@@ -529,11 +535,10 @@ export function AvatarVariationsPanel({
                             ref={editingInputRef}
                             value={editingLabelValue}
                             rows={1}
-                            maxLength={60}
+                            maxLength={AVATAR_VARIATION_LABEL_MAX_LENGTH}
                             onChange={(e) => {
                               setEditingLabelValue(e.target.value);
-                              e.target.style.height = "auto";
-                              e.target.style.height = `${e.target.scrollHeight}px`;
+                              autoSizeLabelInput(e.target);
                             }}
                             onBlur={() => void handleLabelSave(variation.id)}
                             onKeyDown={(e) => {
@@ -543,12 +548,12 @@ export function AvatarVariationsPanel({
                               }
                               if (e.key === "Escape") setEditingLabelId(null);
                             }}
-                            className="mt-1 w-full resize-none overflow-hidden border-0 border-border border-b bg-transparent text-center text-[0.7rem] leading-snug focus:outline-none"
+                            className="mt-1 w-full resize-none overflow-y-auto break-words border-0 border-border border-b bg-transparent text-center text-[0.7rem] leading-snug focus:outline-none"
                           />
                         ) : (
                           <button
                             type="button"
-                            className="mt-1 w-full cursor-text whitespace-normal break-words bg-transparent text-center text-[0.7rem] text-muted-foreground hover:text-foreground"
+                            className="mt-1 line-clamp-2 w-full cursor-text whitespace-normal break-words bg-transparent text-center text-[0.7rem] text-muted-foreground leading-snug hover:text-foreground"
                             title={`${variation.label} — click to rename`}
                             onClick={(e) => {
                               e.stopPropagation();

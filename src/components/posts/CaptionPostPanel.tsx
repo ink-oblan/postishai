@@ -34,7 +34,7 @@ function PropLabel({ children }: { children: React.ReactNode }) {
 }
 
 function PropValue({ children }: { children: React.ReactNode }) {
-  return <p className="font-medium text-sm">{children}</p>;
+  return <p className="break-words font-medium text-sm">{children}</p>;
 }
 
 function getCaptionText(metadata: PlatformMetadata | null): string {
@@ -164,7 +164,9 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
         <PropLabel>Title</PropLabel>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
-            <h1 className="truncate font-semibold text-xl">{savedTitle}</h1>
+            <h1 className="truncate font-semibold text-xl" title={savedTitle}>
+              {savedTitle}
+            </h1>
           </div>
           <div className="shrink-0">
             <Button
