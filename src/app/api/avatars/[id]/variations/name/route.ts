@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { clampAvatarVariationLabel } from "@/lib/avatar-variation-label";
 import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import { renderPromptTemplate } from "@/lib/prompts";
@@ -30,10 +31,7 @@ export const POST = withAuth(async function POST(
 
   const adapter = getLLMAdapter(NAME_MODEL_ID);
   const raw = await adapter.generate(prompt);
-  const name = raw
-    .trim()
-    .replace(/^["']|["']$/g, "")
-    .trim();
+  const name = clampAvatarVariationLabel(raw.trim().replace(/^["']|["']$/g, ""));
 
   return NextResponse.json({ name });
 });

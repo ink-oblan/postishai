@@ -167,7 +167,9 @@ export function AvatarPageContent({ avatar, initialVariations, posts }: Props) {
                       href={`/posts/${post.id}`}
                       className="-mx-2 flex items-center justify-between rounded px-2 py-2.5 transition-colors hover:bg-muted/50"
                     >
-                      <p className="truncate text-sm">{post.title}</p>
+                      <p className="min-w-0 truncate text-sm" title={post.title}>
+                        {post.title}
+                      </p>
                       <div className="ml-3 flex shrink-0 gap-2">
                         <Badge variant="outline" className="text-xs">
                           {PLATFORM_LABELS[post.platform]}

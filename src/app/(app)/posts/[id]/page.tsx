@@ -50,6 +50,7 @@ export default async function PostDetailPage({
             post={{
               id: post.id,
               title: post.title,
+              platform: post.platform,
               platformLabel: PLATFORM_LABELS[post.platform],
               metadata: post.metadata as PlatformMetadata | null,
               metadataStatus: post.metadataStatus,
