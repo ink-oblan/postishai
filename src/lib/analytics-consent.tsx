@@ -2,6 +2,7 @@
 
 import posthog from "posthog-js";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { readStorage, writeStorage } from "@/lib/safe-storage";
 
 export type AnalyticsConsent = "granted" | "denied" | "unknown";
 
@@ -25,7 +26,7 @@ export function AnalyticsConsentProvider({ children }: { children: React.ReactNo
   // Restore any previous decision. Storing the consent choice itself is a
   // strictly necessary preference, so it is safe to persist without consent.
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = readStorage(STORAGE_KEY);
     if (stored === "granted" || stored === "denied") setConsent(stored);
     setLoaded(true);
   }, []);
@@ -39,12 +40,12 @@ export function AnalyticsConsentProvider({ children }: { children: React.ReactNo
   }, [consent]);
 
   const grant = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, "granted");
+    writeStorage(STORAGE_KEY, "granted");
     setConsent("granted");
   }, []);
 
   const deny = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, "denied");
+    writeStorage(STORAGE_KEY, "denied");
     setConsent("denied");
   }, []);
 

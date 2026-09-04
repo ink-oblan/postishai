@@ -15,13 +15,14 @@ export interface DashboardData {
     avatar: { name: string } | null;
     createdAt: string;
   }>;
+  hasBrandProfile: boolean;
 }
 
 export async function fetchDashboardData(userId: string): Promise<DashboardData> {
   const activeWhere = { archivedAt: null, userId };
   debugLog(`[dashboard] Fetching dashboard data for userId=${userId}`);
 
-  const [avatarCount, postCount, recentPosts, statusCounts] = await Promise.all([
+  const [avatarCount, postCount, recentPosts, statusCounts, brandProfile] = await Promise.all([
     prisma.avatar.count({ where: activeWhere }),
     prisma.post.count({ where: activeWhere }),
     prisma.post.findMany({
@@ -42,6 +43,7 @@ export async function fetchDashboardData(userId: string): Promise<DashboardData>
       where: activeWhere,
       _count: true,
     }),
+    prisma.brandProfile.findFirst({ where: { userId }, select: { id: true } }),
   ]);
 
   const byStatus = Object.fromEntries(statusCounts.map((s) => [s.status, s._count]));
@@ -59,5 +61,6 @@ export async function fetchDashboardData(userId: string): Promise<DashboardData>
       ...p,
       createdAt: p.createdAt.toISOString(),
     })),
+    hasBrandProfile: brandProfile !== null,
   };
 }

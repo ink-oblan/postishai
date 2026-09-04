@@ -4,14 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type NextRouteContext = { params: Promise<Record<string, string>> };
 
-const { mockGetSessionCookie, mockVerifySessionToken, mockPrisma } = vi.hoisted(() => ({
+const { mockGetSessionCookie, mockGetValidSession } = vi.hoisted(() => ({
   mockGetSessionCookie: vi.fn(),
-  mockVerifySessionToken: vi.fn(),
-  mockPrisma: {
-    session: {
-      findUnique: vi.fn(),
-    },
-  },
+  mockGetValidSession: vi.fn(),
 }));
 
 vi.mock("@prisma/client", () => ({
@@ -20,11 +15,7 @@ vi.mock("@prisma/client", () => ({
 
 vi.mock("@/lib/auth/session", () => ({
   getSessionCookie: (...args: unknown[]) => mockGetSessionCookie(...args),
-  verifySessionToken: (...args: unknown[]) => mockVerifySessionToken(...args),
-}));
-
-vi.mock("@/lib/db", () => ({
-  prisma: mockPrisma,
+  getValidSession: (...args: unknown[]) => mockGetValidSession(...args),
 }));
 
 vi.mock("react", () => ({
@@ -64,41 +55,28 @@ describe("verifySession", () => {
 
   it("returns null when token is invalid", async () => {
     mockGetSessionCookie.mockResolvedValue("bad-token");
-    mockVerifySessionToken.mockResolvedValue(null);
+    mockGetValidSession.mockResolvedValue(null);
     const result = await verifySession();
     expect(result).toBeNull();
   });
 
   it("returns null when session not found in DB", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue(null);
+    mockGetValidSession.mockResolvedValue(null);
     const result = await verifySession();
     expect(result).toBeNull();
   });
 
   it("returns null when session is expired", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
-      userId: "user-1",
-      expiresAt: new Date(Date.now() - 1000),
-      user: fakeUser,
-    });
+    mockGetValidSession.mockResolvedValue(null);
     const result = await verifySession();
     expect(result).toBeNull();
   });
 
   it("returns session when everything is valid", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
-      userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
-      user: fakeUser,
-    });
+    mockGetValidSession.mockResolvedValue({ userId: "user-1", user: fakeUser });
     const result = await verifySession();
     expect(result).toEqual({ userId: "user-1", user: fakeUser });
   });
@@ -116,24 +94,15 @@ describe("requireSession", () => {
 
   it("returns session when authenticated", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
-      userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
-      user: fakeUser,
-    });
+    mockGetValidSession.mockResolvedValue({ userId: "user-1", user: fakeUser });
     const result = await requireSession();
     expect(result.userId).toBe("user-1");
   });
 
   it("throws ApprovalRequiredError when user is pending", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
+    mockGetValidSession.mockResolvedValue({
       userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
       user: { ...fakeUser, approvedAt: null },
     });
 
@@ -164,13 +133,7 @@ describe("withAuth", () => {
 
   it("calls handler with session when authenticated", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
-      userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
-      user: fakeUser,
-    });
+    mockGetValidSession.mockResolvedValue({ userId: "user-1", user: fakeUser });
 
     const handler = vi.fn().mockResolvedValue(new Response("ok"));
     const wrapped = withAuth(handler);
@@ -191,11 +154,8 @@ describe("withAuth", () => {
 
   it("returns 403 when authenticated user is pending approval", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
+    mockGetValidSession.mockResolvedValue({
       userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
       user: { ...fakeUser, approvedAt: null },
     });
 
@@ -214,13 +174,7 @@ describe("withAuth", () => {
 
   it("catches AuthError from handler and returns 401", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
-      userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
-      user: fakeUser,
-    });
+    mockGetValidSession.mockResolvedValue({ userId: "user-1", user: fakeUser });
 
     const handler = vi.fn().mockRejectedValue(new AuthError());
     const wrapped = withAuth(handler);
@@ -236,13 +190,7 @@ describe("withAuth", () => {
 
   it("re-throws non-AuthError errors", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
-      userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
-      user: fakeUser,
-    });
+    mockGetValidSession.mockResolvedValue({ userId: "user-1", user: fakeUser });
 
     const handler = vi.fn().mockRejectedValue(new Error("unexpected"));
     const wrapped = withAuth(handler);
@@ -255,13 +203,7 @@ describe("withAuth", () => {
 
   it("catches P2025 Prisma error from handler and returns 404", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
-      userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
-      user: fakeUser,
-    });
+    mockGetValidSession.mockResolvedValue({ userId: "user-1", user: fakeUser });
 
     const handler = vi
       .fn()
@@ -275,13 +217,7 @@ describe("withAuth", () => {
 
   it("catches SyntaxError from handler and returns 400", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
-      userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
-      user: fakeUser,
-    });
+    mockGetValidSession.mockResolvedValue({ userId: "user-1", user: fakeUser });
 
     const handler = vi.fn().mockRejectedValue(new SyntaxError("Unexpected token"));
     const response = await withAuth(handler)(
@@ -294,13 +230,7 @@ describe("withAuth", () => {
 
 function mockValidSession(role: "USER" | "ADMIN" | "SUPER_ADMIN") {
   mockGetSessionCookie.mockResolvedValue("good-token");
-  mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-  mockPrisma.session.findUnique.mockResolvedValue({
-    id: "sess-1",
-    userId: "user-1",
-    expiresAt: new Date(Date.now() + 86400000),
-    user: { ...fakeUser, role },
-  });
+  mockGetValidSession.mockResolvedValue({ userId: "user-1", user: { ...fakeUser, role } });
 }
 
 describe("withAdminAuth", () => {
@@ -319,11 +249,8 @@ describe("withAdminAuth", () => {
 
   it("returns 403 when user is pending approval", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
+    mockGetValidSession.mockResolvedValue({
       userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
       user: { ...fakeUser, approvedAt: null },
     });
     const response = await withAdminAuth(vi.fn())(
@@ -393,11 +320,8 @@ describe("withSuperAdminAuth", () => {
 
   it("returns 403 when user is pending approval", async () => {
     mockGetSessionCookie.mockResolvedValue("good-token");
-    mockVerifySessionToken.mockResolvedValue({ sessionId: "sess-1", userId: "user-1" });
-    mockPrisma.session.findUnique.mockResolvedValue({
-      id: "sess-1",
+    mockGetValidSession.mockResolvedValue({
       userId: "user-1",
-      expiresAt: new Date(Date.now() + 86400000),
       user: { ...fakeUser, approvedAt: null },
     });
     const response = await withSuperAdminAuth(vi.fn())(

@@ -2,8 +2,7 @@ import { Role } from "@prisma/client";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { cache } from "react";
-import { prisma } from "@/lib/db";
-import { getSessionCookie, verifySessionToken } from "./session";
+import { getSessionCookie, getValidSession } from "./session";
 
 export class AuthError extends Error {
   constructor() {
@@ -29,20 +28,7 @@ export class ForbiddenError extends Error {
 export const verifySession = cache(async () => {
   const token = await getSessionCookie();
   if (!token) return null;
-
-  const payload = await verifySessionToken(token);
-  if (!payload) return null;
-
-  const session = await prisma.session.findUnique({
-    where: { id: payload.sessionId },
-    include: { user: true },
-  });
-
-  if (!session || session.expiresAt < new Date()) {
-    return null;
-  }
-
-  return { userId: session.userId, user: session.user };
+  return getValidSession(token);
 });
 
 export async function requireSession() {

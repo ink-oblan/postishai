@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { config } from "../config";
 import { getSessionSecret } from "./secret";
 
-const SESSION_COOKIE = "session";
+export const SESSION_COOKIE = "session";
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export async function createSession(userId: string): Promise<void> {
@@ -38,6 +38,29 @@ export async function verifySessionToken(
   } catch {
     return null;
   }
+}
+
+/**
+ * Verifies the JWT *and* that a matching, unexpired Session row still exists.
+ * This is the source of truth for session validity — a cryptographically
+ * valid but DB-orphaned token (e.g. session deleted/expired, or a cookie
+ * left over from a different database) must be treated as logged out here,
+ * not just where the JWT is checked.
+ */
+export async function getValidSession(token: string) {
+  const payload = await verifySessionToken(token);
+  if (!payload) return null;
+
+  const session = await prisma.session.findUnique({
+    where: { id: payload.sessionId },
+    include: { user: true },
+  });
+
+  if (!session || session.expiresAt < new Date()) {
+    return null;
+  }
+
+  return { userId: session.userId, user: session.user };
 }
 
 export async function deleteSession(): Promise<void> {
