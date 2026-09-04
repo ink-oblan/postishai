@@ -240,6 +240,7 @@ export function ColorPalettePicker({
               message ? "font-medium text-red-500" : "text-muted-foreground"
             }`}
           >
+            {message && <p className="text-red-500 text-xs">{message}</p>}
             <p>
               Add{" "}
               {missing > 0
@@ -247,9 +248,7 @@ export function ColorPalettePicker({
                 : `up to ${maxColors - colors.length} more color${maxColors - colors.length === 1 ? "" : "s"}`}{" "}
               ({minColors}–{maxColors} total)
             </p>
-            <p className={message ? "text-red-500 text-xs" : "text-xs opacity-75"}>
-              {message ?? "Primary & Secondary required"}
-            </p>
+            {!message && <p className="text-xs opacity-75">Primary & Secondary required</p>}
           </div>
         </div>
       </div>

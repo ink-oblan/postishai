@@ -4,6 +4,7 @@ import {
   type BrandFormData,
   brandFieldsForStep,
   type ColorItem,
+  fieldStep,
   isValidHexColor,
   validateField,
 } from "@/lib/brand-fields";
@@ -21,19 +22,34 @@ export interface StepValidation {
   showIncomplete: boolean;
 }
 
-/** Bad hex codes parse fine as list entries but aren't a colour the API will store. */
-function validateColorHexes(colors: ColorItem[]): ValidationError | null {
+/** What a palette can be wrong about beyond its size: bad hex codes, and repeated colours. */
+function validateColors(colors: ColorItem[]): ValidationError | null {
   const invalid = colors.filter((color) => !isValidHexColor(color.hex)).length;
-  if (invalid === 0) return null;
+  if (invalid > 0) {
+    return {
+      field: "colors",
+      kind: "invalid",
+      message:
+        invalid === 1
+          ? "One colour isn't a valid hex code"
+          : `${invalid} colours aren't valid hex codes`,
+      current: colors.length - invalid,
+      required: colors.length,
+    };
+  }
+
+  const hexes = colors.map((color) => color.hex.toLowerCase());
+  const repeated = hexes.filter((hex, index) => hexes.indexOf(hex) !== index).length;
+  if (repeated === 0) return null;
 
   return {
     field: "colors",
     kind: "invalid",
     message:
-      invalid === 1
-        ? "One colour isn't a valid hex code"
-        : `${invalid} colours aren't valid hex codes`,
-    current: colors.length - invalid,
+      repeated === 1
+        ? "Two colours in the palette are the same"
+        : `${repeated} colours repeat one already in the palette`,
+    current: colors.length - repeated,
     required: colors.length,
   };
 }
@@ -47,8 +63,8 @@ export function validateStep(
     if (error) return [error];
 
     if (field === "colors") {
-      const hexError = validateColorHexes((formData.colors ?? []) as ColorItem[]);
-      if (hexError) return [hexError];
+      const colorError = validateColors((formData.colors ?? []) as ColorItem[]);
+      if (colorError) return [colorError];
     }
 
     return [];
@@ -70,6 +86,20 @@ export function stepValidation(
   }
 
   return { errors, showIncomplete };
+}
+
+export function apiFieldError(field: BrandFieldName, message: string): ValidationError {
+  return { field, kind: "invalid", message, current: 0, required: 0 };
+}
+
+export function withFieldError(
+  validation: StepValidation,
+  stepNumber: number,
+  error: ValidationError | null,
+): StepValidation {
+  if (!error || fieldStep(error.field) !== stepNumber) return validation;
+
+  return { ...validation, errors: { ...validation.errors, [error.field]: error } };
 }
 
 /** The one error a field is showing, or nothing while it is still only unfinished. */

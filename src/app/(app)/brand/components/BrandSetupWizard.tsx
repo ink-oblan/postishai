@@ -4,7 +4,13 @@ import type { BrandProfile } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { type BrandFieldName, type BrandFormData, seedFormData } from "@/lib/brand-fields";
+import {
+  type BrandFieldName,
+  type BrandFormData,
+  fieldStep,
+  isBrandField,
+  seedFormData,
+} from "@/lib/brand-fields";
 import { removeStorage } from "@/lib/safe-storage";
 import {
   changedFields,
@@ -15,7 +21,14 @@ import {
   restorableChanges,
   writeDraft,
 } from "../lib/draft";
-import { firstInvalidStep, stepValidation, validateStep } from "../lib/validation";
+import {
+  apiFieldError,
+  firstInvalidStep,
+  stepValidation,
+  type ValidationError,
+  validateStep,
+  withFieldError,
+} from "../lib/validation";
 import { CoreBrand } from "./CoreBrand";
 import { Video } from "./Video";
 import { Visual } from "./Visual";
@@ -56,6 +69,7 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   const [isSaving, setIsSaving] = useState(false);
   const [attemptedSteps, setAttemptedSteps] = useState<ReadonlySet<number>>(new Set());
   const [pendingFocus, setPendingFocus] = useState<BrandFieldName | null>(null);
+  const [rejectedField, setRejectedField] = useState<ValidationError | null>(null);
 
   const changes = useMemo(() => changedFields(formData, savedFormData), [formData, savedFormData]);
 
@@ -133,6 +147,10 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
 
   const handleUpdateFormData = (updates: Partial<BrandFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
+
+    if (rejectedField && rejectedField.field in updates) {
+      setRejectedField(null);
+    }
   };
 
   const handleSave = async () => {
@@ -154,6 +172,7 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
     }
 
     setIsSaving(true);
+    setRejectedField(null);
     try {
       const response = await fetch("/api/brand-profile", {
         method: "POST",
@@ -165,8 +184,18 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
       });
 
       if (!response.ok) {
-        const { error } = await response.json().catch(() => ({ error: null }));
-        throw new Error(error || "Failed to save brand profile");
+        const { error, field } = await response.json().catch(() => ({ error: null, field: null }));
+        const message = typeof error === "string" ? error : "Failed to save brand profile";
+
+        if (typeof field === "string" && isBrandField(field)) {
+          setRejectedField(apiFieldError(field, message));
+          setCurrentStep(fieldStep(field));
+          setPendingFocus(field);
+          setIsSaving(false);
+          return;
+        }
+
+        throw new Error(message);
       }
 
       removeStorage(storageKey);
@@ -180,8 +209,13 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   };
 
   const validation = useMemo(
-    () => stepValidation(currentStep, formData, attemptedSteps.has(currentStep)),
-    [currentStep, formData, attemptedSteps],
+    () =>
+      withFieldError(
+        stepValidation(currentStep, formData, attemptedSteps.has(currentStep)),
+        currentStep,
+        rejectedField,
+      ),
+    [currentStep, formData, attemptedSteps, rejectedField],
   );
 
   if (!isHydrated) {

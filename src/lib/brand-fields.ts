@@ -291,6 +291,10 @@ export function brandFieldsForStep(step: number): BrandFieldName[] {
   return BRAND_FIELD_NAMES.filter((field) => BRAND_FIELDS[field].step === step);
 }
 
+export function fieldStep(field: BrandFieldName): number {
+  return BRAND_FIELDS[field].step;
+}
+
 /** Fields whose entries can carry an uploaded asset. */
 export const ASSET_FIELDS = BRAND_FIELD_NAMES.filter(
   (field) => BRAND_FIELDS[field].kind === "fonts" || BRAND_FIELDS[field].kind === "assets",

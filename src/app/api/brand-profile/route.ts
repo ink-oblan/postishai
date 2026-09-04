@@ -1,4 +1,4 @@
-import type { BrandProfile, Prisma } from "@prisma/client";
+import { type BrandProfile, Prisma } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { extractAssetIds } from "@/lib/brand-assets";
@@ -59,6 +59,49 @@ function brandProfileError(effective: Partial<Record<BrandFieldName, unknown>>):
   return null;
 }
 
+async function brandNameTaken(
+  userId: string,
+  brandName: unknown,
+  excludeId: string | null,
+): Promise<boolean> {
+  if (typeof brandName !== "string" || brandName === "") return false;
+
+  const conflict = await prisma.brandProfile.findFirst({
+    where: {
+      userId,
+      brandName: { equals: brandName, mode: "insensitive" },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { id: true },
+  });
+
+  return conflict !== null;
+}
+
+const BRAND_NAME_CONSTRAINT = ["userId", "brandName"];
+
+function isDuplicateBrandName(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+    return false;
+  }
+
+  const target = error.meta?.target;
+  return (
+    Array.isArray(target) &&
+    target.length === BRAND_NAME_CONSTRAINT.length &&
+    BRAND_NAME_CONSTRAINT.every((column) => target.includes(column))
+  );
+}
+
+function duplicateBrandNameResponse(brandName: unknown): NextResponse {
+  const name = typeof brandName === "string" ? brandName : "";
+
+  return NextResponse.json(
+    { error: `You already have a brand named "${name}"`, field: "brandName" },
+    { status: 409 },
+  );
+}
+
 function referencedAssetIds(source: Partial<Record<BrandFieldName, unknown>>) {
   return [...new Set(ASSET_FIELDS.flatMap((field) => extractAssetIds(source[field])))];
 }
@@ -68,19 +111,21 @@ function referencedAssetIds(source: Partial<Record<BrandFieldName, unknown>>) {
  * does. Reads the ids back off the persisted row rather than the request, so a partial
  * update can't release assets held by a field it never sent.
  */
-async function linkAssets(userId: string, brandProfile: BrandProfile): Promise<void> {
+async function linkAssets(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  brandProfile: BrandProfile,
+): Promise<void> {
   const assetIds = referencedAssetIds(brandProfile);
 
-  await Promise.all([
-    prisma.brandAsset.updateMany({
-      where: { userId, id: { in: assetIds } },
-      data: { brandProfileId: brandProfile.id },
-    }),
-    prisma.brandAsset.updateMany({
-      where: { userId, brandProfileId: brandProfile.id, id: { notIn: assetIds } },
-      data: { brandProfileId: null },
-    }),
-  ]);
+  await tx.brandAsset.updateMany({
+    where: { userId, id: { in: assetIds } },
+    data: { brandProfileId: brandProfile.id },
+  });
+  await tx.brandAsset.updateMany({
+    where: { userId, brandProfileId: brandProfile.id, id: { notIn: assetIds } },
+    data: { brandProfileId: null },
+  });
 }
 
 export const POST = withAuth(async function POST(request: NextRequest, _context, { userId }) {
@@ -89,6 +134,10 @@ export const POST = withAuth(async function POST(request: NextRequest, _context,
 
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  if (typeof parsed.data.brandName === "string") {
+    parsed.data.brandName = parsed.data.brandName.trim();
   }
 
   // Reject unknown or someone else's asset ids before they are written into the brand.
@@ -115,14 +164,27 @@ export const POST = withAuth(async function POST(request: NextRequest, _context,
       return NextResponse.json({ error }, { status: 400 });
     }
 
-    // Scope the update by userId so it can only ever touch the caller's own brand.
-    const brandProfile = await prisma.brandProfile.update({
-      where: { id: brandProfileId, userId },
-      data: parsed.data,
-    });
+    if (await brandNameTaken(userId, parsed.data.brandName, brandProfileId)) {
+      return duplicateBrandNameResponse(parsed.data.brandName);
+    }
 
-    await linkAssets(userId, brandProfile);
-    return NextResponse.json(brandProfile);
+    try {
+      const brandProfile = await prisma.$transaction(async (tx) => {
+        // Scope the update by userId so it can only ever touch the caller's own brand.
+        const updated = await tx.brandProfile.update({
+          where: { id: brandProfileId, userId },
+          data: parsed.data,
+        });
+
+        await linkAssets(tx, userId, updated);
+        return updated;
+      });
+
+      return NextResponse.json(brandProfile);
+    } catch (error) {
+      if (isDuplicateBrandName(error)) return duplicateBrandNameResponse(parsed.data.brandName);
+      throw error;
+    }
   }
 
   const createError = brandProfileError({ ...seedFormData(null), ...parsed.data });
@@ -130,12 +192,25 @@ export const POST = withAuth(async function POST(request: NextRequest, _context,
     return NextResponse.json({ error: createError }, { status: 400 });
   }
 
-  const brandProfile = await prisma.brandProfile.create({
-    data: { ...parsed.data, userId },
-  });
-  await linkAssets(userId, brandProfile);
+  if (await brandNameTaken(userId, parsed.data.brandName, null)) {
+    return duplicateBrandNameResponse(parsed.data.brandName);
+  }
 
-  return NextResponse.json(brandProfile);
+  try {
+    const brandProfile = await prisma.$transaction(async (tx) => {
+      const created = await tx.brandProfile.create({
+        data: { ...parsed.data, userId },
+      });
+
+      await linkAssets(tx, userId, created);
+      return created;
+    });
+
+    return NextResponse.json(brandProfile);
+  } catch (error) {
+    if (isDuplicateBrandName(error)) return duplicateBrandNameResponse(parsed.data.brandName);
+    throw error;
+  }
 });
 
 export const GET = withAuth(async function GET(_request: NextRequest, _context, { userId }) {
