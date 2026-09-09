@@ -15,13 +15,21 @@ export const GET = withAuth(async function GET(
 ) {
   const { id } = await params;
 
-  const post = await prisma.post.findFirst({ where: { id, userId } });
+  const post = await prisma.post.findFirst({
+    where: { id, userId },
+    include: { media: { orderBy: { order: "asc" } } },
+  });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (post.status !== POST_STATUS.COMPLETED || !post.videoPath) {
+
+  const isCarousel = post.type === "CAROUSEL";
+  if (isCarousel) {
+    if (post.media.length === 0) {
+      return NextResponse.json({ error: "Slides not ready" }, { status: 409 });
+    }
+  } else if (post.status !== POST_STATUS.COMPLETED || !post.videoPath) {
     return NextResponse.json({ error: "Video not ready" }, { status: 409 });
   }
 
-  const videoBuffer = await readFile(post.videoPath);
   const metadataText = post.metadata
     ? metadataToText(post.metadata as unknown as PlatformMetadata)
     : "";
@@ -35,7 +43,16 @@ export const GET = withAuth(async function GET(
 
   // Build ZIP in memory
   const archive = archiver("zip", { zlib: { level: 6 } });
-  archive.append(videoBuffer, { name: "video.mp4" });
+
+  if (isCarousel) {
+    for (const [index, media] of post.media.entries()) {
+      const buffer = await readFile(media.path);
+      archive.append(buffer, { name: `${String(index + 1).padStart(2, "0")}.png` });
+    }
+  } else {
+    archive.append(await readFile(post.videoPath as string), { name: "video.mp4" });
+  }
+
   archive.append(Buffer.from(metadataText, "utf-8"), { name: "metadata.txt" });
   archive.finalize();
 

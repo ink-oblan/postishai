@@ -2,10 +2,14 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CaptionPostPanel } from "@/components/posts/CaptionPostPanel";
+import { CarouselPostView } from "@/components/posts/carousel/CarouselPostView";
 import { PostDetailClient } from "@/components/posts/PostDetailClient";
 import { PostEditPanel } from "@/components/posts/PostEditPanel";
 import { VideoSection } from "@/components/posts/VideoSection";
-import { POST_STATUS } from "@/lib/constants";
+import { extractAssetIds } from "@/lib/brand-assets";
+import { type FontItem, parseList } from "@/lib/brand-fields";
+import { carouselSpec } from "@/lib/carousel/platform-spec";
+import { CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { listVoices } from "@/lib/heygen/client";
 import { getLLMModelInfo } from "@/lib/llm-models/registry";
@@ -31,7 +35,71 @@ export default async function PostDetailPage({
   ]);
   if (!post) notFound();
 
-  if (post.type === "CAPTION") {
+  if (post.type === "CAROUSEL" && post.carouselStage !== CAROUSEL_STAGE.COMPLETED) {
+    const [slides, brand] = await Promise.all([
+      prisma.carouselSlide.findMany({ where: { postId: post.id }, orderBy: { order: "asc" } }),
+      post.brandProfileId
+        ? prisma.brandProfile.findUnique({ where: { id: post.brandProfileId } })
+        : null,
+    ]);
+    const spec = carouselSpec(post.platform);
+    const logoAssetId = extractAssetIds(brand?.logoPath)[0] ?? null;
+    const uploadedFonts = parseList<FontItem>(brand?.typography)
+      .filter((font) => font.source === "uploaded" && font.assetId)
+      .map((font) => ({ assetId: font.assetId as string, name: font.name }));
+
+    return (
+      <div className="space-y-6 px-6 py-8 sm:px-10">
+        <PostDetailClient postId={post.id} />
+        <div className="flex items-center gap-3">
+          <Link
+            href="/posts"
+            className="inline-flex items-center text-muted-foreground text-sm hover:text-foreground"
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back
+          </Link>
+        </div>
+
+        <div>
+          <h1 className="font-semibold text-xl">{post.title}</h1>
+          <p className="mt-1 text-muted-foreground text-sm">
+            {PLATFORM_LABELS[post.platform]} carousel ·{" "}
+            {post.carouselStage === CAROUSEL_STAGE.SCENARIO ? "Plan" : "Design"}
+          </p>
+        </div>
+
+        <CarouselPostView
+          postId={post.id}
+          platform={post.platform}
+          carouselStage={post.carouselStage}
+          minSlides={spec.minSlides}
+          maxSlides={spec.maxSlides}
+          scenarioSlides={slides.map((slide) => ({
+            id: slide.id,
+            headline: slide.headline ?? "",
+            body: slide.body ?? "",
+            visualPrompt: slide.visualPrompt,
+            layout: slide.layout,
+          }))}
+          editorSlides={slides.map((slide) => ({
+            id: slide.id,
+            order: slide.order,
+            headline: slide.headline,
+            visualPrompt: slide.visualPrompt,
+            status: slide.status,
+            hasImage: slide.imagePath !== null,
+            imageVersion: slide.updatedAt.getTime(),
+            design: slide.design,
+          }))}
+          logoAssetId={logoAssetId}
+          uploadedFonts={uploadedFonts}
+        />
+      </div>
+    );
+  }
+
+  if (post.type === "CAPTION" || post.type === "CAROUSEL") {
     return (
       <div className="space-y-6 px-6 py-8 sm:px-10">
         <PostDetailClient postId={post.id} />

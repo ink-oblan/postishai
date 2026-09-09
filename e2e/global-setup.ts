@@ -23,6 +23,8 @@ export default async function globalSetup(config: FullConfig) {
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Sign in" }).first().click();
     await page.waitForURL("**/dashboard", { timeout: 30_000 });
+    // The consent banner is a fixed bottom bar that intercepts clicks on anything under it.
+    await page.evaluate(() => window.localStorage.setItem("postishai-analytics-consent", "denied"));
     await page.context().storageState({ path: STORAGE_STATE });
   } finally {
     await browser.close();
