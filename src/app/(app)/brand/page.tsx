@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/auth/dal";
@@ -48,13 +49,25 @@ export default async function BrandPage() {
                 const logoAssetId = parseList<BrandAssetRef>(brandProfile.logoPath).find(
                   (logo) => logo.assetId,
                 )?.assetId;
+                const logoGutter = logoAssetId ? "pr-36" : "";
 
                 return (
                   <div
                     key={brandProfile.id}
-                    className="flex h-full flex-col gap-4 rounded-lg border border-border bg-card p-6"
+                    className="relative flex h-full flex-col gap-4 rounded-lg border border-border bg-card p-6"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    {logoAssetId && (
+                      <Image
+                        src={`/api/brand-profile/file?id=${encodeURIComponent(logoAssetId)}`}
+                        alt={`${brandProfile.brandName} logo`}
+                        width={128}
+                        height={128}
+                        unoptimized
+                        className="absolute top-6 right-6 h-32 w-32 rounded-md border border-border bg-muted/30 object-contain p-2"
+                      />
+                    )}
+
+                    <div className={`flex items-start justify-between gap-3 ${logoGutter}`}>
                       <div className="min-w-0">
                         <h2 className="truncate font-semibold text-xl">{brandProfile.brandName}</h2>
                         {brandProfile.topic && (
@@ -63,21 +76,11 @@ export default async function BrandPage() {
                           </p>
                         )}
                       </div>
-                      <div className="flex flex-shrink-0 items-center gap-3">
-                        <BrandDraftBadge userId={session.userId} brandId={brandProfile.id} />
-                        {logoAssetId && (
-                          // biome-ignore lint/performance/noImgElement: auth-gated route the next/image loader can't fetch
-                          <img
-                            src={`/api/brand-profile/file?id=${encodeURIComponent(logoAssetId)}`}
-                            alt={`${brandProfile.brandName} logo`}
-                            className="h-12 w-12 rounded-md border border-border bg-muted/30 object-contain p-1"
-                          />
-                        )}
-                      </div>
+                      <BrandDraftBadge userId={session.userId} brandId={brandProfile.id} />
                     </div>
 
                     {brandProfile.targetAudience && (
-                      <div>
+                      <div className={logoGutter}>
                         <h3 className="font-semibold text-muted-foreground text-sm">
                           Target Audience
                         </h3>
@@ -91,7 +94,7 @@ export default async function BrandPage() {
                     )}
 
                     {brandProfile.mission && (
-                      <div>
+                      <div className={logoGutter}>
                         <h3 className="font-semibold text-muted-foreground text-sm">Mission</h3>
                         <p className="mt-1 line-clamp-3 text-sm" title={brandProfile.mission}>
                           {brandProfile.mission}
