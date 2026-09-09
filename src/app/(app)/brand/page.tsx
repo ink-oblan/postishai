@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/auth/dal";
-import { type ColorItem, type FontItem, parseList } from "@/lib/brand-fields";
+import { type BrandAssetRef, type ColorItem, type FontItem, parseList } from "@/lib/brand-fields";
 import { MAX_BRAND_PROFILES } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { BrandDraftBadge } from "./components/BrandDraftBadge";
@@ -45,6 +45,9 @@ export default async function BrandPage() {
               {brandProfiles.map((brandProfile) => {
                 const colors = parseList<ColorItem>(brandProfile.colors);
                 const fonts = parseList<FontItem>(brandProfile.typography);
+                const logoAssetId = parseList<BrandAssetRef>(brandProfile.logoPath).find(
+                  (logo) => logo.assetId,
+                )?.assetId;
 
                 return (
                   <div
@@ -60,7 +63,17 @@ export default async function BrandPage() {
                           </p>
                         )}
                       </div>
-                      <BrandDraftBadge userId={session.userId} brandId={brandProfile.id} />
+                      <div className="flex flex-shrink-0 items-center gap-3">
+                        <BrandDraftBadge userId={session.userId} brandId={brandProfile.id} />
+                        {logoAssetId && (
+                          // biome-ignore lint/performance/noImgElement: auth-gated route the next/image loader can't fetch
+                          <img
+                            src={`/api/brand-profile/file?id=${encodeURIComponent(logoAssetId)}`}
+                            alt={`${brandProfile.brandName} logo`}
+                            className="h-12 w-12 rounded-md border border-border bg-muted/30 object-contain p-1"
+                          />
+                        )}
+                      </div>
                     </div>
 
                     {brandProfile.targetAudience && (
