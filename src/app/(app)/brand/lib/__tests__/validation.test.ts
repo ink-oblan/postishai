@@ -79,6 +79,17 @@ describe("validateStep", () => {
     });
   });
 
+  it("holds two spellings of one colour, not just two identical strings", () => {
+    const spellings = [
+      { id: "c1", name: "Snow", hex: "#fff" },
+      { id: "c2", name: "White", hex: "#FFFFFF" },
+    ];
+
+    expect(validateStep(1, { ...complete, colors: spellings })).toMatchObject([
+      { field: "colors", kind: "invalid" },
+    ]);
+  });
+
   it("passes a full set of valid hex codes", () => {
     expect(validateStep(1, complete)).toEqual([]);
   });

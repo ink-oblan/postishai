@@ -158,10 +158,21 @@ export function isValidHexColor(hex: string): boolean {
   return HEX_PATTERN.test(hex);
 }
 
+export function normalizeHexColor(hex: string): string | null {
+  if (!isValidHexColor(hex)) return null;
+
+  const digits = hex.slice(1).toLowerCase();
+  const expanded = digits.length <= 4 ? [...digits].map((digit) => digit + digit).join("") : digits;
+  const opaque = expanded.length === 8 && expanded.endsWith("ff");
+
+  return `#${opaque ? expanded.slice(0, 6) : expanded}`;
+}
+
 function parseColor(raw: Record<string, unknown>): ColorItem | undefined {
-  const hex = str(raw.hex);
+  const value = str(raw.hex);
   // A colour is its hex — without one there is nothing for the picker to draw or edit.
-  if (!hex || !isValidHexColor(hex)) return undefined;
+  const hex = value ? normalizeHexColor(value) : null;
+  if (!hex) return undefined;
 
   return { id: str(raw.id) ?? "", name: str(raw.name) ?? "", hex };
 }

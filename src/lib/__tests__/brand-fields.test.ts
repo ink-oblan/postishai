@@ -7,6 +7,7 @@ import {
   isListField,
   isValidHexColor,
   MAX_TEXT_LENGTH,
+  normalizeHexColor,
   parseWholeField,
   seedFormData,
   validateField,
@@ -98,6 +99,13 @@ describe("parseWholeField", () => {
     ]);
   });
 
+  it("stores a colour in one spelling, whichever the caller sent", () => {
+    expect(parseWholeField("colors", [{ hex: "#FFF" }, { hex: "#ffffffff" }])).toEqual([
+      { id: "", name: "", hex: "#ffffff" },
+      { id: "", name: "", hex: "#ffffff" },
+    ]);
+  });
+
   it("reads a font with no source as a library one, the way the badge does", () => {
     expect(parseWholeField("typography", [{ id: "f1", name: "Inter" }])).toEqual([
       { id: "f1", name: "Inter", source: "builtin" },
@@ -118,6 +126,28 @@ describe("parseWholeField", () => {
 
   it("takes an empty list as an emptied one", () => {
     expect(parseWholeField("colors", [])).toEqual([]);
+  });
+});
+
+describe("normalizeHexColor", () => {
+  it("reduces every spelling of one colour to the same value", () => {
+    expect(["#fff", "#ffff", "#FFFFFF", "#ffffffff"].map(normalizeHexColor)).toEqual([
+      "#ffffff",
+      "#ffffff",
+      "#ffffff",
+      "#ffffff",
+    ]);
+  });
+
+  it("keeps an alpha channel that actually changes the colour", () => {
+    expect(normalizeHexColor("#FF000080")).toBe("#ff000080");
+    expect(normalizeHexColor("#f00c")).toBe("#ff0000cc");
+    expect(normalizeHexColor("#0000ff")).toBe("#0000ff");
+  });
+
+  it("has no value for what isn't a colour", () => {
+    expect(normalizeHexColor("#12345")).toBeNull();
+    expect(normalizeHexColor("red")).toBeNull();
   });
 });
 

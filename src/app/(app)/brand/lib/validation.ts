@@ -6,6 +6,7 @@ import {
   type ColorItem,
   fieldStep,
   isValidHexColor,
+  normalizeHexColor,
   validateField,
 } from "@/lib/brand-fields";
 
@@ -38,7 +39,7 @@ function validateColors(colors: ColorItem[]): ValidationError | null {
     };
   }
 
-  const hexes = colors.map((color) => color.hex.toLowerCase());
+  const hexes = colors.map((color) => normalizeHexColor(color.hex) ?? color.hex.toLowerCase());
   const repeated = hexes.filter((hex, index) => hexes.indexOf(hex) !== index).length;
   if (repeated === 0) return null;
 
@@ -54,11 +55,6 @@ function validateColors(colors: ColorItem[]): ValidationError | null {
   };
 }
 
-/**
- * Whether the name is one of the user's other brands, matched the way the API matches it:
- * trimmed and case-insensitively. The wizard is handed the names it already loaded, so this
- * answers while the user types instead of waiting for the save to come back with a 409.
- */
 function duplicateNameError(
   brandName: unknown,
   takenNames: readonly string[],
