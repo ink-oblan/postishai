@@ -26,7 +26,6 @@ export function NewBrandButton({ userId, atLimit }: NewBrandButtonProps) {
     setHasDraft(false);
   };
 
-  // Nothing to resume into either: /brand/new turns the user straight back around.
   if (atLimit) {
     return (
       <span title={`You can have up to ${MAX_BRAND_PROFILES} brands`}>

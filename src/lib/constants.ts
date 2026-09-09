@@ -42,7 +42,6 @@ export const JOB_STATUS = {
 
 export type JobStatusValue = (typeof JOB_STATUS)[keyof typeof JOB_STATUS];
 
-/** How many brands one user can keep. A flat cap for now; it will follow the plan later. */
 export const MAX_BRAND_PROFILES = 5;
 
 export const STATUS_LABELS: Record<PostStatusValue, string> = {

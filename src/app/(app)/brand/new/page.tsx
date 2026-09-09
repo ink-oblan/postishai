@@ -16,7 +16,6 @@ export default async function BrandNewPage() {
     select: { brandName: true },
   });
 
-  // The API refuses the save anyway; sending the user back beats a form that can't be submitted.
   if (brandProfiles.length >= MAX_BRAND_PROFILES) {
     redirect("/brand");
   }

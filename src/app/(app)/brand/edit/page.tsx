@@ -24,7 +24,6 @@ export default async function BrandEditPage(props: { searchParams: Promise<{ id?
     redirect("/brand");
   }
 
-  // Every brand but this one — keeping its own name is not a clash.
   const otherProfiles = await prisma.brandProfile.findMany({
     where: { userId: session.userId, id: { not: brandProfile.id } },
     select: { brandName: true },

@@ -39,7 +39,6 @@ import { WizardProgress } from "./WizardProgress";
 interface BrandSetupWizardProps {
   initialData: BrandProfile | null;
   userId: string;
-  /** Names of the user's other brands, so a clash is caught as they type rather than on save. */
   takenNames: string[];
 }
 
