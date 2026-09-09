@@ -161,9 +161,50 @@ model Post {
   metadataErrorMessage String?
   metadataUpdatedAt    DateTime?
   errorMessage         String?
+  carouselStage        String?
+  carouselFonts        Json?
+  carouselColors       Json?
+  slides               CarouselSlide[]
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
   archivedAt           DateTime?
+}
+
+model CarouselSlide {
+  id     String @id @default(cuid())
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  order  Int
+
+  headline     String?
+  body         String?
+  visualPrompt String
+  layout       String  @default("statement")
+
+  imagePath    String?
+  imageModel   String?
+  status       String  @default("PENDING")
+  errorMessage String?
+
+  design Json?
+
+  images    CarouselSlideImage[]
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@unique([postId, order])
+  @@index([postId])
+}
+
+model CarouselSlideImage {
+  id        String        @id @default(cuid())
+  slideId   String
+  slide     CarouselSlide @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  imagePath String
+  prompt    String
+  createdAt DateTime      @default(now())
+
+  @@index([slideId])
 }
 
 model PostMedia {
@@ -191,6 +232,7 @@ enum Platform {
 enum PostType {
   AVATAR_VIDEO
   CAPTION
+  CAROUSEL
 }
 
 model WaitlistEntry {

@@ -11,6 +11,7 @@ export const MOCK_TIMINGS = {
   AVATAR_IMAGE: 10000, // 10 seconds for avatar image generation
   POST_VIDEO: 15000, // 15 seconds for video generation
   POST_CAPTION: 5000, // 5 seconds for caption generation
+  CAROUSEL_SLIDE: 3000, // 3 seconds per carousel slide background
 } as const;
 
 export function isMockEnabled(): boolean {

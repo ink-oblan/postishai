@@ -1,4 +1,8 @@
+import "dotenv/config";
 import { defineConfig, devices } from "@playwright/test";
+import { STORAGE_STATE } from "./e2e/global-setup";
+
+const AUTHENTICATED_SPECS = /.*\.auth\.spec\.ts/;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -7,6 +11,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
+  globalSetup: "./e2e/global-setup.ts",
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
@@ -15,6 +20,12 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      testIgnore: AUTHENTICATED_SPECS,
+    },
+    {
+      name: "chromium-auth",
+      use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
+      testMatch: AUTHENTICATED_SPECS,
     },
   ],
   webServer: {

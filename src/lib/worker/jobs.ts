@@ -5,6 +5,7 @@ import type {
   AvatarAnalyzePayload,
   AvatarGeneratePayload,
   AvatarVariationGeneratePayload,
+  CarouselSlideImagePayload,
   JobDefinition,
   JobPayloadMap,
   JobType,
@@ -19,6 +20,7 @@ export type {
   AvatarAnalyzePayload,
   AvatarGeneratePayload,
   AvatarVariationGeneratePayload,
+  CarouselSlideImagePayload,
   JobPayloadMap,
   JobType,
   PostGeneratePayload,
@@ -115,4 +117,8 @@ export function enqueuePostMetadataGenerateJob(payload: PostMetadataGeneratePayl
 
 export function enqueuePostGenerateJob(payload: PostGeneratePayload) {
   return enqueueJob("post.generate", payload);
+}
+
+export function enqueueCarouselSlideImageJob(payload: CarouselSlideImagePayload) {
+  return enqueueJob("carousel.slide.image.generate", payload);
 }
