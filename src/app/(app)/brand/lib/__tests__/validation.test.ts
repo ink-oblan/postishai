@@ -83,6 +83,19 @@ describe("validateStep", () => {
     expect(validateStep(1, complete)).toEqual([]);
   });
 
+  it("holds a name another brand already has, however it is cased or padded", () => {
+    expect(validateStep(0, complete, ["Acme"])).toMatchObject([
+      { field: "brandName", kind: "invalid" },
+    ]);
+    expect(validateStep(0, complete, ["  acME "])).toHaveLength(1);
+    expect(validateStep(0, { ...complete, brandName: " Acme " }, ["Acme"])).toHaveLength(1);
+  });
+
+  it("takes a name no other brand has", () => {
+    expect(validateStep(0, complete, ["Other", "Acme Coffee"])).toEqual([]);
+    expect(validateStep(0, complete, [])).toEqual([]);
+  });
+
   it("holds step 3 until both tone questions have been answered", () => {
     expect(validateStep(2, { ...complete, youFormality: null })).toMatchObject([
       { field: "youFormality", kind: "incomplete" },
@@ -127,5 +140,9 @@ describe("firstInvalidStep", () => {
 
   it("reports the earliest one, not the one the user is looking at", () => {
     expect(firstInvalidStep({ ...complete, brandName: "", emojiLevel: null }, 4)).toBe(0);
+  });
+
+  it("sends a save back to a name another brand already has", () => {
+    expect(firstInvalidStep(complete, 4, ["Acme"])).toBe(0);
   });
 });

@@ -12,6 +12,7 @@ import {
   seedFormData,
   validateField,
 } from "@/lib/brand-fields";
+import { MAX_BRAND_PROFILES } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
 
@@ -185,6 +186,14 @@ export const POST = withAuth(async function POST(request: NextRequest, _context,
       if (isDuplicateBrandName(error)) return duplicateBrandNameResponse(parsed.data.brandName);
       throw error;
     }
+  }
+
+  const brandCount = await prisma.brandProfile.count({ where: { userId } });
+  if (brandCount >= MAX_BRAND_PROFILES) {
+    return NextResponse.json(
+      { error: `You can have up to ${MAX_BRAND_PROFILES} brands` },
+      { status: 403 },
+    );
   }
 
   const createError = brandProfileError({ ...seedFormData(null), ...parsed.data });

@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth/dal";
+import { MAX_BRAND_PROFILES } from "@/lib/constants";
+import { prisma } from "@/lib/db";
 import { BrandSetupWizard } from "../components/BrandSetupWizard";
 
 export const metadata = {
@@ -8,9 +11,23 @@ export const metadata = {
 export default async function BrandNewPage() {
   const session = await requireSession();
 
+  const brandProfiles = await prisma.brandProfile.findMany({
+    where: { userId: session.userId },
+    select: { brandName: true },
+  });
+
+  // The API refuses the save anyway; sending the user back beats a form that can't be submitted.
+  if (brandProfiles.length >= MAX_BRAND_PROFILES) {
+    redirect("/brand");
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <BrandSetupWizard initialData={null} userId={session.userId} />
+      <BrandSetupWizard
+        initialData={null}
+        userId={session.userId}
+        takenNames={brandProfiles.map((brandProfile) => brandProfile.brandName)}
+      />
     </div>
   );
 }

@@ -39,6 +39,8 @@ import { WizardProgress } from "./WizardProgress";
 interface BrandSetupWizardProps {
   initialData: BrandProfile | null;
   userId: string;
+  /** Names of the user's other brands, so a clash is caught as they type rather than on save. */
+  takenNames: string[];
 }
 
 const STEPS = ["Core Brand", "Visual Identity", "Tone of Voice", "Video & Meaning"];
@@ -58,7 +60,7 @@ function focusField(field: BrandFieldName): void {
     ?.focus({ preventScroll: true });
 }
 
-export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps) {
+export function BrandSetupWizard({ initialData, userId, takenNames }: BrandSetupWizardProps) {
   const router = useRouter();
   const storageKey = draftKey(userId, initialData?.id);
   const isEditing = initialData !== null;
@@ -127,7 +129,7 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   };
 
   const handleNext = () => {
-    const errors = validateStep(currentStep, formData);
+    const errors = validateStep(currentStep, formData, takenNames);
     if (errors.length > 0) {
       markAttempted([currentStep]);
       setPendingFocus(errors[0].field);
@@ -156,9 +158,9 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   const handleSave = async () => {
     // Every step, not just this one — navigation no longer blocks on an unfinished step, so
     // the user can reach the end with a required field still empty two steps back.
-    const invalidStep = firstInvalidStep(formData, STEPS.length);
+    const invalidStep = firstInvalidStep(formData, STEPS.length, takenNames);
     if (invalidStep !== null) {
-      const [firstError] = validateStep(invalidStep, formData);
+      const [firstError] = validateStep(invalidStep, formData, takenNames);
       markAttempted(STEPS.map((_, step) => step));
       setCurrentStep(invalidStep);
       setPendingFocus(firstError.field);
@@ -211,11 +213,11 @@ export function BrandSetupWizard({ initialData, userId }: BrandSetupWizardProps)
   const validation = useMemo(
     () =>
       withFieldError(
-        stepValidation(currentStep, formData, attemptedSteps.has(currentStep)),
+        stepValidation(currentStep, formData, attemptedSteps.has(currentStep), takenNames),
         currentStep,
         rejectedField,
       ),
-    [currentStep, formData, attemptedSteps, rejectedField],
+    [currentStep, formData, attemptedSteps, rejectedField, takenNames],
   );
 
   if (!isHydrated) {

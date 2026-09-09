@@ -54,13 +54,43 @@ function validateColors(colors: ColorItem[]): ValidationError | null {
   };
 }
 
+/**
+ * Whether the name is one of the user's other brands, matched the way the API matches it:
+ * trimmed and case-insensitively. The wizard is handed the names it already loaded, so this
+ * answers while the user types instead of waiting for the save to come back with a 409.
+ */
+function duplicateNameError(
+  brandName: unknown,
+  takenNames: readonly string[],
+): ValidationError | null {
+  const name = typeof brandName === "string" ? brandName.trim() : "";
+  if (name === "") return null;
+
+  const taken = takenNames.some((other) => other.trim().toLowerCase() === name.toLowerCase());
+  if (!taken) return null;
+
+  return {
+    field: "brandName",
+    kind: "invalid",
+    message: `You already have a brand named "${name}"`,
+    current: 0,
+    required: 0,
+  };
+}
+
 export function validateStep(
   stepNumber: number,
   formData: Partial<BrandFormData>,
+  takenNames: readonly string[] = [],
 ): ValidationError[] {
   return brandFieldsForStep(stepNumber).flatMap((field) => {
     const error = validateField(field, formData[field]);
     if (error) return [error];
+
+    if (field === "brandName") {
+      const duplicate = duplicateNameError(formData.brandName, takenNames);
+      if (duplicate) return [duplicate];
+    }
 
     if (field === "colors") {
       const colorError = validateColors((formData.colors ?? []) as ColorItem[]);
@@ -71,17 +101,22 @@ export function validateStep(
   });
 }
 
-export function isStepValid(stepNumber: number, formData: Partial<BrandFormData>): boolean {
-  return validateStep(stepNumber, formData).length === 0;
+export function isStepValid(
+  stepNumber: number,
+  formData: Partial<BrandFormData>,
+  takenNames: readonly string[] = [],
+): boolean {
+  return validateStep(stepNumber, formData, takenNames).length === 0;
 }
 
 export function stepValidation(
   stepNumber: number,
   formData: Partial<BrandFormData>,
   showIncomplete: boolean,
+  takenNames: readonly string[] = [],
 ): StepValidation {
   const errors: FieldErrors = {};
-  for (const error of validateStep(stepNumber, formData)) {
+  for (const error of validateStep(stepNumber, formData, takenNames)) {
     errors[error.field] = error;
   }
 
@@ -120,9 +155,10 @@ export function shownError(
 export function firstInvalidStep(
   formData: Partial<BrandFormData>,
   totalSteps: number,
+  takenNames: readonly string[] = [],
 ): number | null {
   for (let step = 0; step < totalSteps; step++) {
-    if (!isStepValid(step, formData)) return step;
+    if (!isStepValid(step, formData, takenNames)) return step;
   }
   return null;
 }

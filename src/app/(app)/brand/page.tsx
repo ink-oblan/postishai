@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/auth/dal";
 import { type ColorItem, type FontItem, parseList } from "@/lib/brand-fields";
+import { MAX_BRAND_PROFILES } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { BrandDraftBadge } from "./components/BrandDraftBadge";
 import { BrandSetupWizard } from "./components/BrandSetupWizard";
@@ -34,7 +35,10 @@ export default async function BrandPage() {
                 <h1 className="mb-2 font-bold text-3xl">Your Brand Profiles</h1>
                 <p className="text-muted-foreground">Manage your brand identities</p>
               </div>
-              <NewBrandButton userId={session.userId} />
+              <NewBrandButton
+                userId={session.userId}
+                atLimit={brandProfiles.length >= MAX_BRAND_PROFILES}
+              />
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -147,7 +151,7 @@ export default async function BrandPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <BrandSetupWizard initialData={null} userId={session.userId} />
+      <BrandSetupWizard initialData={null} userId={session.userId} takenNames={[]} />
     </div>
   );
 }

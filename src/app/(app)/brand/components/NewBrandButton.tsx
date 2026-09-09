@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MAX_BRAND_PROFILES } from "@/lib/constants";
 import { removeStorage } from "@/lib/safe-storage";
 import { draftKey, readDraft } from "../lib/draft";
 import { ResumeDraftButton } from "./ResumeDraftButton";
 
 interface NewBrandButtonProps {
   userId: string;
+  atLimit: boolean;
 }
 
-export function NewBrandButton({ userId }: NewBrandButtonProps) {
+export function NewBrandButton({ userId, atLimit }: NewBrandButtonProps) {
   const storageKey = draftKey(userId);
   const [hasDraft, setHasDraft] = useState<boolean | null>(null);
 
@@ -23,6 +25,17 @@ export function NewBrandButton({ userId }: NewBrandButtonProps) {
     removeStorage(storageKey);
     setHasDraft(false);
   };
+
+  // Nothing to resume into either: /brand/new turns the user straight back around.
+  if (atLimit) {
+    return (
+      <span title={`You can have up to ${MAX_BRAND_PROFILES} brands`}>
+        <Button variant="default" disabled>
+          Create New Brand
+        </Button>
+      </span>
+    );
+  }
 
   if (hasDraft === null) {
     return <div className="h-8 w-44 shrink-0 rounded-lg bg-muted/50" aria-hidden="true" />;
