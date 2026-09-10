@@ -1,6 +1,6 @@
 "use client";
 
-import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Copy, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,7 @@ interface LayerInspectorProps {
   layer: Layer | null;
   fonts: FontChoice[];
   onChange: (patch: Partial<Layer>) => void;
+  onDuplicate: () => void;
   onDelete: () => void;
   onRaise: () => void;
   onLower: () => void;
@@ -40,6 +41,7 @@ export function LayerInspector({
   layer,
   fonts,
   onChange,
+  onDuplicate,
   onDelete,
   onRaise,
   onLower,
@@ -55,13 +57,40 @@ export function LayerInspector({
       <div className="flex items-center justify-between">
         <p className="font-medium text-sm capitalize">{layer.type}</p>
         <div className="flex gap-1">
-          <Button type="button" variant="outline" size="sm" onClick={onLower} title="Send backward">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onLower}
+            title="Send backward (Ctrl+[)"
+          >
             <ArrowDown className="h-3.5 w-3.5" />
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onRaise} title="Bring forward">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRaise}
+            title="Bring forward (Ctrl+])"
+          >
             <ArrowUp className="h-3.5 w-3.5" />
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onDelete} title="Delete layer">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onDuplicate}
+            title="Duplicate layer (Ctrl+D)"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onDelete}
+            title="Delete layer (Delete)"
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>

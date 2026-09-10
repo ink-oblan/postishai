@@ -8,6 +8,10 @@ import type { DesignDocument, Layer as DesignLayer } from "@/lib/design/document
 
 const MIN_LAYER_SIZE = 24;
 
+const ANCHOR_RATIO = 0.02;
+const MIN_ANCHOR_PX = 5;
+const MAX_ANCHOR_PX = 9;
+
 /** Nodes the editor draws for itself, which must never appear in an exported image. */
 export const EDITOR_CHROME_NAME = "editor-chrome";
 export const BACKGROUND_NODE_NAME = "slide-background";
@@ -72,6 +76,7 @@ export function DesignStage({
 }: DesignStageProps) {
   const scale = width / spec.width;
   const height = spec.height * scale;
+  const anchor = Math.min(Math.max(width * ANCHOR_RATIO, MIN_ANCHOR_PX), MAX_ANCHOR_PX);
 
   const background = useImage(backgroundUrl);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -236,9 +241,10 @@ export function DesignStage({
           ref={transformerRef}
           rotateEnabled={false}
           ignoreStroke
-          borderStrokeWidth={2 / scale}
-          anchorSize={10 / scale}
+          borderStrokeWidth={1 / scale}
+          anchorSize={anchor / scale}
           anchorStrokeWidth={1 / scale}
+          anchorCornerRadius={2 / scale}
           boundBoxFunc={(oldBox, newBox) =>
             newBox.width < MIN_LAYER_SIZE || newBox.height < MIN_LAYER_SIZE ? oldBox : newBox
           }

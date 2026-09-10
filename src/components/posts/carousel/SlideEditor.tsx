@@ -1,7 +1,7 @@
 "use client";
 
 import type Konva from "konva";
-import { Check, ImageIcon, Loader2, Plus, Type, Undo2 } from "lucide-react";
+import { Check, ImageIcon, Loader2, Plus, Redo2, Type, Undo2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,6 +10,7 @@ import { builtinFontChoices, resolveFontFamily } from "@/components/design/font-
 import { LayerInspector } from "@/components/design/LayerInspector";
 import { rasterizeStage, waitForBackground } from "@/components/design/rasterize";
 import { useDesignEditor } from "@/components/design/useDesignEditor";
+import { EDITOR_SHORTCUTS, useEditorShortcuts } from "@/components/design/useEditorShortcuts";
 import { BackgroundPicker } from "@/components/posts/carousel/BackgroundPicker";
 import { type FilmstripSlide, SlideFilmstrip } from "@/components/posts/carousel/SlideFilmstrip";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,8 @@ interface SlideEditorProps {
   uploadedFonts: { assetId: string; name: string }[];
 }
 
-const STAGE_WIDTH = 420;
+const MAX_STAGE_WIDTH = 420;
+const MIN_STAGE_WIDTH = 160;
 
 export function SlideEditor({
   postId,
@@ -68,12 +70,14 @@ export function SlideEditor({
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const stageRef = useRef<Konva.Stage | null>(null);
+  const stageAreaRef = useRef<HTMLDivElement | null>(null);
+  const stageWidth = useFittedStageWidth(stageAreaRef, spec);
 
   const selectedSlide = slides.find((slide) => slide.id === selectedSlideId) ?? null;
 
   // Read once, on mount: the effect below is what swaps documents afterwards.
   const editor = useDesignEditor(documentFor(selectedSlide), spec);
-  const { setDocument } = editor;
+  const { setDocument, select } = editor;
 
   const fonts = useMemo(
     () => [
@@ -90,7 +94,23 @@ export function SlideEditor({
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on slide identity, or polling would discard edits
   useEffect(() => {
     setDocument(documentFor(selectedSlide), { markClean: true });
-  }, [selectedSlideId, setDocument]);
+    select(null);
+  }, [selectedSlideId, setDocument, select]);
+
+  const orderedSlides = useMemo(() => [...slides].sort((a, b) => a.order - b.order), [slides]);
+
+  const stepSlide = useCallback(
+    (delta: number) => {
+      setSelectedSlideId((current) => {
+        const index = orderedSlides.findIndex((slide) => slide.id === current);
+        if (index === -1) return orderedSlides[0]?.id ?? current;
+
+        const next = Math.min(Math.max(index + delta, 0), orderedSlides.length - 1);
+        return orderedSlides[next]?.id ?? current;
+      });
+    },
+    [orderedSlides],
+  );
 
   const anyPending = slides.some(
     (slide) =>
@@ -167,6 +187,15 @@ export function SlideEditor({
     }
   }, [editor, postId, selectedSlide]);
 
+  useEditorShortcuts(editor, {
+    enabled: !publishing,
+    onSave: () => {
+      if (editor.dirty && !saving) void saveDesign();
+    },
+    onNextSlide: () => stepSlide(1),
+    onPreviousSlide: () => stepSlide(-1),
+  });
+
   async function handlePublish() {
     if (editor.dirty && !(await saveDesign())) return;
 
@@ -222,35 +251,35 @@ export function SlideEditor({
     editor.document.layers.find((layer) => layer.id === editor.selectedId) ?? null;
 
   return (
-    <div className="space-y-4">
-      <SlideFilmstrip
-        slides={filmstrip}
-        selectedId={selectedSlideId}
-        onSelect={setSelectedSlideId}
-        aspectRatio={`${spec.width} / ${spec.height}`}
-      />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[auto_1fr]">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row">
+        {/** biome-ignore lint/a11y/noStaticElementInteractions: deselect mirrors the canvas's own click-away, and Esc already does it from the keyboard */}
         <div
-          className="mx-auto w-full lg:mx-0"
-          style={{ maxWidth: STAGE_WIDTH }}
-          data-testid="slide-stage"
+          ref={stageAreaRef}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) editor.select(null);
+          }}
+          className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden"
         >
-          <DesignStage
-            document={editor.document}
-            spec={spec}
-            width={STAGE_WIDTH}
-            backgroundUrl={backgroundUrl}
-            logoUrl={logoAssetId ? (assetId) => `/api/brand-profile/file?id=${assetId}` : undefined}
-            selectedId={editor.selectedId}
-            onSelect={editor.select}
-            onLayerChange={editor.updateLayer}
-            resolveFontFamily={resolveFontFamily}
-            stageRef={stageRef}
-          />
+          <div style={{ width: stageWidth }} data-testid="slide-stage">
+            <DesignStage
+              document={editor.document}
+              spec={spec}
+              width={stageWidth}
+              backgroundUrl={backgroundUrl}
+              logoUrl={
+                logoAssetId ? (assetId) => `/api/brand-profile/file?id=${assetId}` : undefined
+              }
+              selectedId={editor.selectedId}
+              onSelect={editor.select}
+              onLayerChange={editor.updateLayer}
+              resolveFontFamily={resolveFontFamily}
+              stageRef={stageRef}
+            />
+          </div>
         </div>
 
-        <div className="space-y-5">
+        <div className="min-h-0 w-full flex-1 space-y-5 overflow-y-auto lg:w-96 lg:flex-none lg:border-l lg:pl-6">
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -285,11 +314,23 @@ export function SlideEditor({
               type="button"
               variant="outline"
               size="sm"
+              title="Undo (Ctrl+Z)"
               onClick={editor.undo}
               disabled={!editor.canUndo}
             >
               <Undo2 className="mr-1.5 h-3.5 w-3.5" />
               Undo
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              title="Redo (Ctrl+Shift+Z)"
+              onClick={editor.redo}
+              disabled={!editor.canRedo}
+            >
+              <Redo2 className="mr-1.5 h-3.5 w-3.5" />
+              Redo
             </Button>
           </div>
 
@@ -297,6 +338,7 @@ export function SlideEditor({
             layer={selectedLayer}
             fonts={fonts}
             onChange={(patch) => editor.selectedId && editor.updateLayer(editor.selectedId, patch)}
+            onDuplicate={() => editor.selectedId && editor.duplicateLayer(editor.selectedId)}
             onDelete={() => editor.selectedId && editor.deleteLayer(editor.selectedId)}
             onRaise={() => editor.selectedId && editor.raiseLayer(editor.selectedId)}
             onLower={() => editor.selectedId && editor.lowerLayer(editor.selectedId)}
@@ -319,10 +361,19 @@ export function SlideEditor({
               }
             />
           )}
+
+          <ShortcutLegend />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+      <SlideFilmstrip
+        slides={filmstrip}
+        selectedId={selectedSlideId}
+        onSelect={setSelectedSlideId}
+        aspectRatio={`${spec.width} / ${spec.height}`}
+      />
+
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t pt-4">
         <Button
           type="button"
           variant="outline"
@@ -350,6 +401,47 @@ export function SlideEditor({
         )}
       </div>
     </div>
+  );
+}
+
+function useFittedStageWidth(
+  areaRef: React.RefObject<HTMLDivElement | null>,
+  spec: { width: number; height: number },
+): number {
+  const [width, setWidth] = useState(MAX_STAGE_WIDTH);
+
+  useEffect(() => {
+    const area = areaRef.current;
+    if (!area) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      const box = entry.contentRect;
+      const fitted = Math.min(box.width, (box.height * spec.width) / spec.height, MAX_STAGE_WIDTH);
+      setWidth(Math.max(Math.floor(fitted), MIN_STAGE_WIDTH));
+    });
+    observer.observe(area);
+
+    return () => observer.disconnect();
+  }, [areaRef, spec.width, spec.height]);
+
+  return width;
+}
+
+function ShortcutLegend() {
+  return (
+    <details className="border-t pt-3 text-muted-foreground text-xs">
+      <summary className="cursor-pointer select-none">Keyboard shortcuts</summary>
+      <div className="mt-2 space-y-1">
+        {EDITOR_SHORTCUTS.map((shortcut) => (
+          <div key={shortcut.keys} className="flex items-center gap-2">
+            <kbd className="min-w-24 rounded border bg-muted px-1.5 py-0.5 text-center font-mono text-[10px]">
+              {shortcut.keys}
+            </kbd>
+            <span>{shortcut.label}</span>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 

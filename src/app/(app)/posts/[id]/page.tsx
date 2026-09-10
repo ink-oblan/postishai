@@ -43,15 +43,22 @@ export default async function PostDetailPage({
         : null,
     ]);
     const spec = carouselSpec(post.platform);
+    const designing = post.carouselStage === CAROUSEL_STAGE.EDITING;
     const logoAssetId = extractAssetIds(brand?.logoPath)[0] ?? null;
     const uploadedFonts = parseList<FontItem>(brand?.typography)
       .filter((font) => font.source === "uploaded" && font.assetId)
       .map((font) => ({ assetId: font.assetId as string, name: font.name }));
 
     return (
-      <div className="space-y-6 px-6 py-8 sm:px-10">
+      <div
+        className={
+          designing
+            ? "flex h-full min-h-0 flex-col gap-4 overflow-hidden px-6 py-6 sm:px-10"
+            : "space-y-6 px-6 py-8 sm:px-10"
+        }
+      >
         <PostDetailClient postId={post.id} />
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <Link
             href="/posts"
             className="inline-flex items-center text-muted-foreground text-sm hover:text-foreground"
@@ -61,7 +68,7 @@ export default async function PostDetailPage({
           </Link>
         </div>
 
-        <div>
+        <div className="shrink-0">
           <h1 className="font-semibold text-xl">{post.title}</h1>
           <p className="mt-1 text-muted-foreground text-sm">
             {PLATFORM_LABELS[post.platform]} carousel ·{" "}

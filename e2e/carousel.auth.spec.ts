@@ -72,6 +72,25 @@ test.describe("carousel", () => {
       timeout: 5 * 60 * 1000,
     });
 
+    // Keyboard editing: a nudge run and the add before it are separate, reversible steps.
+    const undo = page.getByRole("button", { name: "Undo" });
+    const redo = page.getByRole("button", { name: "Redo" });
+    await expect(undo).toBeDisabled();
+
+    await page.getByRole("button", { name: "Text" }).click();
+    await page.keyboard.press("ArrowRight");
+    await expect(undo).toBeEnabled();
+    await expect(redo).toBeDisabled();
+
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(redo).toBeEnabled();
+    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await expect(redo).toBeDisabled();
+
+    await page.keyboard.press("ControlOrMeta+z");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(undo).toBeDisabled();
+
     // The assertion that matters: the export lands on exactly the platform canvas size.
     const dataUrl = await exportedSlideSize(page);
     expect(dataUrl).toBeTruthy();
