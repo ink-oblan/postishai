@@ -65,10 +65,6 @@ function TokenEditor({
 }) {
   const [inputValue, setInputValue] = useState("");
 
-  useEffect(() => {
-    setInputValue("");
-  }, []);
-
   function addTokens(rawValue: string) {
     const values = splitOnWhitespace
       ? normalizeTags(rawValue)
@@ -213,12 +209,13 @@ function CopyButton({ text }: { text: string }) {
 
 /** Standard caption-posting convention: hashtags/tags trail the caption text, separated by a blank line. */
 export function combineCaptionAndTags(caption: string, tags: string[], tagPrefix = "") {
-  const tagText = tags.map((tag) => `${tagPrefix}${tag}`).join(" ");
+  const separator = tagPrefix ? " " : ", ";
+  const tagText = tags.map((tag) => `${tagPrefix}${tag}`).join(separator);
   return [caption.trim(), tagText].filter(Boolean).join("\n\n");
 }
 
 export interface CaptionTagsFieldProps {
-  label?: string;
+  label?: React.ReactNode;
   caption: string;
   onCaptionChange?: (value: string) => void;
   captionPlaceholder?: string;

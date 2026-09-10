@@ -6,17 +6,11 @@ import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { METADATA_STATUS, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
+import { normalizeTagList } from "@/lib/metadata/tags";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { isPostEditable } from "@/lib/posts";
 import { archiveFile } from "@/lib/storage";
 import { enqueuePostMetadataGenerateJob } from "@/lib/worker/jobs";
-
-function normalizeTagList(values: unknown) {
-  if (!Array.isArray(values)) return [];
-  return values
-    .map((value) => (typeof value === "string" ? value.trim().replace(/^#/, "") : ""))
-    .filter(Boolean);
-}
 
 function sanitizeMetadata(platform: string, metadata: unknown): PlatformMetadata | null {
   if (!metadata || typeof metadata !== "object") return null;

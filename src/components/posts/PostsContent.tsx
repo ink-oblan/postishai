@@ -90,16 +90,16 @@ export function PostsContent({ posts }: PostsContentProps) {
                   const statusCfg = STATUS_CONFIG[post.status] ?? STATUS_CONFIG.DRAFT;
                   return (
                     <tr key={post.id} className="group transition-colors hover:bg-muted/30">
-                      <td className="max-w-md break-words px-5 py-4">
+                      <td className="px-5 py-4">
                         <Link
                           href={`/posts/${post.id}`}
-                          className="font-semibold text-foreground transition-colors hover:text-primary"
+                          className="block max-w-md break-words font-semibold text-foreground transition-colors hover:text-primary"
                         >
                           {post.title}
                         </Link>
                       </td>
-                      <td className="max-w-48 break-words px-5 py-4 text-muted-foreground text-sm">
-                        {post.avatar?.name ?? "—"}
+                      <td className="px-5 py-4 text-muted-foreground text-sm">
+                        <div className="max-w-48 break-words">{post.avatar?.name ?? "—"}</div>
                       </td>
                       <td className="px-5 py-4">
                         <Badge variant="outline">{PLATFORM_LABELS[post.platform]}</Badge>

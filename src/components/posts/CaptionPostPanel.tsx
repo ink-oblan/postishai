@@ -146,8 +146,14 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to update");
       }
-      setSavedCaption(caption.trim());
-      setSavedTags(tags);
+      const updated = await res.json();
+      const storedMetadata = (updated.metadata ?? null) as PlatformMetadata | null;
+      const storedCaption = getCaptionText(storedMetadata);
+      const storedTags = getTagList(storedMetadata);
+      setCaption(storedCaption);
+      setSavedCaption(storedCaption);
+      setTags(storedTags);
+      setSavedTags(storedTags);
       setEditingCaption(false);
       toast.success("Caption updated");
       startTransition(() => router.refresh());
@@ -233,6 +239,15 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
           </>
         ) : (
           <CaptionTagsField
+            label={
+              captionLoading ? (
+                <>
+                  Caption<span className="text-destructive">*</span>
+                </>
+              ) : (
+                "Caption"
+              )
+            }
             caption={editingCaption ? caption : savedCaption}
             onCaptionChange={setCaption}
             tags={editingCaption ? tags : savedTags}
@@ -266,7 +281,7 @@ export function CaptionPostPanel({ post }: { post: PostData }) {
                 type="button"
                 size="sm"
                 onClick={handleSaveCaption}
-                disabled={saving || !caption.trim() || !captionChanged}
+                disabled={saving || !captionChanged || (!caption.trim() && tags.length === 0)}
               >
                 {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                 Save
