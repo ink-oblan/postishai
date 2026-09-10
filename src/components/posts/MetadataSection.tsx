@@ -1,19 +1,17 @@
 "use client";
 
-import { AlertCircle, Loader2, Plus, TriangleAlert, X } from "lucide-react";
+import { AlertCircle, Loader2, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type React from "react";
-import { startTransition, useEffect, useRef, useState } from "react";
+import { startTransition, useState } from "react";
 import { toast } from "sonner";
 import { AiRegenerateIcon } from "@/components/ui/ai-regenerate-icon";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
 import { METADATA_STATUS } from "@/lib/constants";
 import type { PlatformMetadata } from "@/lib/metadata/types";
+import { CaptionTagsField } from "./CaptionTagsField";
 
 interface MetadataSectionProps {
   postId: string;
@@ -108,177 +106,6 @@ export function MetadataSection({
   );
 }
 
-function useAutosizeTextarea(_value: string) {
-  const ref = useRef<HTMLTextAreaElement | null>(null);
-
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    element.style.height = "0px";
-    element.style.height = `${element.scrollHeight}px`;
-  }, []);
-
-  return ref;
-}
-
-function normalizeTags(value: string) {
-  return value
-    .split(/[\s,]+/)
-    .map((item) => item.trim().replace(/^#/, ""))
-    .filter(Boolean);
-}
-
-function normalizeToken(value: string) {
-  return value.trim().replace(/^#/, "");
-}
-
-function TokenEditor({
-  tokens,
-  onChange,
-  label,
-  placeholder,
-  splitOnWhitespace = false,
-  prefix = "",
-}: {
-  tokens: string[];
-  onChange: (tokens: string[]) => void;
-  label: string;
-  placeholder: string;
-  splitOnWhitespace?: boolean;
-  prefix?: string;
-}) {
-  const [inputValue, setInputValue] = useState("");
-
-  useEffect(() => {
-    setInputValue("");
-  }, []);
-
-  function addTokens(rawValue: string) {
-    const values = splitOnWhitespace
-      ? normalizeTags(rawValue)
-      : rawValue
-          .split(/[\n,]+/)
-          .map(normalizeToken)
-          .filter(Boolean);
-
-    if (values.length === 0) return false;
-
-    const nextTokens = [...tokens];
-    for (const value of values) {
-      if (!nextTokens.includes(value)) {
-        nextTokens.push(value);
-      }
-    }
-
-    onChange(nextTokens);
-    return true;
-  }
-
-  function handleAdd() {
-    if (addTokens(inputValue)) {
-      setInputValue("");
-    }
-  }
-
-  function handleInputChange(nextValue: string) {
-    if (splitOnWhitespace && /[\s\n,]/.test(nextValue)) {
-      const added = addTokens(nextValue);
-      if (added) {
-        setInputValue("");
-        return;
-      }
-    }
-
-    setInputValue(nextValue);
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault();
-      handleAdd();
-      return;
-    }
-
-    if (event.key === "Backspace" && inputValue.length === 0 && tokens.length > 0) {
-      onChange(tokens.slice(0, -1));
-    }
-  }
-
-  function handlePaste(event: React.ClipboardEvent<HTMLInputElement>) {
-    const pasted = event.clipboardData.getData("text");
-    const shouldSplit = splitOnWhitespace ? /[\s\n,]/.test(pasted) : /[\n,]/.test(pasted);
-    if (!shouldSplit) return;
-
-    event.preventDefault();
-    if (addTokens(pasted)) {
-      setInputValue("");
-    }
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {tokens.map((token) => (
-          <button
-            key={token}
-            type="button"
-            onClick={() => onChange(tokens.filter((value) => value !== token))}
-            aria-label={`Remove ${label} ${token}`}
-          >
-            <Badge
-              variant="secondary"
-              className="h-auto cursor-pointer gap-1 rounded-full px-2.5 py-1 font-medium text-xs transition-colors hover:bg-muted"
-            >
-              <span>
-                {prefix}
-                {token}
-              </span>
-              <X className="h-3 w-3 text-muted-foreground" />
-            </Badge>
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <Input
-          value={inputValue}
-          onChange={(e) => handleInputChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          placeholder={placeholder}
-          className="h-9 text-sm"
-        />
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={handleAdd}
-          disabled={!inputValue.trim()}
-          className="w-full sm:w-auto"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function AutosizeTextarea({ value, className, ...props }: React.ComponentProps<typeof Textarea>) {
-  const ref = useAutosizeTextarea(typeof value === "string" ? value : "");
-
-  return (
-    <Textarea
-      {...props}
-      ref={ref}
-      value={value}
-      rows={1}
-      className={className}
-      style={{ height: "auto", overflow: "hidden", ...props.style }}
-    />
-  );
-}
-
 function MetadataDisplay({
   metadata,
   editing,
@@ -290,43 +117,17 @@ function MetadataDisplay({
 }) {
   if (metadata.platform === "INSTAGRAM" || metadata.platform === "TIKTOK") {
     return (
-      <>
-        <div>
-          <p className="mb-1 text-muted-foreground text-xs">Caption</p>
-          {editing ? (
-            <AutosizeTextarea
-              value={metadata.caption}
-              onChange={(e) => onChange?.({ ...metadata, caption: e.target.value })}
-              className="min-h-9 resize-none text-sm"
-            />
-          ) : (
-            <p className="whitespace-pre-wrap text-sm">{metadata.caption}</p>
-          )}
-        </div>
-        <div>
-          <p className="mb-1 text-muted-foreground text-xs">Hashtags</p>
-          {editing ? (
-            <TokenEditor
-              tokens={metadata.hashtags}
-              onChange={(hashtags) => onChange?.({ ...metadata, hashtags })}
-              label="hashtag"
-              placeholder="Type a hashtag or paste many hashtags"
-              splitOnWhitespace
-              prefix="#"
-            />
-          ) : metadata.hashtags.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {metadata.hashtags.map((h) => (
-                <span key={h} className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                  #{h}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">No hashtags.</p>
-          )}
-        </div>
-      </>
+      <CaptionTagsField
+        caption={metadata.caption}
+        onCaptionChange={(caption) => onChange?.({ ...metadata, caption })}
+        tags={metadata.hashtags}
+        onTagsChange={(hashtags) => onChange?.({ ...metadata, hashtags })}
+        tagPrefix="#"
+        tagLabel="hashtag"
+        tagPlaceholder="Type a hashtag or paste many hashtags"
+        tagSplitOnWhitespace
+        editing={editing}
+      />
     );
   }
 
@@ -345,39 +146,16 @@ function MetadataDisplay({
           <p className="font-medium">{metadata.title}</p>
         )}
       </div>
-      <div>
-        <p className="mb-1 text-muted-foreground text-xs">Description</p>
-        {editing ? (
-          <AutosizeTextarea
-            value={metadata.description}
-            onChange={(e) => onChange?.({ ...metadata, description: e.target.value })}
-            className="min-h-9 resize-none text-sm"
-          />
-        ) : (
-          <p className="whitespace-pre-wrap">{metadata.description}</p>
-        )}
-      </div>
-      <div>
-        <p className="mb-1 text-muted-foreground text-xs">Tags</p>
-        {editing ? (
-          <TokenEditor
-            tokens={metadata.tags}
-            onChange={(tags) => onChange?.({ ...metadata, tags })}
-            label="tag"
-            placeholder="Type a tag or paste comma/newline separated tags"
-          />
-        ) : metadata.tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {metadata.tags.map((t) => (
-              <span key={t} className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                {t}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">No tags.</p>
-        )}
-      </div>
+      <CaptionTagsField
+        label="Description"
+        caption={metadata.description}
+        onCaptionChange={(description) => onChange?.({ ...metadata, description })}
+        tags={metadata.tags}
+        onTagsChange={(tags) => onChange?.({ ...metadata, tags })}
+        tagLabel="tag"
+        tagPlaceholder="Type a tag or paste comma/newline separated tags"
+        editing={editing}
+      />
     </>
   );
 }

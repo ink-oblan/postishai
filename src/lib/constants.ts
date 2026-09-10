@@ -24,6 +24,11 @@ export const VARIATION_STATUS = {
 
 export type VariationStatusValue = (typeof VARIATION_STATUS)[keyof typeof VARIATION_STATUS];
 
+export const AVATAR_VARIATION_LABEL_MAX_LENGTH = 60;
+
+export const POST_TAG_MAX_COUNT = 30;
+export const POST_TAG_MAX_LENGTH = 60;
+
 export const METADATA_STATUS = {
   IDLE: "IDLE",
   GENERATING: "GENERATING",

@@ -75,7 +75,10 @@ export function AvatarGrid({ avatars }: { avatars: AvatarWithCount[] }) {
               )}
             </div>
             <div className="px-4 py-3">
-              <p className="truncate font-semibold text-foreground text-sm transition-colors group-hover:text-primary">
+              <p
+                className="truncate font-semibold text-foreground text-sm transition-colors group-hover:text-primary"
+                title={avatar.name}
+              >
                 {avatar.name}
               </p>
               <div className="mt-1.5 flex items-center justify-between">

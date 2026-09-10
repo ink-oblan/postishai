@@ -1,3 +1,5 @@
+import { AVATAR_VARIATION_LABEL_MAX_LENGTH } from "@/lib/constants";
+
 interface AvatarVariationLabelInput {
   clothes?: string | null;
   background?: string | null;
@@ -16,8 +18,12 @@ function upperFirst(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function truncate(value: string, max = 60) {
+function truncate(value: string, max = AVATAR_VARIATION_LABEL_MAX_LENGTH) {
   return value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
+}
+
+export function clampAvatarVariationLabel(value: string) {
+  return truncate(value.trim().replace(/\s+/g, " "));
 }
 
 export function generateAvatarVariationLabel({

@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
-import { generateAvatarVariationLabel } from "@/lib/avatar-variation-label";
+import {
+  clampAvatarVariationLabel,
+  generateAvatarVariationLabel,
+} from "@/lib/avatar-variation-label";
 import { renderAvatarVariationPrompt } from "@/lib/avatar-variation-prompt";
 import { VARIATION_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
@@ -49,7 +52,7 @@ export const POST = withAuth(async function POST(
   const trimmedSourceVariationId = sourceVariationId?.trim() || undefined;
   const trimmedReplaceVariationId = replaceVariationId?.trim() || undefined;
   const resolvedLabel =
-    label?.trim() ||
+    (label ? clampAvatarVariationLabel(label) : "") ||
     generateAvatarVariationLabel({
       clothes: trimmedClothes,
       background: trimmedBackground,

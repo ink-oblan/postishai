@@ -87,7 +87,7 @@ function PropLabel({ children }: { children: React.ReactNode }) {
 
 function PropValue({ children }: { children: React.ReactNode }) {
   return (
-    <p className="font-medium text-sm">
+    <p className="break-words font-medium text-sm">
       {children || <span className="text-muted-foreground">—</span>}
     </p>
   );
@@ -422,7 +422,9 @@ export function PostEditPanel({
                 className="h-8 text-sm"
               />
             ) : (
-              <h1 className="truncate font-semibold text-xl">{savedTitle}</h1>
+              <h1 className="truncate font-semibold text-xl" title={savedTitle}>
+                {savedTitle}
+              </h1>
             )}
           </div>
           <div className="shrink-0">
@@ -526,7 +528,8 @@ export function PostEditPanel({
                         key={v.id}
                         type="button"
                         onClick={() => setAvatarVariationId(v.id)}
-                        className={`h-7 rounded-md border px-2.5 font-medium text-xs transition-colors ${
+                        title={v.label}
+                        className={`h-7 max-w-full truncate rounded-md border px-2.5 font-medium text-xs transition-colors ${
                           avatarVariationId === v.id
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border bg-background hover:bg-muted"
@@ -542,9 +545,9 @@ export function PostEditPanel({
           ) : (
             <Link
               href={`/avatars/${savedAvatarId}`}
-              className="group inline-flex items-center gap-3 rounded-lg transition-opacity hover:opacity-90"
+              className="group inline-flex max-w-full items-center gap-3 rounded-lg transition-opacity hover:opacity-90"
             >
-              <span className="relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted">
+              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                 <Image
                   src={
                     savedAvatarVariationId
@@ -559,7 +562,10 @@ export function PostEditPanel({
                   unoptimized
                 />
               </span>
-              <span className="font-medium text-primary text-sm underline decoration-primary/40 underline-offset-2 transition-all duration-150 group-hover:decoration-primary">
+              <span
+                className="min-w-0 truncate font-medium text-primary text-sm underline decoration-primary/40 underline-offset-2 transition-all duration-150 group-hover:decoration-primary"
+                title={currentAvatarName}
+              >
                 {currentAvatarName}
               </span>
             </Link>

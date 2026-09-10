@@ -3,6 +3,7 @@ import { getLLMAdapter } from "../llm-models/registry";
 import { buildInstagramPrompt } from "./platforms/instagram";
 import { buildTikTokPrompt } from "./platforms/tiktok";
 import { buildYouTubeShortsPrompt } from "./platforms/youtube-shorts";
+import { normalizeTagList } from "./tags";
 import type { CaptionInput, PlatformMetadata } from "./types";
 
 function buildPrompt(platform: Platform, input: CaptionInput, title: string): Promise<string> {
@@ -23,15 +24,23 @@ function parseResponse(platform: Platform, raw: string): PlatformMetadata {
 
   switch (platform) {
     case "INSTAGRAM":
-      return { platform: "INSTAGRAM", caption: parsed.caption, hashtags: parsed.hashtags ?? [] };
+      return {
+        platform: "INSTAGRAM",
+        caption: parsed.caption,
+        hashtags: normalizeTagList(parsed.hashtags),
+      };
     case "TIKTOK":
-      return { platform: "TIKTOK", caption: parsed.caption, hashtags: parsed.hashtags ?? [] };
+      return {
+        platform: "TIKTOK",
+        caption: parsed.caption,
+        hashtags: normalizeTagList(parsed.hashtags),
+      };
     case "YOUTUBE_SHORTS":
       return {
         platform: "YOUTUBE_SHORTS",
         title: parsed.title,
         description: parsed.description,
-        tags: parsed.tags ?? [],
+        tags: normalizeTagList(parsed.tags),
       };
   }
 }

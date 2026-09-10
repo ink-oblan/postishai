@@ -93,13 +93,13 @@ export function PostsContent({ posts }: PostsContentProps) {
                       <td className="px-5 py-4">
                         <Link
                           href={`/posts/${post.id}`}
-                          className="font-semibold text-foreground transition-colors hover:text-primary"
+                          className="block max-w-md break-words font-semibold text-foreground transition-colors hover:text-primary"
                         >
                           {post.title}
                         </Link>
                       </td>
                       <td className="px-5 py-4 text-muted-foreground text-sm">
-                        {post.avatar?.name ?? "—"}
+                        <div className="max-w-48 break-words">{post.avatar?.name ?? "—"}</div>
                       </td>
                       <td className="px-5 py-4">
                         <Badge variant="outline">{PLATFORM_LABELS[post.platform]}</Badge>
@@ -147,7 +147,7 @@ export function PostsContent({ posts }: PostsContentProps) {
                   className="block rounded-2xl border border-border bg-card px-4 py-4 transition-colors hover:border-primary/30"
                 >
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <p className="font-semibold text-foreground text-sm leading-snug">
+                    <p className="min-w-0 break-words font-semibold text-foreground text-sm leading-snug">
                       {post.title}
                     </p>
                     <span
@@ -157,12 +157,12 @@ export function PostsContent({ posts }: PostsContentProps) {
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground text-xs">
-                    <span>{post.avatar?.name ?? "—"}</span>
-                    <span>·</span>
+                    <span className="min-w-0 truncate">{post.avatar?.name ?? "—"}</span>
+                    <span className="shrink-0">·</span>
                     <Badge variant="outline" className="font-semibold text-xs">
                       {PLATFORM_LABELS[post.platform]}
                     </Badge>
-                    <span className="ml-auto" suppressHydrationWarning>
+                    <span className="ml-auto shrink-0 whitespace-nowrap" suppressHydrationWarning>
                       {formatDistanceToNow(post.createdAt)}
                     </span>
                     <DeletePostButton postId={post.id} />
