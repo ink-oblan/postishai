@@ -15,6 +15,7 @@ const { mockCookieStore, mockPrisma } = vi.hoisted(() => ({
     session: {
       create: vi.fn(),
       delete: vi.fn(),
+      findUnique: vi.fn(),
     },
   },
 }));
@@ -32,7 +33,22 @@ vi.mock("@/lib/auth/secret", () => ({
     new TextEncoder().encode("test-secret-key-that-is-at-least-32-chars-long"),
 }));
 
-import { createSession, deleteSession, getSessionCookie, verifySessionToken } from "../session";
+import {
+  createSession,
+  deleteSession,
+  getSessionCookie,
+  getValidSession,
+  verifySessionToken,
+} from "../session";
+
+const fakeUser = {
+  id: "user-1",
+  name: "Test User",
+  email: "test@example.com",
+  avatarUrl: null,
+  role: "USER" as const,
+  approvedAt: new Date(),
+};
 
 describe("verifySessionToken", () => {
   it("verifies a valid JWT and returns the payload", async () => {
@@ -69,6 +85,61 @@ describe("verifySessionToken", () => {
 
     const result = await verifySessionToken(token);
     expect(result).toBeNull();
+  });
+});
+
+describe("getValidSession", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns null for an invalid token", async () => {
+    const result = await getValidSession("invalid.token.here");
+    expect(result).toBeNull();
+    expect(mockPrisma.session.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns null when no matching session row exists in the DB", async () => {
+    const token = await new SignJWT({ sessionId: "sess-1", userId: "user-1" })
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("1h")
+      .sign(TEST_SECRET);
+    mockPrisma.session.findUnique.mockResolvedValue(null);
+
+    const result = await getValidSession(token);
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the DB session row is expired", async () => {
+    const token = await new SignJWT({ sessionId: "sess-1", userId: "user-1" })
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("1h")
+      .sign(TEST_SECRET);
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "sess-1",
+      userId: "user-1",
+      expiresAt: new Date(Date.now() - 1000),
+      user: fakeUser,
+    });
+
+    const result = await getValidSession(token);
+    expect(result).toBeNull();
+  });
+
+  it("returns the session when the token is valid and the DB row is live", async () => {
+    const token = await new SignJWT({ sessionId: "sess-1", userId: "user-1" })
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("1h")
+      .sign(TEST_SECRET);
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "sess-1",
+      userId: "user-1",
+      expiresAt: new Date(Date.now() + 86400000),
+      user: fakeUser,
+    });
+
+    const result = await getValidSession(token);
+    expect(result).toEqual({ userId: "user-1", user: fakeUser });
   });
 });
 

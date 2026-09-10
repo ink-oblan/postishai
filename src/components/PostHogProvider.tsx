@@ -14,17 +14,9 @@ export function PostHogInit() {
   const initialized = useRef(false);
 
   useEffect(() => {
+    if (process.env.NODE_ENV === "development") return;
     if (initialized.current || selfDeployment) return;
-    if (!posthogProjectToken || !posthogHost) {
-      if (process.env.NODE_ENV === "development") {
-        const missing = !posthogProjectToken ? "POSTHOG_PROJECT_TOKEN" : "POSTHOG_HOST";
-        console.warn(
-          `${missing} is missing — PostHog is not initialized and events are silently dropped. ` +
-            `Set ${missing} (or SELF_DEPLOYMENT=true) to resolve this.`,
-        );
-      }
-      return;
-    }
+    if (!posthogProjectToken || !posthogHost) return;
     posthog.init(posthogProjectToken, {
       api_host: posthogHost,
       defaults: "2026-01-30",
@@ -34,7 +26,6 @@ export function PostHogInit() {
       // until the user grants consent via the cookie banner.
       opt_out_capturing_by_default: true,
       opt_out_persistence_by_default: true,
-      debug: process.env.NODE_ENV === "development",
     });
     posthog.register({ environment: process.env.NODE_ENV });
     initialized.current = true;

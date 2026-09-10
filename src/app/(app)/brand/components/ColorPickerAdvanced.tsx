@@ -1,0 +1,494 @@
+"use client";
+
+import { useLayoutEffect, useRef, useState } from "react";
+import { Label } from "@/components/ui/label";
+
+interface ColorPickerAdvancedProps {
+  value: string;
+  onChange: (hex: string) => void;
+  onAddColor?: (hex: string) => void;
+  isMaxReached?: boolean;
+}
+
+/**
+ * Every shape `isValidHexColor` accepts — `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa` — reduced to
+ * the `#rrggbb` these sliders work in. Alpha is dropped, since the picker has no channel for it.
+ * Reading a saved `#FFF` as black would rewrite the user's colour the moment they nudge a
+ * slider, so anything unreadable returns nothing and the caller falls back explicitly.
+ */
+function normalizeHex(hex: string): string | undefined {
+  if (typeof hex !== "string" || !/^#[0-9a-f]+$/i.test(hex)) return undefined;
+
+  const digits = hex.slice(1);
+  if (digits.length === 3 || digits.length === 4) {
+    return `#${[...digits.slice(0, 3)].map((d) => d + d).join("")}`.toUpperCase();
+  }
+  if (digits.length === 6 || digits.length === 8) {
+    return `#${digits.slice(0, 6)}`.toUpperCase();
+  }
+  return undefined;
+}
+
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
+  const normalized = normalizeHex(hex);
+  if (!normalized) {
+    return { h: 0, s: 0, l: 0 };
+  }
+  const r = parseInt(normalized.slice(1, 3), 16) / 255;
+  const g = parseInt(normalized.slice(3, 5), 16) / 255;
+  const b = parseInt(normalized.slice(5, 7), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        break;
+      case g:
+        h = ((b - r) / d + 2) / 6;
+        break;
+      case b:
+        h = ((r - g) / d + 4) / 6;
+        break;
+    }
+  }
+
+  return {
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100),
+  };
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const normalized = normalizeHex(hex);
+  if (!normalized) {
+    return { r: 0, g: 0, b: 0 };
+  }
+  return {
+    r: parseInt(normalized.slice(1, 3), 16),
+    g: parseInt(normalized.slice(3, 5), 16),
+    b: parseInt(normalized.slice(5, 7), 16),
+  };
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return (
+    "#" +
+    [r, g, b]
+      .map((x) => {
+        const hex = Math.max(0, Math.min(255, x)).toString(16);
+        return hex.length === 1 ? `0${hex}` : hex;
+      })
+      .join("")
+      .toUpperCase()
+  );
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  h = ((h % 360) + 360) % 360;
+  s = Math.max(0, Math.min(100, s)) / 100;
+  l = Math.max(0, Math.min(100, l)) / 100;
+
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  let r = 0,
+    g = 0,
+    b = 0;
+
+  if (h >= 0 && h < 60) {
+    r = c;
+    g = x;
+    b = 0;
+  } else if (h >= 60 && h < 120) {
+    r = x;
+    g = c;
+    b = 0;
+  } else if (h >= 120 && h < 180) {
+    r = 0;
+    g = c;
+    b = x;
+  } else if (h >= 180 && h < 240) {
+    r = 0;
+    g = x;
+    b = c;
+  } else if (h >= 240 && h < 300) {
+    r = x;
+    g = 0;
+    b = c;
+  } else if (h >= 300 && h < 360) {
+    r = c;
+    g = 0;
+    b = x;
+  }
+
+  const toHex = (val: number) =>
+    Math.round((val + m) * 255)
+      .toString(16)
+      .padStart(2, "0");
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+}
+
+const HARMONIES = [
+  { label: "Complementary", hueOffsets: [180] },
+  { label: "Triadic", hueOffsets: [120, 240] },
+  { label: "Analogous", hueOffsets: [-30, 30] },
+];
+
+function getHarmonies(hex: string): { label: string; colors: { offset: number; hex: string }[] }[] {
+  const { h, s, l } = hexToHsl(hex);
+  return HARMONIES.map(({ label, hueOffsets }) => ({
+    label,
+    colors: hueOffsets.map((offset) => ({
+      offset,
+      hex: hslToHex((h + offset + 360) % 360, s, l),
+    })),
+  }));
+}
+
+function getContrastColor(hex: string): string {
+  const { r, g, b } = hexToRgb(hex);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? "#000000" : "#FFFFFF";
+}
+
+export function ColorPickerAdvanced({
+  value,
+  onChange,
+  onAddColor,
+  isMaxReached,
+}: ColorPickerAdvancedProps) {
+  const styleRef = useRef<HTMLStyleElement>(null);
+  const { h, s, l } = hexToHsl(value);
+  const { r, g, b } = hexToRgb(value);
+
+  const [mounted, setMounted] = useState(false);
+
+  useLayoutEffect(() => {
+    setMounted(true);
+    if (!styleRef.current) {
+      const style = document.createElement("style");
+      styleRef.current = style;
+      document.head.appendChild(style);
+    }
+    styleRef.current.textContent = `
+      input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid white;
+        cursor: pointer;
+        box-shadow: 0 0 2px rgba(0,0,0,0.3);
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid white;
+        cursor: pointer;
+        box-shadow: 0 0 2px rgba(0,0,0,0.3);
+      }
+      .slider-r::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, rgb(0, ${g}, ${b}), rgb(255, ${g}, ${b}));
+      }
+      .slider-r::-moz-range-track {
+        width: 100%;
+        height: 8px;
+        background: linear-gradient(90deg, rgb(0, ${g}, ${b}), rgb(255, ${g}, ${b}));
+      }
+      .slider-r::-webkit-slider-thumb {
+        appearance: none;
+        background: rgb(${r}, ${g}, ${b});
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid white;
+        cursor: pointer;
+        box-shadow: 0 0 2px rgba(0,0,0,0.3);
+      }
+      .slider-r::-moz-range-thumb {
+        background: rgb(${r}, ${g}, ${b});
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid white;
+        cursor: pointer;
+        box-shadow: 0 0 2px rgba(0,0,0,0.3);
+      }
+
+      .slider-g::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, rgb(${r}, 0, ${b}), rgb(${r}, 255, ${b}));
+      }
+      .slider-g::-moz-range-track {
+        width: 100%;
+        height: 8px;
+        background: linear-gradient(90deg, rgb(${r}, 0, ${b}), rgb(${r}, 255, ${b}));
+      }
+      .slider-g::-webkit-slider-thumb {
+        background: rgb(${r}, ${g}, ${b});
+      }
+      .slider-g::-moz-range-thumb {
+        background: rgb(${r}, ${g}, ${b});
+      }
+
+      .slider-b::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, rgb(${r}, ${g}, 0), rgb(${r}, ${g}, 255));
+      }
+      .slider-b::-moz-range-track {
+        width: 100%;
+        height: 8px;
+        background: linear-gradient(90deg, rgb(${r}, ${g}, 0), rgb(${r}, ${g}, 255));
+      }
+      .slider-b::-webkit-slider-thumb {
+        background: rgb(${r}, ${g}, ${b});
+      }
+      .slider-b::-moz-range-thumb {
+        background: rgb(${r}, ${g}, ${b});
+      }
+
+      .slider-h::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, hsl(0, ${s}%, ${l}%), hsl(60, ${s}%, ${l}%), hsl(120, ${s}%, ${l}%), hsl(180, ${s}%, ${l}%), hsl(240, ${s}%, ${l}%), hsl(300, ${s}%, ${l}%), hsl(360, ${s}%, ${l}%));
+      }
+      .slider-h::-moz-range-track {
+        width: 100%;
+        height: 8px;
+        background: linear-gradient(90deg, hsl(0, ${s}%, ${l}%), hsl(60, ${s}%, ${l}%), hsl(120, ${s}%, ${l}%), hsl(180, ${s}%, ${l}%), hsl(240, ${s}%, ${l}%), hsl(300, ${s}%, ${l}%), hsl(360, ${s}%, ${l}%));
+      }
+      .slider-h::-webkit-slider-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+      .slider-h::-moz-range-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+
+      .slider-s::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, hsl(${h}, 0%, ${l}%), hsl(${h}, 100%, ${l}%));
+      }
+      .slider-s::-moz-range-track {
+        width: 100%;
+        height: 8px;
+        background: linear-gradient(90deg, hsl(${h}, 0%, ${l}%), hsl(${h}, 100%, ${l}%));
+      }
+      .slider-s::-webkit-slider-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+      .slider-s::-moz-range-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+
+      .slider-l::-webkit-slider-runnable-track {
+        background: linear-gradient(90deg, hsl(${h}, ${s}%, 0%), hsl(${h}, ${s}%, 50%), hsl(${h}, ${s}%, 100%));
+      }
+      .slider-l::-moz-range-track {
+        width: 100%;
+        height: 8px;
+        background: linear-gradient(90deg, hsl(${h}, ${s}%, 0%), hsl(${h}, ${s}%, 50%), hsl(${h}, ${s}%, 100%));
+      }
+      .slider-l::-webkit-slider-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+      .slider-l::-moz-range-thumb {
+        background: hsl(${h}, ${s}%, ${l}%);
+      }
+    `;
+    return () => {
+      if (styleRef.current?.parentNode) {
+        styleRef.current.parentNode.removeChild(styleRef.current);
+        styleRef.current = null;
+      }
+    };
+  }, [r, g, b, h, s, l]);
+
+  const handleRgbChange = (newR: number, newG: number, newB: number) => {
+    onChange(rgbToHex(newR, newG, newB));
+  };
+
+  const handleHslChange = (newH: number, newS: number, newL: number) => {
+    onChange(hslToHex(newH, newS, newL));
+  };
+
+  if (!mounted) {
+    return (
+      <div className="space-y-3">
+        <div className="space-y-3 rounded-lg border border-border bg-muted p-4" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="space-y-3"
+      role="none"
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      suppressHydrationWarning
+    >
+      {/* Color preview block */}
+      <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
+        {/* Text preview on color background */}
+        <div className="space-y-2">
+          <Label className="text-muted-foreground text-xs">Preview</Label>
+          <div
+            className="flex items-center justify-center rounded border border-border px-4 py-6 text-center font-medium"
+            style={{ backgroundColor: value, color: getContrastColor(value) }}
+          >
+            Sample Text
+          </div>
+        </div>
+
+        {/* RGB sliders */}
+        <div className="space-y-2">
+          <Label className="text-muted-foreground text-xs">RGB</Label>
+          <div className="space-y-2">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="slider-r" className="text-muted-foreground text-xs">
+                  R (Red)
+                </label>
+                <span className="font-mono text-sm">{r}</span>
+              </div>
+              <input
+                id="slider-r"
+                type="range"
+                min="0"
+                max="255"
+                value={r}
+                onChange={(e) => handleRgbChange(parseInt(e.target.value, 10), g, b)}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="slider-r w-full"
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label htmlFor="slider-g" className="text-muted-foreground text-xs">
+                  G (Green)
+                </label>
+                <span className="font-mono text-sm">{g}</span>
+              </div>
+              <input
+                id="slider-g"
+                type="range"
+                min="0"
+                max="255"
+                value={g}
+                onChange={(e) => handleRgbChange(r, parseInt(e.target.value, 10), b)}
+                className="slider-g w-full"
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label htmlFor="slider-b" className="text-muted-foreground text-xs">
+                  B (Blue)
+                </label>
+                <span className="font-mono text-sm">{b}</span>
+              </div>
+              <input
+                id="slider-b"
+                type="range"
+                min="0"
+                max="255"
+                value={b}
+                onChange={(e) => handleRgbChange(r, g, parseInt(e.target.value, 10))}
+                className="slider-b w-full"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* HSL sliders */}
+        <div className="space-y-2">
+          <Label className="text-muted-foreground text-xs">HSL</Label>
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label htmlFor="slider-h" className="text-muted-foreground text-xs">
+                  H° (Hue)
+                </label>
+                <span className="font-mono text-sm">{h}</span>
+              </div>
+              <input
+                id="slider-h"
+                type="range"
+                min="0"
+                max="360"
+                value={h}
+                onChange={(e) => handleHslChange(parseInt(e.target.value, 10), s, l)}
+                className="slider-h w-full"
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label htmlFor="slider-s" className="text-muted-foreground text-xs">
+                  S% (Saturation)
+                </label>
+                <span className="font-mono text-sm">{s}</span>
+              </div>
+              <input
+                id="slider-s"
+                type="range"
+                min="0"
+                max="100"
+                value={s}
+                onChange={(e) => handleHslChange(h, parseInt(e.target.value, 10), l)}
+                className="slider-s w-full"
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label htmlFor="slider-l" className="text-muted-foreground text-xs">
+                  L% (Lightness)
+                </label>
+                <span className="font-mono text-sm">{l}</span>
+              </div>
+              <input
+                id="slider-l"
+                type="range"
+                min="0"
+                max="100"
+                value={l}
+                onChange={(e) => handleHslChange(h, s, parseInt(e.target.value, 10))}
+                className="slider-l w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Harmony colors */}
+      <div className="space-y-4 rounded-lg border border-border bg-muted p-4">
+        {getHarmonies(value).map(({ label, colors }) => (
+          <div key={label}>
+            <Label className="mb-2 block font-semibold text-xs">{label}</Label>
+            <div className={`grid gap-2 ${colors.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+              {colors.map(({ offset, hex }) => (
+                <button
+                  key={`${label}-${offset}`}
+                  type="button"
+                  disabled={isMaxReached}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddColor?.(hex);
+                  }}
+                  className={`h-8 w-full rounded border-2 border-border transition-all ${isMaxReached ? "cursor-not-allowed opacity-50" : "hover:scale-105"}`}
+                  style={{ backgroundColor: hex }}
+                  title={hex}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

@@ -1,6 +1,15 @@
 "use client";
 
-import { FileVideo, LayoutDashboard, LogOut, Menu, Settings, Users, X } from "lucide-react";
+import {
+  FileVideo,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Palette,
+  Settings,
+  Users,
+  X,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,8 +28,9 @@ type UserInfo = {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/avatars", label: "Avatars", icon: Users },
   { href: "/posts", label: "Posts", icon: FileVideo },
+  { href: "/avatars", label: "Avatars", icon: Users },
+  { href: "/brand", label: "Brand", icon: Palette },
 ];
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {

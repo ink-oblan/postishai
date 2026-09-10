@@ -7,22 +7,24 @@ datasource db {
 }
 
 model User {
-  id                 String    @id @default(cuid())
+  id                 String         @id @default(cuid())
   name               String?
-  email              String    @unique
+  email              String         @unique
   passwordHash       String?
   avatarUrl          String?
-  role               Role      @default(USER)
+  role               Role           @default(USER)
   approvedAt         DateTime?
-  approvalToken      String?   @unique
+  approvalToken      String?        @unique
   approvalDetails    String?
   approvalNotifiedAt DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
   accounts           Account[]
   sessions           Session[]
   avatars            Avatar[]
   posts              Post[]
+  brandProfiles      BrandProfile[]
+  brandAssets        BrandAsset[]
 }
 
 model Account {
@@ -146,6 +148,8 @@ model Post {
   media                PostMedia[]
   userId               String?
   user                 User?            @relation(fields: [userId], references: [id])
+  brandProfileId       String?
+  brandProfile         BrandProfile?    @relation(fields: [brandProfileId], references: [id])
   llmModelId           String           @default("gemini-2.0-flash")
   status               String           @default("DRAFT")
   generationStartedAt  DateTime?
@@ -193,4 +197,54 @@ model WaitlistEntry {
   id        String   @id @default(cuid())
   email     String   @unique
   createdAt DateTime @default(now())
+}
+
+model BrandProfile {
+  id     String       @id @default(cuid())
+  userId String
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts  Post[]
+  assets BrandAsset[]
+
+  brandName      String
+  topic          String
+  targetAudience String
+  mission        String?
+
+  colors     Json?
+  typography Json?
+  logoPath   Json?
+  patterns   Json?
+  photoStyle String?
+
+  youFormality    Boolean @default(false)
+  emojiLevel      Int     @default(0)
+  voiceStyle      String?
+  brandVocabulary String?
+
+  videoAnimations  String?
+  videoTransitions String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, brandName])
+  @@index([createdAt])
+}
+
+model BrandAsset {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brandProfileId String?
+  brandProfile   BrandProfile? @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
+
+  type        String
+  storagePath String
+  fileName    String
+  sizeBytes   Int
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([brandProfileId])
 }

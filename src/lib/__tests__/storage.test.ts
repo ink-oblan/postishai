@@ -16,6 +16,10 @@ vi.mock("@aws-sdk/client-s3", () => {
     constructor(readonly input: unknown) {}
   }
 
+  class DeleteObjectCommand {
+    constructor(readonly input: unknown) {}
+  }
+
   class PutObjectCommand {
     constructor(readonly input: unknown) {}
   }
@@ -37,6 +41,7 @@ vi.mock("@aws-sdk/client-s3", () => {
 
   return {
     CopyObjectCommand,
+    DeleteObjectCommand,
     GetObjectCommand,
     HeadObjectCommand,
     NotFound,
@@ -109,6 +114,18 @@ describe("local storage", () => {
     await expect(fileExists("avatars/a.png")).resolves.toBe(true);
     await expect(readFile(archivePath ?? "")).resolves.toEqual(Buffer.from("image"));
   });
+
+  it("deletes files and tolerates deleting a missing file", async () => {
+    const { deleteFile, fileExists, writeFile } = await import("../storage");
+
+    await writeFile("brand-assets/a.png", Buffer.from("image"));
+    await expect(fileExists("brand-assets/a.png")).resolves.toBe(true);
+
+    await deleteFile("brand-assets/a.png");
+    await expect(fileExists("brand-assets/a.png")).resolves.toBe(false);
+
+    await expect(deleteFile("brand-assets/a.png")).resolves.toBeUndefined();
+  });
 });
 
 describe("s3 storage", () => {
@@ -164,6 +181,17 @@ describe("s3 storage", () => {
       Bucket: "media-bucket",
       CopySource: "media-bucket/postishai/storage/avatars/a.png",
       Key: expect.stringMatching(/^postishai\/storage\/archive\/avatars\/a\..+\.png$/) as unknown,
+    });
+  });
+
+  it("deletes objects", async () => {
+    const { deleteFile } = await import("../storage");
+
+    await deleteFile("brand-assets/a.png");
+
+    expect(sendMock.mock.calls[0]?.[0].input).toMatchObject({
+      Bucket: "media-bucket",
+      Key: "postishai/storage/brand-assets/a.png",
     });
   });
 

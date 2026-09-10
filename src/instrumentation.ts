@@ -6,7 +6,7 @@ import { config } from "./lib/config";
 
 let posthogLoggerProvider: LoggerProvider | undefined;
 
-if (!config.selfDeployment) {
+if (!config.selfDeployment && !config.isDevelopment) {
   const projectToken = config.posthog.projectToken;
   const host = config.posthog.host;
 
