@@ -18,6 +18,15 @@ export function wrapIndex(index: number, length: number): number {
   return ((index % length) + length) % length;
 }
 
+/**
+ * Turns a failed API response into the error to throw, preferring the handler's own `error`
+ * message over the caller's fallback.
+ */
+export async function responseError(res: Response, fallback: string): Promise<Error> {
+  const body = (await res.json().catch(() => null)) as { error?: string } | null;
+  return new Error(body?.error ?? fallback);
+}
+
 export function formatDistanceToNow(date: Date): string {
   const now = Date.now();
   const diff = now - new Date(date).getTime();

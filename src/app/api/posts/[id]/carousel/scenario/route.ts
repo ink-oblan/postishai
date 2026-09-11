@@ -1,13 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { slideCountError } from "@/lib/carousel/platform-spec";
+import {
+  clampText,
+  coerceLayout,
+  MAX_BODY,
+  MAX_HEADLINE,
+  MAX_VISUAL_PROMPT,
+} from "@/lib/carousel/scenario";
 import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE } from "@/lib/constants";
 import { prisma } from "@/lib/db";
-import { DEFAULT_LAYOUT, isLayoutName } from "@/lib/design/layouts";
-
-const MAX_HEADLINE = 120;
-const MAX_BODY = 400;
-const MAX_VISUAL_PROMPT = 400;
 
 interface SlideInput {
   id?: string;
@@ -15,10 +17,6 @@ interface SlideInput {
   body: string;
   visualPrompt: string;
   layout: string;
-}
-
-function text(value: unknown, max: number): string {
-  return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
 function parseSlides(value: unknown): SlideInput[] | null {
@@ -29,16 +27,16 @@ function parseSlides(value: unknown): SlideInput[] | null {
     if (typeof raw !== "object" || raw === null) return null;
     const entry = raw as Record<string, unknown>;
 
-    const headline = text(entry.headline, MAX_HEADLINE);
-    const visualPrompt = text(entry.visualPrompt, MAX_VISUAL_PROMPT);
+    const headline = clampText(entry.headline, MAX_HEADLINE);
+    const visualPrompt = clampText(entry.visualPrompt, MAX_VISUAL_PROMPT);
     if (!headline || !visualPrompt) return null;
 
     slides.push({
       ...(typeof entry.id === "string" && entry.id ? { id: entry.id } : {}),
       headline,
-      body: text(entry.body, MAX_BODY),
+      body: clampText(entry.body, MAX_BODY),
       visualPrompt,
-      layout: isLayoutName(entry.layout) ? entry.layout : DEFAULT_LAYOUT,
+      layout: coerceLayout(entry.layout),
     });
   }
 
@@ -104,32 +102,32 @@ export const PATCH = withAuth(async function PATCH(
       ),
     );
 
-    for (const [order, slide] of slides.entries()) {
-      if (slide.id) {
-        await tx.carouselSlide.update({
-          where: { id: slide.id },
-          data: {
-            order,
-            headline: slide.headline,
-            body: slide.body || null,
-            visualPrompt: slide.visualPrompt,
-            layout: slide.layout,
-          },
-        });
-      } else {
-        await tx.carouselSlide.create({
-          data: {
-            postId: post.id,
-            order,
-            headline: slide.headline,
-            body: slide.body || null,
-            visualPrompt: slide.visualPrompt,
-            layout: slide.layout,
-            status: CAROUSEL_SLIDE_STATUS.PENDING,
-          },
-        });
-      }
-    }
+    const written = slides.map((slide, order) => ({
+      id: slide.id,
+      data: {
+        order,
+        headline: slide.headline,
+        body: slide.body || null,
+        visualPrompt: slide.visualPrompt,
+        layout: slide.layout,
+      },
+    }));
+
+    await Promise.all(
+      written
+        .filter((slide) => slide.id)
+        .map((slide) => tx.carouselSlide.update({ where: { id: slide.id }, data: slide.data })),
+    );
+
+    await tx.carouselSlide.createMany({
+      data: written
+        .filter((slide) => !slide.id)
+        .map((slide) => ({
+          ...slide.data,
+          postId: post.id,
+          status: CAROUSEL_SLIDE_STATUS.PENDING,
+        })),
+    });
   });
 
   const updated = await prisma.carouselSlide.findMany({

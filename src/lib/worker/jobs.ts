@@ -82,13 +82,16 @@ export async function enqueueJobInDb<T extends JobType>(
  * Cheap, non-authoritative check for an already-active job with the same dedupe key.
  * Lets callers reject a duplicate request (409) before performing side effects, without
  * relying on the enqueue transaction (which remains the source of truth for deduplication).
+ *
+ * Takes only the fields the dedupe key is built from, so callers that have not assembled a
+ * full payload yet do not have to invent one.
  */
 export async function hasActiveJob<T extends JobType>(
   type: T,
-  payload: JobPayloadMap[T],
+  dedupeInput: Partial<JobPayloadMap[T]>,
 ): Promise<boolean> {
   const definition = jobRegistry[type] as unknown as JobDefinition<T, unknown>;
-  const dedupeKey = definition.dedupeKey(payload);
+  const dedupeKey = definition.dedupeKey(dedupeInput as JobPayloadMap[T]);
   const existing = await prisma.job.findFirst({
     where: {
       type,

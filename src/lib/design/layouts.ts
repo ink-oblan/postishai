@@ -7,12 +7,21 @@ import type {
   TextAlign,
   TextLayer,
 } from "@/lib/design/document";
+import { stackStart } from "@/lib/design/reflow";
 
 export const LAYOUT_NAMES = ["cover", "statement", "list", "quote", "cta"] as const;
 
 export type LayoutName = (typeof LAYOUT_NAMES)[number];
 
 export const DEFAULT_LAYOUT: LayoutName = "statement";
+
+export const LAYOUT_LABELS: Record<LayoutName, string> = {
+  cover: "Cover",
+  statement: "Statement",
+  list: "List",
+  quote: "Quote",
+  cta: "Call to action",
+};
 
 export function isLayoutName(value: unknown): value is LayoutName {
   return typeof value === "string" && (LAYOUT_NAMES as readonly string[]).includes(value);
@@ -177,8 +186,9 @@ const RECIPES: Record<LayoutName, LayoutRecipe> = {
   },
 };
 
-const HEADING_LINE_HEIGHT = 1.12;
-const BODY_LINE_HEIGHT = 1.4;
+export const HEADING_LINE_HEIGHT = 1.12;
+export const BODY_LINE_HEIGHT = 1.4;
+const BODY_FONT_WEIGHT = 400;
 
 export function expandLayout(name: LayoutName, input: LayoutInput): DesignDocument["layers"] {
   const recipe = RECIPES[name];
@@ -189,50 +199,54 @@ export function expandLayout(name: LayoutName, input: LayoutInput): DesignDocume
   const layers: Layer[] = [];
   const blocks: { height: number; build: (y: number) => Layer }[] = [];
 
-  if (headline) {
-    const max = Math.round(input.spec.width * recipe.headingScale);
+  const roles = [
+    {
+      role: "heading" as const,
+      text: headline,
+      scale: recipe.headingScale,
+      minRatio: 0.5,
+      // The headline may claim more of the safe area than the body, so they are fitted apart.
+      areaFraction: 0.55,
+      lineHeight: HEADING_LINE_HEIGHT,
+      fontWeight: recipe.headingWeight,
+      fontFamily: input.fonts.heading,
+      color: input.colors.heading,
+    },
+    {
+      role: "body" as const,
+      text: body,
+      scale: recipe.bodyScale,
+      minRatio: 0.6,
+      areaFraction: 0.4,
+      lineHeight: BODY_LINE_HEIGHT,
+      fontWeight: BODY_FONT_WEIGHT,
+      fontFamily: input.fonts.body,
+      color: input.colors.body,
+    },
+  ];
+
+  for (const role of roles) {
+    if (!role.text) continue;
+
+    const max = Math.round(input.spec.width * role.scale);
     const fitted = fitFontSize(
-      headline,
-      { ...area, height: area.height * 0.55 },
-      { max, min: Math.round(max * 0.5), lineHeight: HEADING_LINE_HEIGHT },
+      role.text,
+      { ...area, height: area.height * role.areaFraction },
+      { max, min: Math.round(max * role.minRatio), lineHeight: role.lineHeight },
     );
-    const height = Math.ceil(fitted.lines * fitted.fontSize * HEADING_LINE_HEIGHT);
+    const height = Math.ceil(fitted.lines * fitted.fontSize * role.lineHeight);
 
     blocks.push({
       height,
       build: (y) =>
-        textLayer("heading", { ...area, y, height }, headline, {
-          role: "heading",
-          fontFamily: input.fonts.heading,
+        textLayer(role.role, { ...area, y, height }, role.text, {
+          role: role.role,
+          fontFamily: role.fontFamily,
           fontSize: fitted.fontSize,
-          fontWeight: recipe.headingWeight,
-          lineHeight: HEADING_LINE_HEIGHT,
+          fontWeight: role.fontWeight,
+          lineHeight: role.lineHeight,
           align: recipe.align,
-          color: input.colors.heading,
-        }),
-    });
-  }
-
-  if (body) {
-    const max = Math.round(input.spec.width * recipe.bodyScale);
-    const fitted = fitFontSize(
-      body,
-      { ...area, height: area.height * 0.4 },
-      { max, min: Math.round(max * 0.6), lineHeight: BODY_LINE_HEIGHT },
-    );
-    const height = Math.ceil(fitted.lines * fitted.fontSize * BODY_LINE_HEIGHT);
-
-    blocks.push({
-      height,
-      build: (y) =>
-        textLayer("body", { ...area, y, height }, body, {
-          role: "body",
-          fontFamily: input.fonts.body,
-          fontSize: fitted.fontSize,
-          fontWeight: 400,
-          lineHeight: BODY_LINE_HEIGHT,
-          align: recipe.align,
-          color: input.colors.body,
+          color: role.color,
         }),
     });
   }
@@ -243,14 +257,7 @@ export function expandLayout(name: LayoutName, input: LayoutInput): DesignDocume
     blocks.reduce((sum, block) => sum + block.height, 0) + recipe.gap * (blocks.length - 1);
   const overflow = Math.max(0, totalHeight - area.height);
 
-  let y: number;
-  if (recipe.anchor === "top") {
-    y = area.y;
-  } else if (recipe.anchor === "middle") {
-    y = area.y + Math.max(0, (area.height - totalHeight) / 2);
-  } else {
-    y = area.y + Math.max(0, area.height - totalHeight);
-  }
+  let y = stackStart(recipe.anchor, area, totalHeight);
 
   for (const block of blocks) {
     layers.push(block.build(Math.round(y)));

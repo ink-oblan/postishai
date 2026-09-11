@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
+import { slideImageState } from "@/lib/carousel/slide-view";
 import { CAROUSEL_SLIDE_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 
@@ -34,8 +35,7 @@ export const GET = withAuth(async function GET(
     order: slide.order,
     status: slide.status,
     errorMessage: slide.errorMessage,
-    hasImage: slide.imagePath !== null,
-    imageVersion: slide.updatedAt.getTime(),
+    ...slideImageState(slide),
   }));
 
   return NextResponse.json({

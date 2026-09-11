@@ -58,9 +58,7 @@ export async function rasterizeStage(
     stage.draw();
 
     const pixelRatio = spec.width / stage.width();
-    const dataUrl = stage.toDataURL({ mimeType: "image/png", pixelRatio });
-    const response = await fetch(dataUrl);
-    return await response.blob();
+    return await stage.toBlob({ mimeType: "image/png", pixelRatio });
   } finally {
     chrome.forEach((node, index) => {
       node.visible(wasVisible[index]);

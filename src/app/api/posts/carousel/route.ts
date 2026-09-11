@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
-import { slideCountError } from "@/lib/carousel/platform-spec";
+import { isCarouselPlatform, slideCountError } from "@/lib/carousel/platform-spec";
 import {
   generateScenario,
   mockScenario,
@@ -15,8 +15,6 @@ import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { DEFAULT_LLM_MODEL_ID, getLLMAdapter } from "@/lib/llm-models/registry";
 import { isMockEnabled, MOCK_TIMINGS, mockDelay } from "@/lib/mock-config";
-
-const PLATFORMS: readonly Platform[] = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"];
 
 export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown, { userId }) {
   const body = await req.json();
@@ -33,7 +31,7 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
   if (!trimmedTitle) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
   }
-  if (!platform || !PLATFORMS.includes(platform)) {
+  if (!isCarouselPlatform(platform)) {
     return NextResponse.json({ error: "A valid platform is required" }, { status: 400 });
   }
 

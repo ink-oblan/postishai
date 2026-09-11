@@ -1,15 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
-import { type ColorItem, parseList } from "@/lib/brand-fields";
-import { carouselSpec } from "@/lib/carousel/platform-spec";
-import { buildSlideImagePrompt } from "@/lib/carousel/slide-image";
+import { clampText, MAX_VISUAL_PROMPT } from "@/lib/carousel/scenario";
+import { queueSlideBackground } from "@/lib/carousel/slide-background";
 import { CAROUSEL_STAGE } from "@/lib/constants";
 import { prisma } from "@/lib/db";
-import { DEFAULT_LAYOUT, isLayoutName } from "@/lib/design/layouts";
 import { DEFAULT_IMAGE_MODEL_ID, getImageAdapter } from "@/lib/image-models/registry";
-import { enqueueCarouselSlideImageJob, hasActiveJob } from "@/lib/worker/jobs";
-
-const MAX_VISUAL_PROMPT = 400;
+import { hasActiveJob } from "@/lib/worker/jobs";
 
 export const POST = withAuth(async function POST(
   req: NextRequest,
@@ -32,11 +28,9 @@ export const POST = withAuth(async function POST(
   }
 
   const body = await req.json().catch(() => ({}));
-  const rawPrompt = (body as { visualPrompt?: unknown }).visualPrompt;
   const visualPrompt =
-    typeof rawPrompt === "string" && rawPrompt.trim()
-      ? rawPrompt.trim().slice(0, MAX_VISUAL_PROMPT)
-      : slide.visualPrompt;
+    clampText((body as { visualPrompt?: unknown }).visualPrompt, MAX_VISUAL_PROMPT) ||
+    slide.visualPrompt;
 
   const requestedModel = (body as { imageModelId?: unknown }).imageModelId;
   const imageModel =
@@ -49,14 +43,7 @@ export const POST = withAuth(async function POST(
     return NextResponse.json({ error: "Unknown image model" }, { status: 400 });
   }
 
-  if (
-    await hasActiveJob("carousel.slide.image.generate", {
-      slideId,
-      prompt: "",
-      imageModel,
-      aspectRatio: "9:16",
-    })
-  ) {
+  if (await hasActiveJob("carousel.slide.image.generate", { slideId })) {
     return NextResponse.json({ error: "This slide is already generating" }, { status: 409 });
   }
 
@@ -64,19 +51,13 @@ export const POST = withAuth(async function POST(
     await prisma.carouselSlide.update({ where: { id: slideId }, data: { visualPrompt } });
   }
 
-  const layout = isLayoutName(slide.layout) ? slide.layout : DEFAULT_LAYOUT;
-  const prompt = await buildSlideImagePrompt({
-    visualPrompt,
-    layout,
-    photoStyle: slide.post.brandProfile?.photoStyle,
-    colors: parseList<ColorItem>(slide.post.brandProfile?.colors),
-  });
-
-  await enqueueCarouselSlideImageJob({
+  await queueSlideBackground({
     slideId,
-    prompt,
+    visualPrompt,
+    layout: slide.layout,
+    platform: slide.post.platform,
     imageModel,
-    aspectRatio: carouselSpec(slide.post.platform).backgroundAspectRatio,
+    brand: slide.post.brandProfile,
   });
 
   return NextResponse.json({ ok: true });

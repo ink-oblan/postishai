@@ -19,7 +19,8 @@ export function uploadedFontFamily(assetId: string): string {
   return `brandfont-${assetId}`;
 }
 
-export function brandAssetFontUrl(assetId: string): string {
+/** Where an uploaded brand asset — a font file, the logo — is served from. */
+export function brandAssetUrl(assetId: string): string {
   return `/api/brand-profile/file?id=${encodeURIComponent(assetId)}`;
 }
 
@@ -130,7 +131,7 @@ export async function registerUploadedFont(assetId: string): Promise<void> {
   if (registered.has(family)) return;
   registered.add(family);
 
-  const face = new FontFace(family, `url(${brandAssetFontUrl(assetId)})`);
+  const face = new FontFace(family, `url(${brandAssetUrl(assetId)})`);
   try {
     document.fonts.add(await face.load());
   } catch {

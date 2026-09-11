@@ -14,9 +14,17 @@ export interface ScenarioSlide {
 
 export class ScenarioResponseError extends Error {}
 
-const MAX_HEADLINE = 120;
-const MAX_BODY = 400;
-const MAX_VISUAL_PROMPT = 400;
+export const MAX_HEADLINE = 120;
+export const MAX_BODY = 400;
+export const MAX_VISUAL_PROMPT = 400;
+
+export function clampText(value: unknown, max: number): string {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+export function coerceLayout(value: unknown): LayoutName {
+  return isLayoutName(value) ? value : DEFAULT_LAYOUT;
+}
 
 function brandVars(brand: BrandProfile | null) {
   if (!brand) return null;
@@ -50,10 +58,6 @@ export function buildScenarioPrompt(options: {
   });
 }
 
-function text(value: unknown, max: number): string {
-  return typeof value === "string" ? value.trim().slice(0, max) : "";
-}
-
 export function parseScenarioResponse(raw: string, slideCount: number): ScenarioSlide[] {
   const cleaned = raw
     .replace(/^```(?:json)?\s*/i, "")
@@ -75,8 +79,8 @@ export function parseScenarioResponse(raw: string, slideCount: number): Scenario
 
   const shaped = slides.slice(0, slideCount).map((raw): ScenarioSlide => {
     const entry = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
-    const headline = text(entry.headline, MAX_HEADLINE);
-    const visualPrompt = text(entry.visualPrompt, MAX_VISUAL_PROMPT);
+    const headline = clampText(entry.headline, MAX_HEADLINE);
+    const visualPrompt = clampText(entry.visualPrompt, MAX_VISUAL_PROMPT);
 
     if (!headline || !visualPrompt) {
       throw new ScenarioResponseError("The model returned a slide without a headline or visual");
@@ -84,9 +88,9 @@ export function parseScenarioResponse(raw: string, slideCount: number): Scenario
 
     return {
       headline,
-      body: text(entry.body, MAX_BODY),
+      body: clampText(entry.body, MAX_BODY),
       visualPrompt,
-      layout: isLayoutName(entry.layout) ? entry.layout : DEFAULT_LAYOUT,
+      layout: coerceLayout(entry.layout),
     };
   });
 

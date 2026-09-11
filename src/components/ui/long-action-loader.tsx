@@ -84,14 +84,13 @@ const PULSE_EASING = toLinearEasing(pulseEase, LOOP_DURATION);
 
 type LogoLoaderSize = number | string;
 
-type LongActionLoaderSize = "default" | "compact" | "large";
+type LongActionLoaderSize = "default" | "large";
 
 /** The orbit strokes are non-scaling, so larger visuals need the width scaled up to match. */
 const SIZE_STYLES: Record<
   LongActionLoaderSize,
   { visual: number; strokeScale: number; body: string; title: string; description: string }
 > = {
-  compact: { visual: 72, strokeScale: 1, body: "mt-3", title: "", description: "" },
   default: { visual: 96, strokeScale: 1, body: "", title: "text-base", description: "" },
   large: {
     visual: 256,
@@ -117,7 +116,6 @@ interface LongActionLoaderProps extends Omit<ComponentProps<"div">, "title"> {
   elapsedSeconds?: number;
   estimate?: ReactNode;
   size?: LongActionLoaderSize;
-  visualSize?: LogoLoaderSize;
 }
 
 type LoaderStyle = CSSProperties & {
@@ -208,12 +206,10 @@ function LongActionLoader({
   elapsedSeconds,
   estimate,
   size = "default",
-  visualSize,
   className,
   ...props
 }: LongActionLoaderProps) {
   const sizeStyles = SIZE_STYLES[size];
-  const resolvedVisualSize = visualSize ?? sizeStyles.visual;
 
   return (
     <div
@@ -225,7 +221,7 @@ function LongActionLoader({
       className={cn("flex flex-col items-center justify-center text-center", className)}
       {...props}
     >
-      <LogoLoader decorative size={resolvedVisualSize} strokeScale={sizeStyles.strokeScale} />
+      <LogoLoader decorative size={sizeStyles.visual} strokeScale={sizeStyles.strokeScale} />
 
       <div className={cn("mt-4 space-y-1", sizeStyles.body)}>
         <p className={cn("font-medium text-sm", sizeStyles.title)}>{title}</p>

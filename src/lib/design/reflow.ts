@@ -17,7 +17,8 @@ function stackedHeight(heights: number[], gap: number): number {
   return heights.reduce((sum, height) => sum + height, 0) + gap * (heights.length - 1);
 }
 
-function stackStart(anchor: AutoLayout["anchor"], area: Box, total: number): number {
+/** Where a stack of `total` height begins inside `area`, for a given anchor. */
+export function stackStart(anchor: AutoLayout["anchor"], area: Box, total: number): number {
   switch (anchor) {
     case "top":
       return area.y;

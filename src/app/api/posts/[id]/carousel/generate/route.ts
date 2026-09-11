@@ -2,21 +2,15 @@ import type { Prisma } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { type ColorItem, type FontItem, parseList } from "@/lib/brand-fields";
-import { carouselCanvas, carouselSpec } from "@/lib/carousel/platform-spec";
-import { buildSlideImagePrompt } from "@/lib/carousel/slide-image";
+import { carouselCanvas } from "@/lib/carousel/platform-spec";
+import { coerceLayout } from "@/lib/carousel/scenario";
+import { queueSlideBackground } from "@/lib/carousel/slide-background";
 import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import type { DesignDocument } from "@/lib/design/document";
 import { pickFontPair } from "@/lib/design/fonts";
-import {
-  DEFAULT_LAYOUT,
-  expandLayout,
-  isLayoutName,
-  layoutAutoLayout,
-  layoutOverlay,
-} from "@/lib/design/layouts";
+import { expandLayout, layoutAutoLayout, layoutOverlay } from "@/lib/design/layouts";
 import { DEFAULT_IMAGE_MODEL_ID, getImageAdapter } from "@/lib/image-models/registry";
-import { enqueueCarouselSlideImageJob } from "@/lib/worker/jobs";
 
 const DEFAULT_HEADING_COLOR = "#ffffff";
 const DEFAULT_BODY_COLOR = "#ededed";
@@ -78,7 +72,6 @@ export const POST = withAuth(async function POST(
     return NextResponse.json({ error: "Unknown image model" }, { status: 400 });
   }
 
-  const spec = carouselSpec(post.platform);
   const canvas = carouselCanvas(post.platform);
 
   const typography = parseList<FontItem>(post.brandProfile?.typography);
@@ -99,7 +92,7 @@ export const POST = withAuth(async function POST(
 
   await prisma.$transaction(async (tx) => {
     for (const slide of post.slides) {
-      const layout = isLayoutName(slide.layout) ? slide.layout : DEFAULT_LAYOUT;
+      const layout = coerceLayout(slide.layout);
       const design: DesignDocument = {
         // The real path lands when the image job finishes; until then the slide draws its scrim.
         background: { kind: "solid", color: layoutColors.scrim },
@@ -138,22 +131,18 @@ export const POST = withAuth(async function POST(
     });
   });
 
-  for (const slide of post.slides) {
-    const layout = isLayoutName(slide.layout) ? slide.layout : DEFAULT_LAYOUT;
-    const prompt = await buildSlideImagePrompt({
-      visualPrompt: slide.visualPrompt,
-      layout,
-      photoStyle: post.brandProfile?.photoStyle,
-      colors,
-    });
-
-    await enqueueCarouselSlideImageJob({
-      slideId: slide.id,
-      prompt,
-      imageModel,
-      aspectRatio: spec.backgroundAspectRatio,
-    });
-  }
+  await Promise.all(
+    post.slides.map((slide) =>
+      queueSlideBackground({
+        slideId: slide.id,
+        visualPrompt: slide.visualPrompt,
+        layout: slide.layout,
+        platform: post.platform,
+        imageModel,
+        brand: post.brandProfile,
+      }),
+    ),
+  );
 
   return NextResponse.json({ ok: true, slideCount: post.slides.length });
 });

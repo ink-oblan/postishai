@@ -8,7 +8,7 @@ import { PostEditPanel } from "@/components/posts/PostEditPanel";
 import { VideoSection } from "@/components/posts/VideoSection";
 import { extractAssetIds } from "@/lib/brand-assets";
 import { type FontItem, parseList } from "@/lib/brand-fields";
-import { carouselSpec } from "@/lib/carousel/platform-spec";
+import { slideImageState } from "@/lib/carousel/slide-view";
 import { CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { listVoices } from "@/lib/heygen/client";
@@ -42,7 +42,6 @@ export default async function PostDetailPage({
         ? prisma.brandProfile.findUnique({ where: { id: post.brandProfileId } })
         : null,
     ]);
-    const spec = carouselSpec(post.platform);
     const designing = post.carouselStage === CAROUSEL_STAGE.EDITING;
     const logoAssetId = extractAssetIds(brand?.logoPath)[0] ?? null;
     const uploadedFonts = parseList<FontItem>(brand?.typography)
@@ -80,8 +79,6 @@ export default async function PostDetailPage({
           postId={post.id}
           platform={post.platform}
           carouselStage={post.carouselStage}
-          minSlides={spec.minSlides}
-          maxSlides={spec.maxSlides}
           scenarioSlides={slides.map((slide) => ({
             id: slide.id,
             headline: slide.headline ?? "",
@@ -95,9 +92,8 @@ export default async function PostDetailPage({
             headline: slide.headline,
             visualPrompt: slide.visualPrompt,
             status: slide.status,
-            hasImage: slide.imagePath !== null,
-            imageVersion: slide.updatedAt.getTime(),
             design: slide.design,
+            ...slideImageState(slide),
           }))}
           logoAssetId={logoAssetId}
           uploadedFonts={uploadedFonts}

@@ -1,3 +1,4 @@
+import type { Platform } from "@prisma/client";
 import { CAROUSEL_STAGE } from "@/lib/constants";
 import { ScenarioEditor, type ScenarioSlideRow } from "./ScenarioEditor";
 import type { EditorSlide } from "./SlideEditor";
@@ -5,10 +6,8 @@ import { SlideEditor } from "./SlideEditor";
 
 interface CarouselPostViewProps {
   postId: string;
-  platform: "INSTAGRAM" | "TIKTOK" | "YOUTUBE_SHORTS";
+  platform: Platform;
   carouselStage: string | null;
-  minSlides: number;
-  maxSlides: number;
   scenarioSlides: ScenarioSlideRow[];
   editorSlides: EditorSlide[];
   logoAssetId: string | null;
@@ -19,22 +18,13 @@ export function CarouselPostView({
   postId,
   platform,
   carouselStage,
-  minSlides,
-  maxSlides,
   scenarioSlides,
   editorSlides,
   logoAssetId,
   uploadedFonts,
 }: CarouselPostViewProps) {
   if (carouselStage === CAROUSEL_STAGE.SCENARIO) {
-    return (
-      <ScenarioEditor
-        postId={postId}
-        initialSlides={scenarioSlides}
-        minSlides={minSlides}
-        maxSlides={maxSlides}
-      />
-    );
+    return <ScenarioEditor postId={postId} platform={platform} initialSlides={scenarioSlides} />;
   }
 
   if (carouselStage === CAROUSEL_STAGE.EDITING) {

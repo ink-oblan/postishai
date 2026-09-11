@@ -9,10 +9,15 @@ import {
   REGULAR_WEIGHT,
   type TextLayer,
 } from "@/lib/design/document";
+import { BODY_LINE_HEIGHT, HEADING_LINE_HEIGHT } from "@/lib/design/layouts";
 
 const MAX_HISTORY = 50;
 const DUPLICATE_OFFSET = 24;
 const MAX_PASTE_STEPS = 12;
+
+/** Sizes for a layer added by hand, as a share of the canvas width. */
+const NEW_HEADING_SCALE = 0.075;
+const NEW_BODY_SCALE = 0.038;
 
 function newLayerId(): string {
   return `layer-${Math.random().toString(36).slice(2, 10)}`;
@@ -247,25 +252,26 @@ export function useDesignEditor(initial: DesignDocument, spec: CanvasSpec): Desi
 
   const addTextLayer = useCallback(
     (role: TextLayer["role"], fontFamily: string, color: string) => {
-      const fontSize =
-        role === "heading" ? Math.round(spec.width * 0.075) : Math.round(spec.width * 0.038);
+      const heading = role === "heading";
+      const fontSize = Math.round(spec.width * (heading ? NEW_HEADING_SCALE : NEW_BODY_SCALE));
+      const lineHeight = heading ? HEADING_LINE_HEIGHT : BODY_LINE_HEIGHT;
       append({
         id: newLayerId(),
         type: "text",
         x: area.x,
         y: area.y + area.height / 2,
         width: area.width,
-        height: Math.round(fontSize * 1.4 * 2),
+        height: Math.round(fontSize * BODY_LINE_HEIGHT * 2),
         rotation: 0,
-        text: role === "heading" ? "New heading" : "New text",
+        text: heading ? "New heading" : "New text",
         role,
         fontFamily,
         fontSize,
-        fontWeight: role === "heading" ? BOLD_WEIGHT : REGULAR_WEIGHT,
+        fontWeight: heading ? BOLD_WEIGHT : REGULAR_WEIGHT,
         italic: false,
         underline: false,
         lineThrough: false,
-        lineHeight: role === "heading" ? 1.12 : 1.4,
+        lineHeight,
         align: "left",
         color,
       });

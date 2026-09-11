@@ -1,7 +1,7 @@
 "use client";
 
 import type Konva from "konva";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } from "react-konva";
 import { type CanvasSpec, coverCrop, safeArea } from "@/lib/design/canvas-spec";
 import {
@@ -67,6 +67,8 @@ function useImage(url: string | null): HTMLImageElement | null {
   return image;
 }
 
+const identityFontFamily = (name: string) => name;
+
 interface DesignStageProps {
   document: DesignDocument;
   spec: CanvasSpec;
@@ -77,9 +79,9 @@ interface DesignStageProps {
   onSelect: (id: string | null) => void;
   onLayerChange: (id: string, patch: Partial<DesignLayer>) => void;
   /** Streaming counterpart to `onLayerChange`, for on-canvas typing to fold into one undo step. */
-  onLayerCommit?: (id: string, patch: Partial<DesignLayer>) => void;
+  onLayerCommit: (id: string, patch: Partial<DesignLayer>) => void;
   /** Closes that streaming run, so the next edit starts a fresh undo step. */
-  onGestureEnd?: () => void;
+  onGestureEnd: () => void;
   showSafeZone?: boolean;
   stageRef?: React.RefObject<Konva.Stage | null>;
   /** Maps a document's stored font name onto a CSS family the canvas can draw. */
@@ -99,7 +101,7 @@ export function DesignStage({
   onGestureEnd,
   showSafeZone = true,
   stageRef,
-  resolveFontFamily = (name) => name,
+  resolveFontFamily = identityFontFamily,
 }: DesignStageProps) {
   const scale = width / spec.width;
   const height = spec.height * scale;
@@ -119,10 +121,16 @@ export function DesignStage({
     [stageRef],
   );
 
-  const faces = facesUsedBy(document, resolveFontFamily);
+  const faces = useMemo(
+    () => facesUsedBy(document, resolveFontFamily),
+    [document, resolveFontFamily],
+  );
   const facesRef = useRef(faces);
   facesRef.current = faces;
-  const facesKey = faces.map((face) => `${face.family}|${face.weight}|${face.italic}`).join(",");
+  const facesKey = useMemo(
+    () => faces.map((face) => `${face.family}|${face.weight}|${face.italic}`).join(","),
+    [faces],
+  );
 
   /**
    * A canvas does not pull a webfont the way the DOM does: Konva draws with whatever is loaded
@@ -156,7 +164,7 @@ export function DesignStage({
   useEffect(() => {
     if (editingId && !editingLayer) {
       setEditingId(null);
-      onGestureEnd?.();
+      onGestureEnd();
     }
   }, [editingId, editingLayer, onGestureEnd]);
 
@@ -208,8 +216,8 @@ export function DesignStage({
     const width = Math.max(MIN_LAYER_SIZE, node.width() * node.scaleX());
     node.setAttrs({ width, scaleX: 1, scaleY: 1 });
 
-    (onLayerCommit ?? onLayerChange)(layer.id, { x: node.x(), y: node.y(), width });
-    if (done) onGestureEnd?.();
+    onLayerCommit(layer.id, { x: node.x(), y: node.y(), width });
+    if (done) onGestureEnd();
   }
 
   function beginTextEdit(layer: TextLayer) {
@@ -219,7 +227,7 @@ export function DesignStage({
 
   function endTextEdit() {
     setEditingId(null);
-    onGestureEnd?.();
+    onGestureEnd();
   }
 
   function register(id: string) {
@@ -388,9 +396,7 @@ export function DesignStage({
           layer={editingLayer}
           scale={scale}
           fontFamily={resolveFontFamily(editingLayer.fontFamily)}
-          onInput={(text) =>
-            (onLayerCommit ?? onLayerChange)(editingLayer.id, { text } as Partial<DesignLayer>)
-          }
+          onInput={(text) => onLayerCommit(editingLayer.id, { text } as Partial<DesignLayer>)}
           onClose={endTextEdit}
         />
       )}

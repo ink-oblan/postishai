@@ -43,6 +43,12 @@ export const CAROUSEL_PLATFORM_SPECS: Record<Platform, CarouselPlatformSpec> = {
   },
 };
 
+export const CAROUSEL_PLATFORMS = Object.keys(CAROUSEL_PLATFORM_SPECS) as Platform[];
+
+export function isCarouselPlatform(value: unknown): value is Platform {
+  return typeof value === "string" && value in CAROUSEL_PLATFORM_SPECS;
+}
+
 export function carouselSpec(platform: Platform): CarouselPlatformSpec {
   return CAROUSEL_PLATFORM_SPECS[platform];
 }

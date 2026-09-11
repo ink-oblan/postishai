@@ -2,7 +2,7 @@ import { slideImagePath } from "@/lib/carousel/slide-image";
 import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import type { AspectRatio } from "@/lib/image-models/types";
-import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
+import { isMockEnabled, MOCK_TIMINGS, mockDelay } from "@/lib/mock-config";
 import { writeFile } from "@/lib/storage";
 import { generateMockSlideImage } from "@/mocks/mock-generators";
 import { safeDbUpdate } from "@/workers/db-utils";
@@ -75,14 +75,17 @@ export const carouselSlideImageJob: JobDefinition<
 
     ctx.log(`[carousel.slide.image] start slideId=${slideId} model=${imageModel}`);
 
-    const slide = await ctx.db.carouselSlide.findUnique({ where: { id: slideId } });
+    const slide = await ctx.db.carouselSlide.findUnique({
+      where: { id: slideId },
+      select: { postId: true },
+    });
     if (!slide) throw new Error(`CarouselSlide ${slideId} not found`);
 
     const imagePath = slideImagePath(slide.postId, slideId);
 
     if (isMockEnabled()) {
       ctx.log(`[carousel.slide.image] MOCK MODE: waiting ${MOCK_TIMINGS.CAROUSEL_SLIDE}ms`);
-      await new Promise((resolve) => setTimeout(resolve, MOCK_TIMINGS.CAROUSEL_SLIDE));
+      await mockDelay(MOCK_TIMINGS.CAROUSEL_SLIDE);
       await writeFile(imagePath, await generateMockSlideImage(slideId, aspectRatio));
       ctx.log(`[carousel.slide.image] MOCK MODE: saved to ${imagePath}`);
       return { imagePath, prompt };

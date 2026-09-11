@@ -1,5 +1,6 @@
 "use client";
 
+import type { Platform } from "@prisma/client";
 import { ArrowDown, ArrowUp, Loader2, Plus, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -15,7 +16,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { LAYOUT_NAMES } from "@/lib/design/layouts";
+import { carouselSpec } from "@/lib/carousel/platform-spec";
+import { DEFAULT_LAYOUT, isLayoutName, LAYOUT_LABELS, LAYOUT_NAMES } from "@/lib/design/layouts";
+import { responseError } from "@/lib/utils";
 
 export interface ScenarioSlideRow {
   id: string | null;
@@ -27,30 +30,27 @@ export interface ScenarioSlideRow {
 
 interface ScenarioEditorProps {
   postId: string;
+  platform: Platform;
   initialSlides: ScenarioSlideRow[];
-  minSlides: number;
-  maxSlides: number;
 }
-
-const LAYOUT_LABELS: Record<string, string> = {
-  cover: "Cover",
-  statement: "Statement",
-  list: "List",
-  quote: "Quote",
-  cta: "Call to action",
-};
 
 function emptySlide(): ScenarioSlideRow {
-  return { id: null, headline: "", body: "", visualPrompt: "", layout: "statement" };
+  return { id: null, headline: "", body: "", visualPrompt: "", layout: DEFAULT_LAYOUT };
 }
 
-export function ScenarioEditor({
-  postId,
-  initialSlides,
-  minSlides,
-  maxSlides,
-}: ScenarioEditorProps) {
+function toRows(saved: Record<string, unknown>[]): ScenarioSlideRow[] {
+  return saved.map((slide) => ({
+    id: slide.id as string,
+    headline: (slide.headline as string) ?? "",
+    body: (slide.body as string) ?? "",
+    visualPrompt: slide.visualPrompt as string,
+    layout: slide.layout as string,
+  }));
+}
+
+export function ScenarioEditor({ postId, platform, initialSlides }: ScenarioEditorProps) {
   const router = useRouter();
+  const { minSlides, maxSlides } = carouselSpec(platform);
   const [slides, setSlides] = useState<ScenarioSlideRow[]>(initialSlides);
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState<string | null>(null);
@@ -91,20 +91,10 @@ export function ScenarioEditor({
           })),
         }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to save");
-      }
+      if (!res.ok) throw await responseError(res, "Failed to save");
+
       const { slides: saved } = await res.json();
-      setSlides(
-        saved.map((slide: Record<string, unknown>) => ({
-          id: slide.id as string,
-          headline: (slide.headline as string) ?? "",
-          body: (slide.body as string) ?? "",
-          visualPrompt: slide.visualPrompt as string,
-          layout: slide.layout as string,
-        })),
-      );
+      setSlides(toRows(saved));
       return true;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save");
@@ -122,20 +112,10 @@ export function ScenarioEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(slideId ? { slideId } : {}),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to regenerate");
-      }
+      if (!res.ok) throw await responseError(res, "Failed to regenerate");
+
       const { slides: fresh } = await res.json();
-      setSlides(
-        fresh.map((slide: Record<string, unknown>) => ({
-          id: slide.id as string,
-          headline: (slide.headline as string) ?? "",
-          body: (slide.body as string) ?? "",
-          visualPrompt: slide.visualPrompt as string,
-          layout: slide.layout as string,
-        })),
-      );
+      setSlides(toRows(fresh));
       toast.success(slideId ? "Slide rewritten" : "Carousel rewritten");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to regenerate");
@@ -155,10 +135,8 @@ export function ScenarioEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to start generation");
-      }
+      if (!res.ok) throw await responseError(res, "Failed to start generation");
+
       toast.success("Generating slide backgrounds");
       router.refresh();
     } catch (err) {
@@ -290,7 +268,9 @@ export function ScenarioEditor({
                   onValueChange={(value: string | null) => value && patch(index, { layout: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue>{LAYOUT_LABELS[slide.layout] ?? slide.layout}</SelectValue>
+                    <SelectValue>
+                      {isLayoutName(slide.layout) ? LAYOUT_LABELS[slide.layout] : slide.layout}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {LAYOUT_NAMES.map((name) => (

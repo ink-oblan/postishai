@@ -1,5 +1,6 @@
 "use client";
 
+import type { Platform } from "@prisma/client";
 import type Konva from "konva";
 import { Check, Eye, ImageIcon, Loader2, Plus, Redo2, Type, Undo2 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -24,11 +25,17 @@ import { carouselCanvas } from "@/lib/carousel/platform-spec";
 import { CAROUSEL_SLIDE_STATUS } from "@/lib/constants";
 import { safeArea } from "@/lib/design/canvas-spec";
 import { type DesignDocument, parseDesignDocument } from "@/lib/design/document";
-import { ensureFontsLoaded, facesUsedBy, registerUploadedFont } from "@/lib/design/fonts";
+import {
+  brandAssetUrl,
+  ensureFontsLoaded,
+  facesUsedBy,
+  registerUploadedFont,
+  uploadedFontFamily,
+} from "@/lib/design/fonts";
 import { textMeasurer } from "@/lib/design/measure-text";
 import { reflowAutoLayout } from "@/lib/design/reflow";
 import { POLLING } from "@/lib/polling-config";
-import { wrapIndex } from "@/lib/utils";
+import { responseError, wrapIndex } from "@/lib/utils";
 
 // Konva reaches for `window` at import time, so it must never enter the server graph.
 const DesignStage = dynamic(
@@ -57,7 +64,7 @@ export interface EditorSlide {
 
 interface SlideEditorProps {
   postId: string;
-  platform: "INSTAGRAM" | "TIKTOK" | "YOUTUBE_SHORTS";
+  platform: Platform;
   initialSlides: EditorSlide[];
   logoAssetId: string | null;
   uploadedFonts: { assetId: string; name: string }[];
@@ -94,7 +101,9 @@ export function SlideEditor({
   const selectedSlide = slides.find((slide) => slide.id === selectedSlideId) ?? null;
 
   // Read once, on mount: the effect below is what swaps documents afterwards.
-  const editor = useDesignEditor(documentFor(selectedSlide), spec);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only, or every render re-parses
+  const initialDocument = useMemo(() => documentFor(selectedSlide), []);
+  const editor = useDesignEditor(initialDocument, spec);
   const { setDocument, select, applyReflow } = editor;
 
   // The restack below runs off a snapshot, so it needs the selection as of when it finishes.
@@ -104,7 +113,10 @@ export function SlideEditor({
   const fonts = useMemo(
     () => [
       ...builtinFontChoices(),
-      ...uploadedFonts.map((font) => ({ name: font.name, family: `brandfont-${font.assetId}` })),
+      ...uploadedFonts.map((font) => ({
+        name: font.name,
+        family: uploadedFontFamily(font.assetId),
+      })),
     ],
     [uploadedFonts],
   );
@@ -195,10 +207,7 @@ export function SlideEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ design }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? "Failed to save slide");
-      }
+      if (!res.ok) throw await responseError(res, "Failed to save slide");
     },
     [postId],
   );
@@ -309,6 +318,14 @@ export function SlideEditor({
     onShowShortcuts: () => setShortcutsOpen(true),
   });
 
+  /** Winds the render-run state back down: the slide the user was on, and every busy flag. */
+  function endRenderRun(restoreTo: string | null, setBusy: (busy: boolean) => void) {
+    if (restoreTo) setSelectedSlideId(restoreTo);
+    setRenderProgress(null);
+    setBusy(false);
+    setFrozenSelectionId(null);
+  }
+
   async function handlePreview() {
     if (editor.dirty && !(await saveDesign())) return;
 
@@ -330,10 +347,7 @@ export function SlideEditor({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to render the preview");
     } finally {
-      if (restoreTo) setSelectedSlideId(restoreTo);
-      setRenderProgress(null);
-      setPreviewing(false);
-      setFrozenSelectionId(null);
+      endRenderRun(restoreTo, setPreviewing);
     }
   }
 
@@ -354,18 +368,14 @@ export function SlideEditor({
         method: "POST",
         body: form,
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to complete the post");
-      }
+      if (!res.ok) throw await responseError(res, "Failed to complete the post");
+
       toast.success("Carousel complete — writing the caption");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to complete the post");
-      if (restoreTo) setSelectedSlideId(restoreTo);
-      setRenderProgress(null);
-      setPublishing(false);
-      setFrozenSelectionId(null);
+      // Only on failure: a successful publish holds the overlay up through the refresh.
+      endRenderRun(restoreTo, setPublishing);
     }
   }
 
@@ -375,9 +385,7 @@ export function SlideEditor({
     headline: slide.headline,
     status: slide.status,
     hasImage: slide.hasImage,
-    imageUrl: slide.hasImage
-      ? `/api/posts/${postId}/carousel/slides/${slide.id}/image?t=${slide.imageVersion}`
-      : null,
+    imageUrl: slideBackgroundUrl(slide),
   }));
 
   const selectedLayer =
@@ -462,9 +470,7 @@ export function SlideEditor({
                 spec={spec}
                 width={stageWidth}
                 backgroundUrl={backgroundUrl}
-                logoUrl={
-                  logoAssetId ? (assetId) => `/api/brand-profile/file?id=${assetId}` : undefined
-                }
+                logoUrl={brandAssetUrl}
                 selectedId={editor.selectedId}
                 onSelect={editor.select}
                 onLayerChange={editor.updateLayer}
@@ -570,7 +576,7 @@ export function SlideEditor({
 
         <BlockingOverlay
           active={rendering}
-          title={renderProgress || !publishing ? "Rendering slides…" : "Uploading slides…"}
+          title={publishing && !renderProgress ? "Uploading slides…" : "Rendering slides…"}
           description={
             renderProgress
               ? `Slide ${renderProgress.current} of ${renderProgress.total}`

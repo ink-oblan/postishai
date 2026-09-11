@@ -1,5 +1,6 @@
 "use client";
 
+import type { Platform } from "@prisma/client";
 import { Loader2, SquareStack } from "lucide-react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
@@ -17,9 +18,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { carouselSpec } from "@/lib/carousel/platform-spec";
+import { CAROUSEL_PLATFORMS, carouselSpec } from "@/lib/carousel/platform-spec";
 import { DEFAULT_LLM_MODEL_ID } from "@/lib/llm-models/registry";
-import { PLATFORM_LABELS } from "@/lib/utils";
+import { POLLING } from "@/lib/polling-config";
+import { PLATFORM_LABELS, responseError } from "@/lib/utils";
 
 interface LLMModel {
   id: string;
@@ -32,15 +34,12 @@ interface BrandProfile {
   brandName: string;
 }
 
-const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"] as const;
-type PlatformName = (typeof PLATFORMS)[number];
-
 const NO_BRAND = "__none__";
 
 export function CarouselWizard() {
   const router = useRouter();
   const [title, setTitle] = useState("");
-  const [platform, setPlatform] = useState<PlatformName>("INSTAGRAM");
+  const [platform, setPlatform] = useState<Platform>("INSTAGRAM");
   const [details, setDetails] = useState("");
   const [brandProfileId, setBrandProfileId] = useState<string>(NO_BRAND);
   const [llmModelId, setLlmModelId] = useState(DEFAULT_LLM_MODEL_ID);
@@ -59,7 +58,7 @@ export function CarouselWizard() {
     setElapsedSeconds(0);
     const timer = setInterval(
       () => setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000)),
-      1000,
+      POLLING.UI_TIMER,
     );
 
     return () => clearInterval(timer);
@@ -100,10 +99,8 @@ export function CarouselWizard() {
           llmModelId,
         }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to plan the carousel");
-      }
+      if (!res.ok) throw await responseError(res, "Failed to plan the carousel");
+
       const post = await res.json();
       posthog.capture("carousel_created", { platform, slide_count: slideCount });
       router.push(`/posts/${post.id}`);
@@ -130,7 +127,7 @@ export function CarouselWizard() {
       <div className="space-y-2">
         <Label>Platform</Label>
         <div className="flex flex-wrap gap-2">
-          {PLATFORMS.map((p) => (
+          {CAROUSEL_PLATFORMS.map((p) => (
             <Button
               key={p}
               type="button"
