@@ -1,5 +1,12 @@
 import { type Box, type CanvasSpec, safeArea } from "@/lib/design/canvas-spec";
-import type { DesignDocument, Layer, TextAlign, TextLayer } from "@/lib/design/document";
+import type {
+  AutoLayout,
+  DesignDocument,
+  Layer,
+  StackAnchor,
+  TextAlign,
+  TextLayer,
+} from "@/lib/design/document";
 
 export const LAYOUT_NAMES = ["cover", "statement", "list", "quote", "cta"] as const;
 
@@ -104,13 +111,16 @@ function textLayer(
     height: box.height,
     rotation: 0,
     text,
+    italic: false,
+    underline: false,
+    lineThrough: false,
     ...options,
   };
 }
 
 interface LayoutRecipe {
   /** Share of the safe area's height the block occupies, and where it starts within it. */
-  anchor: "top" | "middle" | "bottom";
+  anchor: StackAnchor;
   align: TextAlign;
   headingScale: number;
   headingWeight: number;
@@ -276,4 +286,10 @@ function shrinkToFit(layers: Layer[], area: Box): Layer[] {
 
 export function layoutOverlay(name: LayoutName, colors: LayoutColors): DesignDocument["overlay"] {
   return { color: colors.scrim, opacity: RECIPES[name].scrimOpacity };
+}
+
+/** The part of the recipe the browser needs to restack the blocks against real font metrics. */
+export function layoutAutoLayout(name: LayoutName): AutoLayout {
+  const { anchor, gap } = RECIPES[name];
+  return { anchor, gap };
 }

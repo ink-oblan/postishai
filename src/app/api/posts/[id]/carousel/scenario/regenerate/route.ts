@@ -8,7 +8,7 @@ import {
 } from "@/lib/carousel/scenario";
 import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE } from "@/lib/constants";
 import { prisma } from "@/lib/db";
-import { isMockEnabled } from "@/lib/mock-config";
+import { isMockEnabled, MOCK_TIMINGS, mockDelay } from "@/lib/mock-config";
 
 export const POST = withAuth(async function POST(
   req: NextRequest,
@@ -41,16 +41,19 @@ export const POST = withAuth(async function POST(
 
   let generated: ScenarioSlide[];
   try {
-    generated = isMockEnabled()
-      ? mockScenario(post.title, slideCount)
-      : await generateScenario({
-          title: post.title,
-          platform: post.platform,
-          slideCount,
-          details: post.details,
-          brand: post.brandProfile,
-          llmModelId: post.llmModelId,
-        });
+    if (isMockEnabled()) {
+      await mockDelay(MOCK_TIMINGS.CAROUSEL_SCENARIO);
+      generated = mockScenario(post.title, slideCount);
+    } else {
+      generated = await generateScenario({
+        title: post.title,
+        platform: post.platform,
+        slideCount,
+        details: post.details,
+        brand: post.brandProfile,
+        llmModelId: post.llmModelId,
+      });
+    }
   } catch (err) {
     if (err instanceof ScenarioResponseError) {
       return NextResponse.json({ error: err.message }, { status: 502 });

@@ -1,6 +1,18 @@
 "use client";
 
-import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Copy, Trash2 } from "lucide-react";
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  ArrowDown,
+  ArrowUp,
+  Bold,
+  Copy,
+  Italic,
+  Strikethrough,
+  Trash2,
+  Underline,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import type { Layer, TextAlign } from "@/lib/design/document";
+import {
+  BOLD_WEIGHT,
+  isBold,
+  type Layer,
+  REGULAR_WEIGHT,
+  type TextAlign,
+} from "@/lib/design/document";
 
 const ALIGNMENTS: { value: TextAlign; icon: typeof AlignLeft; label: string }[] = [
   { value: "left", icon: AlignLeft, label: "Align left" },
@@ -20,7 +37,23 @@ const ALIGNMENTS: { value: TextAlign; icon: typeof AlignLeft; label: string }[] 
   { value: "right", icon: AlignRight, label: "Align right" },
 ];
 
-const WEIGHTS = [300, 400, 500, 600, 700, 800];
+/** The decorations are plain flags on the layer, so one list drives all three toggles. */
+const DECORATIONS: {
+  key: "italic" | "underline" | "lineThrough";
+  icon: typeof Italic;
+  label: string;
+}[] = [
+  { key: "italic", icon: Italic, label: "Italic (Ctrl+I)" },
+  { key: "underline", icon: Underline, label: "Underline (Ctrl+U)" },
+  { key: "lineThrough", icon: Strikethrough, label: "Strikethrough (Ctrl+Shift+X)" },
+];
+
+/**
+ * A colour input paints its swatch inside the field's own padding, and the browser gives that
+ * swatch a border of its own. Clearing both is what lets the colour fill the whole control.
+ */
+const COLOR_INPUT_CLASS =
+  "h-9 overflow-hidden p-0 [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-0";
 
 export interface FontChoice {
   name: string;
@@ -98,17 +131,10 @@ export function LayerInspector({
 
       {layer.type === "text" && (
         <>
-          <div className="space-y-2">
-            <Label htmlFor="layer-text">Text</Label>
-            <Textarea
-              id="layer-text"
-              value={layer.text}
-              rows={3}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                onChange({ text: e.target.value })
-              }
-            />
-          </div>
+          <p className="text-muted-foreground text-xs">
+            Double-click the text on the slide to edit it there. The side handles set the width it
+            wraps at; the height follows the copy.
+          </p>
 
           <div className="space-y-2">
             <Label>Font</Label>
@@ -146,24 +172,36 @@ export function LayerInspector({
               />
             </div>
             <div className="space-y-2">
-              <Label>Weight</Label>
-              <Select
-                value={String(layer.fontWeight)}
-                onValueChange={(value: string | null) =>
-                  value && onChange({ fontWeight: Number(value) })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue>{layer.fontWeight}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {WEIGHTS.map((weight) => (
-                    <SelectItem key={weight} value={String(weight)}>
-                      {weight}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Style</Label>
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  type="button"
+                  variant={isBold(layer.fontWeight) ? "default" : "outline"}
+                  size="sm"
+                  title="Bold (Ctrl+B)"
+                  aria-pressed={isBold(layer.fontWeight)}
+                  onClick={() =>
+                    onChange({
+                      fontWeight: isBold(layer.fontWeight) ? REGULAR_WEIGHT : BOLD_WEIGHT,
+                    })
+                  }
+                >
+                  <Bold className="h-3.5 w-3.5" />
+                </Button>
+                {DECORATIONS.map(({ key, icon: Icon, label }) => (
+                  <Button
+                    key={key}
+                    type="button"
+                    variant={layer[key] ? "default" : "outline"}
+                    size="sm"
+                    title={label}
+                    aria-pressed={layer[key]}
+                    onClick={() => onChange({ [key]: !layer[key] })}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -174,7 +212,7 @@ export function LayerInspector({
                 id="layer-color"
                 type="color"
                 value={layer.color.slice(0, 7)}
-                className="h-9 p-1"
+                className={COLOR_INPUT_CLASS}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   onChange({ color: e.target.value })
                 }
@@ -209,7 +247,7 @@ export function LayerInspector({
               id="shape-fill"
               type="color"
               value={layer.fill.slice(0, 7)}
-              className="h-9 p-1"
+              className={COLOR_INPUT_CLASS}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 onChange({ fill: e.target.value })
               }

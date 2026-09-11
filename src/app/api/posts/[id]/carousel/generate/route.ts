@@ -8,7 +8,13 @@ import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE, POST_STATUS } from "@/lib/consta
 import { prisma } from "@/lib/db";
 import type { DesignDocument } from "@/lib/design/document";
 import { pickFontPair } from "@/lib/design/fonts";
-import { DEFAULT_LAYOUT, expandLayout, isLayoutName, layoutOverlay } from "@/lib/design/layouts";
+import {
+  DEFAULT_LAYOUT,
+  expandLayout,
+  isLayoutName,
+  layoutAutoLayout,
+  layoutOverlay,
+} from "@/lib/design/layouts";
 import { DEFAULT_IMAGE_MODEL_ID, getImageAdapter } from "@/lib/image-models/registry";
 import { enqueueCarouselSlideImageJob } from "@/lib/worker/jobs";
 
@@ -98,6 +104,8 @@ export const POST = withAuth(async function POST(
         // The real path lands when the image job finishes; until then the slide draws its scrim.
         background: { kind: "solid", color: layoutColors.scrim },
         overlay: layoutOverlay(layout, layoutColors),
+        // Laid out here against an estimate; the editor restacks it once it can measure the font.
+        autoLayout: layoutAutoLayout(layout),
         layers: expandLayout(layout, {
           spec: canvas,
           headline: slide.headline,

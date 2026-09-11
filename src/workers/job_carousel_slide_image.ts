@@ -1,5 +1,5 @@
 import { slideImagePath } from "@/lib/carousel/slide-image";
-import { CAROUSEL_SLIDE_STATUS } from "@/lib/constants";
+import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { getImageAdapter } from "@/lib/image-models/registry";
 import type { AspectRatio } from "@/lib/image-models/types";
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
@@ -7,12 +7,37 @@ import { writeFile } from "@/lib/storage";
 import { generateMockSlideImage } from "@/mocks/mock-generators";
 import { safeDbUpdate } from "@/workers/db-utils";
 import { isRetryableError, parseObjectPayload, readRequiredString } from "@/workers/job-utils";
-import type { CarouselSlideImagePayload, JobDefinition } from "@/workers/types";
+import type { CarouselSlideImagePayload, JobDefinition, WorkerDb } from "@/workers/types";
 
 type CarouselSlideImageResult = {
   imagePath: string;
   prompt: string;
 };
+
+async function releasePostWhenSlidesSettle(db: WorkerDb, slideId: string): Promise<void> {
+  const slide = await db.carouselSlide.findUnique({
+    where: { id: slideId },
+    select: { postId: true },
+  });
+  if (!slide) return;
+
+  const unsettled = await db.carouselSlide.count({
+    where: {
+      postId: slide.postId,
+      status: { in: [CAROUSEL_SLIDE_STATUS.PENDING, CAROUSEL_SLIDE_STATUS.GENERATING] },
+    },
+  });
+  if (unsettled > 0) return;
+
+  await db.post.updateMany({
+    where: {
+      id: slide.postId,
+      status: POST_STATUS.GENERATING,
+      carouselStage: CAROUSEL_STAGE.EDITING,
+    },
+    data: { status: POST_STATUS.DRAFT },
+  });
+}
 
 export const carouselSlideImageJob: JobDefinition<
   "carousel.slide.image.generate",
@@ -97,6 +122,7 @@ export const carouselSlideImageJob: JobDefinition<
             prompt: result.prompt,
           },
         });
+        await releasePostWhenSlidesSettle(db, payload.slideId);
       },
       "carousel-slide-image-success",
       payload.slideId,
@@ -104,11 +130,13 @@ export const carouselSlideImageJob: JobDefinition<
   },
   async onFailure(db, payload, error) {
     await safeDbUpdate(
-      () =>
-        db.carouselSlide.update({
+      async () => {
+        await db.carouselSlide.update({
           where: { id: payload.slideId },
           data: { status: CAROUSEL_SLIDE_STATUS.FAILED, errorMessage: error },
-        }),
+        });
+        await releasePostWhenSlidesSettle(db, payload.slideId);
+      },
       "carousel-slide-image-failure",
       payload.slideId,
     );

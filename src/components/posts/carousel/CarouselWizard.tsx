@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { BlockingOverlay } from "@/components/ui/blocking-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,8 +48,22 @@ export function CarouselWizard() {
   const [brands, setBrands] = useState<BrandProfile[]>([]);
   const [slideCount, setSlideCount] = useState(5);
   const [submitting, setSubmitting] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const spec = carouselSpec(platform);
+
+  useEffect(() => {
+    if (!submitting) return;
+
+    const startedAt = Date.now();
+    setElapsedSeconds(0);
+    const timer = setInterval(
+      () => setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000)),
+      1000,
+    );
+
+    return () => clearInterval(timer);
+  }, [submitting]);
 
   useEffect(() => {
     fetch("/api/llm-models")
@@ -217,6 +232,15 @@ export function CarouselWizard() {
           </>
         )}
       </Button>
+
+      <BlockingOverlay
+        active={submitting}
+        className="fixed z-50 rounded-none"
+        title="Planning your carousel…"
+        description={`Writing ${slideCount} slides for ${PLATFORM_LABELS[platform]}`}
+        elapsedSeconds={elapsedSeconds}
+        estimate="usually under a minute"
+      />
     </div>
   );
 }

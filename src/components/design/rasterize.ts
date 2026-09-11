@@ -3,31 +3,8 @@
 import type Konva from "konva";
 import type { CanvasSpec } from "@/lib/design/canvas-spec";
 import type { DesignDocument } from "@/lib/design/document";
-import { ensureFontsLoaded } from "@/lib/design/fonts";
+import { ensureFontsLoaded, facesUsedBy, remeasureText } from "@/lib/design/fonts";
 import { BACKGROUND_NODE_NAME, EDITOR_CHROME_NAME } from "./DesignStage";
-
-/**
- * Every face the document actually draws with. Passing only these to `document.fonts.load`
- * keeps the wait proportional to the design rather than the whole catalogue.
- */
-export function facesUsedBy(
-  document: DesignDocument,
-  resolveFontFamily: (name: string) => string = (name) => name,
-) {
-  const faces = new Map<string, { family: string; weight: number; size: number }>();
-
-  for (const layer of document.layers) {
-    if (layer.type !== "text") continue;
-    const family = resolveFontFamily(layer.fontFamily);
-    const key = `${family}|${layer.fontWeight}`;
-    const existing = faces.get(key);
-    if (!existing || existing.size < layer.fontSize) {
-      faces.set(key, { family, weight: layer.fontWeight, size: Math.ceil(layer.fontSize) });
-    }
-  }
-
-  return [...faces.values()];
-}
 
 /**
  * The background is loaded asynchronously by the stage, so switching slides and exporting in
@@ -77,6 +54,7 @@ export async function rasterizeStage(
 
   try {
     // Redraw after the fonts land, or the export keeps whatever fallback was measured first.
+    remeasureText(stage);
     stage.draw();
 
     const pixelRatio = spec.width / stage.width();

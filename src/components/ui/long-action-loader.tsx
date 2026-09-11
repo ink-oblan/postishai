@@ -1,12 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
-import {
-  type ComponentProps,
-  type CSSProperties,
-  type ReactNode,
-  useSyncExternalStore,
-} from "react";
+import type { ComponentProps, CSSProperties, ReactNode } from "react";
 import { BrandLogoMark } from "@/components/brand-logo";
 import { cn } from "@/lib/utils";
 import styles from "./long-action-loader.module.css";
@@ -24,7 +18,7 @@ const ORBIT_SPEED_STAGES = [
   [ORBIT_BRAKE_START, 1],
   [1, ORBIT_MIN_SPEED],
 ] as const;
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+const EASING_RESOLUTION_MS = 10;
 
 // Integrate a cosine speed ramp so velocity and acceleration join smoothly.
 function rampDistance(time: number, duration: number, from: number, to: number): number {
@@ -75,11 +69,44 @@ function pulseEase(progress: number): number {
   return (1 - Math.cos(Math.PI * progress)) / 2;
 }
 
+function toLinearEasing(easing: (progress: number) => number, durationSeconds: number): string {
+  const count = Math.max(Math.round((durationSeconds * 1000) / EASING_RESOLUTION_MS), 2);
+  const points: number[] = [];
+  for (let index = 0; index < count; index++) {
+    points.push(Math.round(easing(index / (count - 1)) * 10000) / 10000);
+  }
+
+  return `linear(${points.join(", ")})`;
+}
+
+const ORBIT_EASING = toLinearEasing(orbitEase, ORBIT_DURATION);
+const PULSE_EASING = toLinearEasing(pulseEase, LOOP_DURATION);
+
 type LogoLoaderSize = number | string;
+
+type LongActionLoaderSize = "default" | "compact" | "large";
+
+/** The orbit strokes are non-scaling, so larger visuals need the width scaled up to match. */
+const SIZE_STYLES: Record<
+  LongActionLoaderSize,
+  { visual: number; strokeScale: number; body: string; title: string; description: string }
+> = {
+  compact: { visual: 72, strokeScale: 1, body: "mt-3", title: "", description: "" },
+  default: { visual: 96, strokeScale: 1, body: "", title: "text-base", description: "" },
+  large: {
+    visual: 256,
+    strokeScale: 3,
+    body: "mt-8 space-y-2",
+    title: "text-4xl",
+    description: "max-w-xl text-lg",
+  },
+};
 
 interface LogoLoaderProps extends Omit<ComponentProps<"div">, "children" | "role"> {
   /** Pixel value or any valid CSS length. */
   size?: LogoLoaderSize;
+  /** Multiplies the orbit stroke width, which does not scale with `size`. */
+  strokeScale?: number;
   /** Removes status semantics when another element supplies the loading announcement. */
   decorative?: boolean;
 }
@@ -89,31 +116,21 @@ interface LongActionLoaderProps extends Omit<ComponentProps<"div">, "title"> {
   description?: ReactNode;
   elapsedSeconds?: number;
   estimate?: ReactNode;
-  size?: "default" | "compact";
+  size?: LongActionLoaderSize;
   visualSize?: LogoLoaderSize;
 }
 
-type LoaderStyle = CSSProperties & { "--logo-loader-size": string };
+type LoaderStyle = CSSProperties & {
+  "--logo-loader-size": string;
+  "--logo-loader-stroke-scale": number;
+  "--logo-loader-loop-duration": string;
+  "--logo-loader-orbit-duration": string;
+  "--logo-loader-orbit-ease": string;
+  "--logo-loader-pulse-ease": string;
+};
 
 function toCssSize(size: LogoLoaderSize): string {
   return typeof size === "number" ? `${size}px` : size;
-}
-
-function subscribeToReducedMotion(callback: () => void): () => void {
-  if (typeof window.matchMedia !== "function") return () => undefined;
-
-  const mediaQuery = window.matchMedia(REDUCED_MOTION_QUERY);
-  mediaQuery.addEventListener("change", callback);
-  return () => mediaQuery.removeEventListener("change", callback);
-}
-
-function getReducedMotionPreference(): boolean {
-  if (typeof window.matchMedia !== "function") return true;
-  return window.matchMedia(REDUCED_MOTION_QUERY).matches;
-}
-
-function usePrefersReducedMotion(): boolean {
-  return useSyncExternalStore(subscribeToReducedMotion, getReducedMotionPreference, () => true);
 }
 
 function formatElapsedTime(seconds: number): string {
@@ -126,15 +143,20 @@ function formatElapsedTime(seconds: number): string {
 
 function LogoLoader({
   size = 96,
+  strokeScale = 1,
   decorative = false,
   className,
   style,
   "aria-label": ariaLabel,
   ...props
 }: LogoLoaderProps) {
-  const reduceMotion = usePrefersReducedMotion();
   const loaderStyle = {
     "--logo-loader-size": toCssSize(size),
+    "--logo-loader-stroke-scale": strokeScale,
+    "--logo-loader-loop-duration": `${LOOP_DURATION}s`,
+    "--logo-loader-orbit-duration": `${ORBIT_DURATION}s`,
+    "--logo-loader-orbit-ease": ORBIT_EASING,
+    "--logo-loader-pulse-ease": PULSE_EASING,
     ...style,
   } as LoaderStyle;
 
@@ -151,84 +173,30 @@ function LogoLoader({
     >
       {decorative ? null : <span className="sr-only">{ariaLabel ?? "Loading"}</span>}
 
-      <motion.div
-        className={styles.halo}
-        initial={false}
-        animate={
-          reduceMotion
-            ? { opacity: 0.2, scale: 0.94 }
-            : { opacity: [0.16, 0.28, 0.16], scale: [0.88, 1.04, 0.88] }
-        }
-        transition={
-          reduceMotion
-            ? { duration: 0 }
-            : { duration: LOOP_DURATION, ease: pulseEase, repeat: Infinity }
-        }
-      />
+      <div className={styles.halo} aria-hidden />
 
       <svg aria-hidden className="absolute inset-0 size-full" viewBox="0 0 100 100">
-        <title>Loading progress orbit</title>
+        <title>Loading progress track</title>
         <circle className={styles.track} cx="50" cy="50" r="43.5" />
       </svg>
 
-      <motion.svg
-        // Restart when tuning the launch: changing easing alone can leave an
-        // existing infinite animation running with its previous transition.
-        key={`orbit-${JSON.stringify(ORBIT_SPEED_STAGES)}-${ORBIT_DURATION}`}
-        aria-hidden
-        className={styles.orbitLayer}
-        viewBox="0 0 100 100"
-        initial={false}
-        // The 54-degree arc's midpoint sits at twelve o'clock at each loop boundary.
-        animate={reduceMotion ? { rotate: -117 } : { rotate: [-117, 243] }}
-        transition={{
-          duration: reduceMotion ? 0 : ORBIT_DURATION,
-          ease: reduceMotion ? undefined : orbitEase,
-          repeat: reduceMotion ? 0 : Infinity,
-        }}
-      >
-        <circle className={styles.orbit} cx="50" cy="50" r="43.5" pathLength="100" />
-      </motion.svg>
+      <div className={styles.orbitLayer} aria-hidden>
+        <svg className={styles.orbitSvg} viewBox="0 0 100 100">
+          <title>Loading progress orbit</title>
+          <circle className={styles.orbit} cx="50" cy="50" r="43.5" pathLength="100" />
+        </svg>
+      </div>
 
-      <motion.div
-        className={styles.logoLayer}
-        initial={false}
-        animate={reduceMotion ? { scale: 1 } : { scale: [0.96, 1.02, 0.96] }}
-        transition={
-          reduceMotion
-            ? { duration: 0 }
-            : { duration: LOOP_DURATION, ease: pulseEase, repeat: Infinity }
-        }
-      >
+      <div className={styles.logoLayer} aria-hidden>
         <BrandLogoMark
           className={styles.logoMark}
           style={{ height: "100%", width: "100%" }}
           viewBox="0 0 591 591"
         />
-      </motion.div>
+      </div>
 
       <div className={styles.sweepMask} aria-hidden>
-        <motion.div
-          className={styles.sweep}
-          animate={
-            reduceMotion
-              ? { opacity: 0, x: "-105%" }
-              : {
-                  opacity: [0, 0, 0.5, 0, 0],
-                  x: ["-105%", "-105%", "5%", "105%", "105%"],
-                }
-          }
-          transition={
-            reduceMotion
-              ? { duration: 0 }
-              : {
-                  duration: LOOP_DURATION,
-                  ease: [0.4, 0, 0.2, 1],
-                  repeat: Infinity,
-                  times: [0, 0.14, 0.42, 0.68, 1],
-                }
-          }
-        />
+        <div className={styles.sweep} />
       </div>
     </div>
   );
@@ -244,7 +212,8 @@ function LongActionLoader({
   className,
   ...props
 }: LongActionLoaderProps) {
-  const resolvedVisualSize = visualSize ?? (size === "compact" ? 72 : 96);
+  const sizeStyles = SIZE_STYLES[size];
+  const resolvedVisualSize = visualSize ?? sizeStyles.visual;
 
   return (
     <div
@@ -256,19 +225,29 @@ function LongActionLoader({
       className={cn("flex flex-col items-center justify-center text-center", className)}
       {...props}
     >
-      <LogoLoader decorative size={resolvedVisualSize} />
+      <LogoLoader decorative size={resolvedVisualSize} strokeScale={sizeStyles.strokeScale} />
 
-      <div className={cn("mt-4 space-y-1", size === "compact" && "mt-3")}>
-        <p className={cn("font-medium text-sm", size === "default" && "text-base")}>{title}</p>
+      <div className={cn("mt-4 space-y-1", sizeStyles.body)}>
+        <p className={cn("font-medium text-sm", sizeStyles.title)}>{title}</p>
         {description ? (
-          <p className="mx-auto max-w-sm text-muted-foreground text-xs leading-relaxed">
+          <p
+            className={cn(
+              "mx-auto max-w-sm text-muted-foreground text-xs leading-relaxed",
+              sizeStyles.description,
+            )}
+          >
             {description}
           </p>
         ) : null}
       </div>
 
       {elapsedSeconds !== undefined || estimate ? (
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+        <div
+          className={cn(
+            "mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-muted-foreground text-xs",
+            size === "large" && "mt-5 text-base",
+          )}
+        >
           {elapsedSeconds !== undefined ? (
             <span aria-hidden="true" suppressHydrationWarning>
               {formatElapsedTime(elapsedSeconds)} elapsed

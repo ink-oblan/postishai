@@ -90,7 +90,7 @@ export const POST = withAuth(async function POST(
       where: { id: post.id },
       data: {
         carouselStage: CAROUSEL_STAGE.COMPLETED,
-        status: POST_STATUS.GENERATING,
+        status: POST_STATUS.COMPLETED,
         metadataStatus: METADATA_STATUS.GENERATING,
       },
     });
@@ -102,7 +102,7 @@ export const POST = withAuth(async function POST(
 
   try {
     await broadcastWithContext("carousel-publish", () =>
-      broadcastPostStatusUpdate(userId, post.id, POST_STATUS.GENERATING),
+      broadcastPostStatusUpdate(userId, post.id, POST_STATUS.COMPLETED),
     );
   } catch (broadcastErr) {
     console.error(`[carousel/publish] Broadcast failed for postId=${post.id}:`, broadcastErr);

@@ -30,6 +30,28 @@ describe("parseDesignDocument", () => {
     expect(parsed?.document.background).toEqual(background);
   });
 
+  // Every save round-trips through here, so dropping this would leave generated slides being
+  // restacked from scratch on every visit instead of being corrected once.
+  it("keeps autoLayout across a save", () => {
+    const parsed = parseDesignDocument({
+      background,
+      autoLayout: { anchor: "bottom", gap: 32 },
+      layers: [heading],
+    });
+
+    expect(parsed?.document.autoLayout).toEqual({ anchor: "bottom", gap: 32 });
+  });
+
+  it("ignores an unreadable autoLayout rather than refusing the document", () => {
+    const cases = [{ anchor: "sideways", gap: 32 }, { anchor: "top" }, "bottom", null];
+
+    for (const autoLayout of cases) {
+      const parsed = parseDesignDocument({ background, autoLayout, layers: [heading] });
+      expect(parsed?.document.autoLayout).toBeUndefined();
+      expect(parsed?.document.layers).toHaveLength(1);
+    }
+  });
+
   it("refuses a document with no readable background", () => {
     expect(parseDesignDocument({ background: { kind: "image" }, layers: [] })).toBeUndefined();
     expect(parseDesignDocument({ layers: [] })).toBeUndefined();

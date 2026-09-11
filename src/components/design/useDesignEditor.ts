@@ -1,14 +1,61 @@
 "use client";
 
 import { useCallback, useMemo, useReducer, useState } from "react";
-import { type CanvasSpec, safeArea } from "@/lib/design/canvas-spec";
-import type { DesignDocument, Layer, TextLayer } from "@/lib/design/document";
+import { type Box, type CanvasSpec, safeArea } from "@/lib/design/canvas-spec";
+import {
+  BOLD_WEIGHT,
+  type DesignDocument,
+  type Layer,
+  REGULAR_WEIGHT,
+  type TextLayer,
+} from "@/lib/design/document";
 
 const MAX_HISTORY = 50;
 const DUPLICATE_OFFSET = 24;
+const MAX_PASTE_STEPS = 12;
 
 function newLayerId(): string {
   return `layer-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * A paste keeps the copied position — that is what carries a layer to the same spot on another
+ * slide — unless something already sits exactly there, in which case it steps clear so the new
+ * copy is visible rather than hiding under the old one. Repeated pastes keep stepping.
+ */
+function freeSpot(layers: Layer[], from: Layer): { x: number; y: number } {
+  let { x, y } = from;
+
+  for (let step = 0; step < MAX_PASTE_STEPS; step++) {
+    if (!layers.some((layer) => layer.x === x && layer.y === y)) break;
+    x += DUPLICATE_OFFSET;
+    y += DUPLICATE_OFFSET;
+  }
+
+  return { x, y };
+}
+
+export type AlignEdge = "left" | "right" | "top" | "bottom" | "centerX" | "centerY";
+
+/**
+ * Alignment targets the safe area rather than the whole canvas: it is the box the slide's copy
+ * has to live inside, and it is the guide already drawn on the stage.
+ */
+function alignedPosition(layer: Layer, area: Box, edge: AlignEdge): { x: number } | { y: number } {
+  switch (edge) {
+    case "left":
+      return { x: Math.round(area.x) };
+    case "right":
+      return { x: Math.round(area.x + area.width - layer.width) };
+    case "centerX":
+      return { x: Math.round(area.x + (area.width - layer.width) / 2) };
+    case "top":
+      return { y: Math.round(area.y) };
+    case "bottom":
+      return { y: Math.round(area.y + area.height - layer.height) };
+    case "centerY":
+      return { y: Math.round(area.y + (area.height - layer.height) / 2) };
+  }
 }
 
 interface HistoryState {
@@ -21,7 +68,14 @@ interface HistoryState {
 }
 
 type HistoryAction =
-  | { type: "change"; change: (doc: DesignDocument) => DesignDocument; coalesce: boolean }
+  | {
+      type: "change";
+      change: (doc: DesignDocument) => DesignDocument;
+      coalesce: boolean;
+      /** Set by edits that leave the generated stack's shape alone, such as recolouring. */
+      keepAutoLayout?: boolean;
+    }
+  | { type: "reflow"; document: DesignDocument }
   | { type: "undo" }
   | { type: "redo" }
   | { type: "endGesture" }
@@ -32,18 +86,39 @@ function initialState(document: DesignDocument): HistoryState {
   return { document, past: [], future: [], dirty: false, coalescing: false };
 }
 
+/** Geometry the generator owns — touching any of it by hand ends the automatic stacking. */
+const STACK_KEYS = ["x", "y", "width", "height", "rotation"] as const;
+
+function movesLayer(patch: Partial<Layer>): boolean {
+  return STACK_KEYS.some((key) => key in patch);
+}
+
+function withoutAutoLayout(document: DesignDocument): DesignDocument {
+  if (!document.autoLayout) return document;
+
+  const { autoLayout: _dropped, ...rest } = document;
+  return rest;
+}
+
 function reduce(state: HistoryState, action: HistoryAction): HistoryState {
   switch (action.type) {
     case "change": {
       const fold = action.coalesce && state.coalescing;
+      const changed = action.change(state.document);
       return {
-        document: action.change(state.document),
+        document: action.keepAutoLayout ? changed : withoutAutoLayout(changed),
         past: fold ? state.past : [...state.past, state.document].slice(-MAX_HISTORY),
         future: [],
         dirty: true,
         coalescing: action.coalesce,
       };
     }
+    /**
+     * A correction to a generated layout rather than an edit of the user's: it stays out of the
+     * history, because undoing back into overlapping text is not something anyone asks for.
+     */
+    case "reflow":
+      return { ...state, document: action.document };
     case "undo": {
       if (state.past.length === 0) return state;
       return {
@@ -92,11 +167,16 @@ export interface DesignEditorState {
   addTextLayer: (role: TextLayer["role"], fontFamily: string, color: string) => void;
   addShapeLayer: (fill: string) => void;
   addLogoLayer: (assetId: string) => void;
+  /** Drops a copied layer in under a fresh id, in place unless a position is given. */
+  pasteLayer: (layer: Layer, at?: { x: number; y: number }) => void;
+  alignLayer: (id: string, edge: AlignEdge) => void;
   duplicateLayer: (id: string) => void;
   deleteLayer: (id: string) => void;
   raiseLayer: (id: string) => void;
   lowerLayer: (id: string) => void;
   setDocument: (next: DesignDocument, options?: { markClean?: boolean }) => void;
+  /** Swaps in a restacked generated layout without touching history or the dirty flag. */
+  applyReflow: (next: DesignDocument) => void;
   undo: () => void;
   redo: () => void;
   markClean: () => void;
@@ -108,8 +188,8 @@ export function useDesignEditor(initial: DesignDocument, spec: CanvasSpec): Desi
   const area = useMemo(() => safeArea(spec), [spec]);
 
   const mutate = useCallback(
-    (change: (doc: DesignDocument) => DesignDocument, coalesce: boolean) =>
-      dispatch({ type: "change", change, coalesce }),
+    (change: (doc: DesignDocument) => DesignDocument, coalesce: boolean, keepAutoLayout = false) =>
+      dispatch({ type: "change", change, coalesce, keepAutoLayout }),
     [],
   );
 
@@ -123,6 +203,8 @@ export function useDesignEditor(initial: DesignDocument, spec: CanvasSpec): Desi
           ),
         }),
         coalesce,
+        // Restyling or retyping a generated block still wants restacking; dragging it does not.
+        !movesLayer(patch),
       );
     },
     [mutate],
@@ -179,7 +261,10 @@ export function useDesignEditor(initial: DesignDocument, spec: CanvasSpec): Desi
         role,
         fontFamily,
         fontSize,
-        fontWeight: role === "heading" ? 700 : 400,
+        fontWeight: role === "heading" ? BOLD_WEIGHT : REGULAR_WEIGHT,
+        italic: false,
+        underline: false,
+        lineThrough: false,
         lineHeight: role === "heading" ? 1.12 : 1.4,
         align: "left",
         color,
@@ -221,6 +306,35 @@ export function useDesignEditor(initial: DesignDocument, spec: CanvasSpec): Desi
       });
     },
     [append, area, spec.width],
+  );
+
+  const pasteLayer = useCallback(
+    (layer: Layer, at?: { x: number; y: number }) => {
+      const pastedId = newLayerId();
+      mutate((doc) => {
+        const spot = at ?? freeSpot(doc.layers, layer);
+        return { ...doc, layers: [...doc.layers, { ...layer, id: pastedId, ...spot }] };
+      }, false);
+      setSelectedId(pastedId);
+    },
+    [mutate],
+  );
+
+  const alignLayer = useCallback(
+    (id: string, edge: AlignEdge) => {
+      mutate(
+        (doc) => ({
+          ...doc,
+          layers: doc.layers.map((layer) =>
+            layer.id === id
+              ? ({ ...layer, ...alignedPosition(layer, area, edge) } as Layer)
+              : layer,
+          ),
+        }),
+        false,
+      );
+    },
+    [mutate, area],
   );
 
   const duplicateLayer = useCallback(
@@ -275,6 +389,11 @@ export function useDesignEditor(initial: DesignDocument, spec: CanvasSpec): Desi
     dispatch({ type: "reset", document: next, markClean: options?.markClean ?? false });
   }, []);
 
+  const applyReflow = useCallback(
+    (next: DesignDocument) => dispatch({ type: "reflow", document: next }),
+    [],
+  );
+
   const raiseLayer = useCallback((id: string) => reorder(id, 1), [reorder]);
   const lowerLayer = useCallback((id: string) => reorder(id, -1), [reorder]);
   const markClean = useCallback(() => dispatch({ type: "markClean" }), []);
@@ -293,11 +412,14 @@ export function useDesignEditor(initial: DesignDocument, spec: CanvasSpec): Desi
     addTextLayer,
     addShapeLayer,
     addLogoLayer,
+    pasteLayer,
+    alignLayer,
     duplicateLayer,
     deleteLayer,
     raiseLayer,
     lowerLayer,
     setDocument,
+    applyReflow,
     undo,
     redo,
     markClean,

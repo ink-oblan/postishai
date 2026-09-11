@@ -20,9 +20,37 @@ export interface TextLayer extends LayerBase {
   fontFamily: string;
   fontSize: number;
   fontWeight: number;
+  italic: boolean;
+  underline: boolean;
+  lineThrough: boolean;
   lineHeight: number;
   align: TextAlign;
   color: string;
+}
+
+/** Konva takes the weight and the slant as one string, in CSS `font` shorthand order. */
+export function fontStyleOf(layer: TextLayer): string {
+  return layer.italic ? `italic ${layer.fontWeight}` : String(layer.fontWeight);
+}
+
+/** Konva reads both decorations out of one space-separated string, as CSS does. */
+export function textDecorationOf(layer: TextLayer): string {
+  const decorations: string[] = [];
+  if (layer.underline) decorations.push("underline");
+  if (layer.lineThrough) decorations.push("line-through");
+
+  return decorations.join(" ");
+}
+
+export const REGULAR_WEIGHT = 400;
+export const BOLD_WEIGHT = 700;
+
+/**
+ * Generated slides come in at whatever weight their layout asked for, so "bold" is a range
+ * rather than one number — the editor's toggle then normalises onto the two weights it sets.
+ */
+export function isBold(weight: number): boolean {
+  return weight >= 600;
 }
 
 export interface ShapeLayer extends LayerBase {
@@ -48,14 +76,29 @@ export interface Overlay {
   opacity: number;
 }
 
+export type StackAnchor = "top" | "middle" | "bottom";
+
+/**
+ * Carried by a slide whose text is still stacked the way the generator left it. The server has
+ * no font metrics to lay out against, so it stacks against an estimate and leaves these two
+ * numbers behind for the browser to restack with the real ones. It is dropped the moment the
+ * layout is taken over by hand, which is what stops a restack from undoing someone's work.
+ */
+export interface AutoLayout {
+  anchor: StackAnchor;
+  gap: number;
+}
+
 export interface DesignDocument {
   background: Background;
   overlay?: Overlay;
+  autoLayout?: AutoLayout;
   layers: Layer[];
 }
 
 const TEXT_ALIGNS: readonly TextAlign[] = ["left", "center", "right"];
 const TEXT_ROLES: readonly TextRole[] = ["heading", "body"];
+const STACK_ANCHORS: readonly StackAnchor[] = ["top", "middle", "bottom"];
 
 const MAX_LAYERS = 40;
 const MAX_TEXT_LENGTH = 2_000;
@@ -107,7 +150,11 @@ function parseLayer(raw: unknown): Layer | undefined {
       role: TEXT_ROLES.includes(raw.role as TextRole) ? (raw.role as TextRole) : "body",
       fontFamily,
       fontSize: clamp(fontSize, 8, 400),
-      fontWeight: clamp(num(raw.fontWeight) ?? 400, 100, 900),
+      fontWeight: clamp(num(raw.fontWeight) ?? REGULAR_WEIGHT, 100, 900),
+      // Absent in anything saved before these existed, which reads as unstyled.
+      italic: raw.italic === true,
+      underline: raw.underline === true,
+      lineThrough: raw.lineThrough === true,
       lineHeight: clamp(num(raw.lineHeight) ?? 1.2, 0.5, 4),
       align: TEXT_ALIGNS.includes(raw.align as TextAlign) ? (raw.align as TextAlign) : "left",
       color,
@@ -174,6 +221,14 @@ function parseOverlay(raw: unknown): Overlay | undefined {
   return { color, opacity: clamp(opacity, 0, 1) };
 }
 
+function parseAutoLayout(raw: unknown): AutoLayout | undefined {
+  if (!isRecord(raw)) return undefined;
+  const gap = num(raw.gap);
+  if (gap === undefined || !STACK_ANCHORS.includes(raw.anchor as StackAnchor)) return undefined;
+
+  return { anchor: raw.anchor as StackAnchor, gap: clamp(gap, 0, 400) };
+}
+
 export interface ParsedDesign {
   document: DesignDocument;
   dropped: number;
@@ -202,6 +257,15 @@ export function parseDesignDocument(value: unknown): ParsedDesign | undefined {
   });
 
   const overlay = parseOverlay(value.overlay);
+  const autoLayout = parseAutoLayout(value.autoLayout);
 
-  return { document: { background, ...(overlay ? { overlay } : {}), layers }, dropped };
+  return {
+    document: {
+      background,
+      ...(overlay ? { overlay } : {}),
+      ...(autoLayout ? { autoLayout } : {}),
+      layers,
+    },
+    dropped,
+  };
 }

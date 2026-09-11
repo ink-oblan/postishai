@@ -12,6 +12,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Wraps an index around both ends of a list, so stepping past the last lands on the first. */
+export function wrapIndex(index: number, length: number): number {
+  if (length <= 0) return 0;
+  return ((index % length) + length) % length;
+}
+
 export function formatDistanceToNow(date: Date): string {
   const now = Date.now();
   const diff = now - new Date(date).getTime();

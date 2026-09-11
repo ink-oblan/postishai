@@ -14,7 +14,7 @@ import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE, POST_STATUS } from "@/lib/consta
 import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { DEFAULT_LLM_MODEL_ID, getLLMAdapter } from "@/lib/llm-models/registry";
-import { isMockEnabled } from "@/lib/mock-config";
+import { isMockEnabled, MOCK_TIMINGS, mockDelay } from "@/lib/mock-config";
 
 const PLATFORMS: readonly Platform[] = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS"];
 
@@ -59,16 +59,19 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
 
   let slides: ScenarioSlide[];
   try {
-    slides = isMockEnabled()
-      ? mockScenario(trimmedTitle, count)
-      : await generateScenario({
-          title: trimmedTitle,
-          platform,
-          slideCount: count,
-          details,
-          brand,
-          llmModelId: selectedLlmModelId,
-        });
+    if (isMockEnabled()) {
+      await mockDelay(MOCK_TIMINGS.CAROUSEL_SCENARIO);
+      slides = mockScenario(trimmedTitle, count);
+    } else {
+      slides = await generateScenario({
+        title: trimmedTitle,
+        platform,
+        slideCount: count,
+        details,
+        brand,
+        llmModelId: selectedLlmModelId,
+      });
+    }
   } catch (err) {
     if (err instanceof ScenarioResponseError) {
       return NextResponse.json({ error: err.message }, { status: 502 });
