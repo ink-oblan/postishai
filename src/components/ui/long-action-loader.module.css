@@ -1,0 +1,108 @@
+.visual {
+  --logo-loader-size: 6rem;
+  position: relative;
+  width: var(--logo-loader-size);
+  height: var(--logo-loader-size);
+  flex: none;
+  isolation: isolate;
+}
+
+.halo {
+  position: absolute;
+  inset: 23%;
+  border-radius: 9999px;
+  background: color-mix(in oklab, #e88a24 26%, transparent);
+  filter: blur(calc(var(--logo-loader-size) * 0.105));
+  will-change: opacity, transform;
+}
+
+.track,
+.orbit {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.track {
+  stroke: color-mix(in oklab, var(--foreground) 9%, transparent);
+  stroke-width: 0.8;
+}
+
+.orbitLayer {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  will-change: transform;
+}
+
+.orbit {
+  stroke: color-mix(in oklab, #e88a24 62%, var(--foreground) 5%);
+  stroke-dasharray: 15 85;
+  stroke-linecap: round;
+  stroke-width: 1.15;
+}
+
+.logoLayer,
+.sweepMask {
+  position: absolute;
+  inset: 11.75%;
+}
+
+.logoLayer {
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(
+    0 calc(var(--logo-loader-size) * 0.025) calc(var(--logo-loader-size) * 0.055)
+      color-mix(in oklab, var(--foreground) 10%, transparent)
+  );
+  will-change: filter, transform;
+}
+
+.logoMark {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  --brand-logo-accent: #e88a24;
+  --brand-logo-ink: color-mix(in oklab, var(--foreground) 93%, transparent);
+}
+
+.sweepMask {
+  overflow: hidden;
+  opacity: 0.52;
+  mask-image: url("/static/logo.svg");
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-image: url("/static/logo.svg");
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+
+.sweep {
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(
+    104deg,
+    transparent 36%,
+    color-mix(in oklab, white 88%, var(--primary) 12%) 49%,
+    transparent 62%
+  );
+  will-change: opacity, transform;
+}
+
+@media (forced-colors: active) {
+  .halo,
+  .sweepMask {
+    display: none;
+  }
+
+  .track,
+  .orbit {
+    stroke: CanvasText;
+  }
+
+  .logoMark {
+    --brand-logo-accent: CanvasText;
+    --brand-logo-ink: CanvasText;
+  }
+}
