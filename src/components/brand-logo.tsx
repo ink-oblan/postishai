@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ComponentProps } from "react";
 
 // viewBox trims the empty SVG space around the P letterform.
 // Original asset is 591×591; visible P runs ~x=60–480, y=0–560.
@@ -12,19 +13,23 @@ interface BrandLogoProps {
   href?: string;
 }
 
-function LogoMark() {
+type BrandLogoMarkProps = ComponentProps<"svg">;
+
+function BrandLogoMark({ className, style, ...props }: BrandLogoMarkProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox={VIEWBOX}
       aria-hidden
+      className={className}
       // 2em ≈ original h-8 at text-lg / h-10 at text-xl, scales with font size
-      style={{ height: "2em", width: "auto" }}
+      style={{ height: "2em", width: "auto", ...style }}
+      {...props}
     >
-      <title>Postishai</title>
+      <title>PostishAI</title>
       <g transform="translate(0,591) scale(0.1,-0.1)">
         <path
-          fill="#E88A24"
+          fill="var(--brand-logo-accent, #E88A24)"
           d="M1081 4790 c1 -326 5 -368 44 -506 50 -173 128 -304 260 -440 143
 -146 317 -240 540 -290 17 -4 205 -9 419 -11 l389 -5 -216 214 c-202 200 -217
 216 -231 267 -59 205 71 381 282 384 66 1 145 -23 191 -57 29 -22 488 -465
@@ -38,7 +43,7 @@ function LogoMark() {
 413 -47 9 -94 19 -105 22 -11 4 -503 9 -1093 12 l-1073 6 2 -305z"
         />
         <path
-          fill="#242323"
+          fill="var(--brand-logo-ink, #242323)"
           d="M2473 4386 c-142 -47 -222 -180 -193 -323 7 -32 18 -69 25 -83 7 -14
 149 -160 315 -325 166 -165 308 -312 316 -327 9 -18 11 -34 5 -50 -10 -25
 -134 -148 -464 -458 -236 -222 -260 -256 -261 -364 -1 -128 52 -213 166 -270
@@ -55,12 +60,14 @@ function LogoInner({ className = "text-xl" }: Pick<BrandLogoProps, "className">)
   return (
     <span className={`flex items-end font-bold leading-none ${className}`}>
       <span className="relative z-10">
-        <LogoMark />
+        <BrandLogoMark />
       </span>
       <span className="relative z-0 -ml-[0.05em]">ostishAI</span>
     </span>
   );
 }
+
+export { BrandLogoMark };
 
 export function BrandLogo({ className, href }: BrandLogoProps) {
   if (href) {
