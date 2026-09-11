@@ -2,10 +2,10 @@ import { Readable } from "node:stream";
 import archiver from "archiver";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
-import { POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { metadataToText } from "@/lib/metadata/generator";
 import type { PlatformMetadata } from "@/lib/metadata/types";
+import { planDownload } from "@/lib/posts";
 import { readFile } from "@/lib/storage";
 
 export const GET = withAuth(async function GET(
@@ -15,13 +15,15 @@ export const GET = withAuth(async function GET(
 ) {
   const { id } = await params;
 
-  const post = await prisma.post.findFirst({ where: { id, userId } });
+  const post = await prisma.post.findFirst({
+    where: { id, userId },
+    include: { media: { orderBy: { order: "asc" } } },
+  });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (post.status !== POST_STATUS.COMPLETED || !post.videoPath) {
-    return NextResponse.json({ error: "Video not ready" }, { status: 409 });
-  }
 
-  const videoBuffer = await readFile(post.videoPath);
+  const plan = planDownload(post);
+  if (!plan.ready) return NextResponse.json({ error: plan.error }, { status: 409 });
+
   const metadataText = post.metadata
     ? metadataToText(post.metadata as unknown as PlatformMetadata)
     : "";
@@ -35,7 +37,12 @@ export const GET = withAuth(async function GET(
 
   // Build ZIP in memory
   const archive = archiver("zip", { zlib: { level: 6 } });
-  archive.append(videoBuffer, { name: "video.mp4" });
+
+  const files = await Promise.all(
+    plan.entries.map(async (entry) => ({ name: entry.name, buffer: await readFile(entry.path) })),
+  );
+  for (const file of files) archive.append(file.buffer, { name: file.name });
+
   archive.append(Buffer.from(metadataText, "utf-8"), { name: "metadata.txt" });
   archive.finalize();
 

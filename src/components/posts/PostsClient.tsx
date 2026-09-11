@@ -10,11 +10,7 @@ import { type AllStatus, SSE_STATUS } from "@/lib/sse-constants";
 import { PostsContent } from "./PostsContent";
 
 interface PostsClientProps {
-  initialPosts: Array<
-    Post & {
-      avatar: { id: string; name: string } | null;
-    }
-  >;
+  initialPosts: Post[];
 }
 
 export function PostsClient({ initialPosts }: PostsClientProps) {

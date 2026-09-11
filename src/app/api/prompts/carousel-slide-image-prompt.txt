@@ -1,0 +1,24 @@
+A background image for one slide of a social media carousel.
+
+SUBJECT
+{{visualPrompt}}
+
+{{#if photoStyle}}
+PHOTOGRAPHY STYLE
+{{photoStyle}}
+{{/if}}
+
+{{#if palette}}
+COLOUR PALETTE
+Favour these colours: {{palette}}
+{{/if}}
+
+COMPOSITION
+This image sits behind large text, so it must read as a backdrop rather than a focal photograph.
+Keep the {{emptyRegion}} of the frame visually calm and uncluttered — soft, low contrast and free
+of detail — so overlaid text stays legible. Push the subject and any busy detail away from that
+region. Fill the whole frame edge to edge with no borders, frames or margins.
+
+ABSOLUTELY NO TEXT
+Do not render any text, words, letters, numbers, captions, watermarks, logos, signage, labels or
+user interface elements anywhere in the image. The image must be entirely free of writing.

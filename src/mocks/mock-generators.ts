@@ -51,6 +51,33 @@ export async function generateMockAvatarImage(seed: string): Promise<Buffer> {
     .toBuffer();
 }
 
+const MOCK_SLIDE_SIZES: Record<string, { width: number; height: number }> = {
+  "1:1": { width: 1080, height: 1080 },
+  "3:4": { width: 1080, height: 1440 },
+  "4:3": { width: 1440, height: 1080 },
+  "9:16": { width: 1080, height: 1920 },
+  "16:9": { width: 1920, height: 1080 },
+};
+
+// Generate placeholder carousel slide background at the requested aspect ratio
+export async function generateMockSlideImage(seed: string, aspectRatio: string): Promise<Buffer> {
+  const { width, height } = MOCK_SLIDE_SIZES[aspectRatio] ?? MOCK_SLIDE_SIZES["9:16"];
+  const hue = parseInt(seed.replace(/\D/g, "").slice(0, 8) || "0", 10) % 360;
+
+  const svg = `
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="hsl(${hue}, 55%, 42%)"/>
+          <stop offset="100%" stop-color="hsl(${(hue + 40) % 360}, 55%, 22%)"/>
+        </linearGradient>
+      </defs>
+      <rect width="${width}" height="${height}" fill="url(#grad)"/>
+    </svg>`;
+
+  return await sharp(Buffer.from(svg)).jpeg({ quality: 90 }).toBuffer();
+}
+
 // Generate mock video with text overlay (15s, valid H.264 MP4)
 export async function generateMockVideo(): Promise<Buffer> {
   const width = 1080;

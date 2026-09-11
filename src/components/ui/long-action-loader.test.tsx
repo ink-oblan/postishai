@@ -16,6 +16,22 @@ describe("LogoLoader", () => {
     expect(loader).toHaveStyle({ "--logo-loader-size": "7rem" });
     expect(loader.querySelector("svg")).not.toBeNull();
   });
+
+  it("drives the orbit from a sampled CSS linear() easing", () => {
+    render(<LogoLoader aria-label="Preparing preview" />);
+
+    const orbitEasing = screen
+      .getByRole("status")
+      .style.getPropertyValue("--logo-loader-orbit-ease");
+    const points = orbitEasing.slice("linear(".length, -1).split(", ").map(Number);
+
+    expect(points.length).toBeGreaterThan(100);
+    expect(points.every((point) => Number.isFinite(point))).toBe(true);
+    expect(points.at(0)).toBe(0);
+    expect(points.at(-1)).toBe(1);
+    // Monotonic, or the orbit would visibly reverse mid-loop.
+    expect(points.every((point, i) => i === 0 || point >= (points[i - 1] ?? 0))).toBe(true);
+  });
 });
 
 describe("LongActionLoader", () => {
