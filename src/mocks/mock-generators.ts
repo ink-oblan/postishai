@@ -4,51 +4,19 @@ import { runFfmpeg } from "@/lib/ffmpeg";
 import { MOCK_TIMINGS } from "@/lib/mock-config";
 
 // Generate placeholder avatar image (1080x1920 JPEG)
-export async function generateMockAvatarImage(seed: string): Promise<Buffer> {
+export async function generateMockAvatarImage(): Promise<Buffer> {
   const width = 1080;
   const height = 1920;
+  const svg = `
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100%" height="100%" fill="#e2e5e9" />
+      <text x="50%" y="50%" dy="0.35em" text-anchor="middle"
+        font-family="sans-serif" font-size="64" font-weight="500" fill="#626b78">
+        Placeholder image
+      </text>
+    </svg>`;
 
-  // Generate deterministic color from seed
-  const hue = parseInt(seed.slice(0, 8), 16) % 360;
-  const saturation = 70;
-  const lightness = 55;
-
-  // HSL to RGB conversion
-  const c = ((100 - Math.abs(2 * lightness - 100)) * saturation) / 100;
-  const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
-  const m = lightness / 100 - c / 2;
-
-  let r = 0,
-    g = 0,
-    b = 0;
-  if (hue >= 0 && hue < 60) {
-    [r, g, b] = [c, x, 0];
-  } else if (hue >= 60 && hue < 120) {
-    [r, g, b] = [x, c, 0];
-  } else if (hue >= 120 && hue < 180) {
-    [r, g, b] = [0, c, x];
-  } else if (hue >= 180 && hue < 240) {
-    [r, g, b] = [0, x, c];
-  } else if (hue >= 240 && hue < 300) {
-    [r, g, b] = [x, 0, c];
-  } else {
-    [r, g, b] = [c, 0, x];
-  }
-
-  const red = Math.round((r + m) * 255);
-  const green = Math.round((g + m) * 255);
-  const blue = Math.round((b + m) * 255);
-
-  return await sharp({
-    create: {
-      width,
-      height,
-      channels: 3,
-      background: { r: red, g: green, b: blue },
-    },
-  })
-    .jpeg({ quality: 90 })
-    .toBuffer();
+  return sharp(Buffer.from(svg)).jpeg({ quality: 90 }).toBuffer();
 }
 
 const MOCK_SLIDE_SIZES: Record<string, { width: number; height: number }> = {
