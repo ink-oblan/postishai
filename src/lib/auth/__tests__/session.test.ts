@@ -1,5 +1,3 @@
-// @vitest-environment node
-
 import { jwtVerify, SignJWT } from "jose";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

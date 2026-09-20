@@ -15,6 +15,7 @@
     "format": "biome format --write .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:isolation": "vitest run --maxWorkers=1 --sequence.shuffle.files",
     "test:e2e": "playwright test",
     "prepare": "husky",
     "app:dev": "next dev 2>&1 | tee dev.log",

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   changedFields,
   draftKey,
@@ -102,6 +102,10 @@ describe("writeDraft / readDraft", () => {
     localStorage.clear();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("round-trips a draft", () => {
     writeDraft(KEY, { step: 2, changes: { brandName: "Acme Co" } });
     expect(readDraft(KEY)).toEqual({ step: 2, changes: { brandName: "Acme Co" } });
@@ -132,9 +136,15 @@ describe("writeDraft / readDraft", () => {
     expect(readDraft(KEY)).toBeNull();
   });
 
-  it("ignores unparseable entries", () => {
+  it("ignores unparseable entries, reporting what it threw away", () => {
+    const reported = vi.spyOn(console, "error").mockImplementation(() => undefined);
     localStorage.setItem(KEY, "not json");
+
     expect(readDraft(KEY)).toBeNull();
+    expect(reported).toHaveBeenCalledWith(
+      "Failed to parse saved brand wizard draft:",
+      expect.any(SyntaxError),
+    );
   });
 });
 
