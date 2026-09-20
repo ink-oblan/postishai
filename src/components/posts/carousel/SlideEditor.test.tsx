@@ -204,6 +204,32 @@ afterEach(() => {
 });
 
 describe("SlideEditor saves and exports", () => {
+  it("contains the full slide in a tall mobile viewport at 100% zoom", async () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        private callback: ResizeObserverCallback;
+
+        constructor(callback: ResizeObserverCallback) {
+          this.callback = callback;
+        }
+
+        observe() {
+          this.callback(
+            [{ contentRect: { width: 390, height: 844 } } as ResizeObserverEntry],
+            this as unknown as ResizeObserver,
+          );
+        }
+
+        disconnect() {}
+      },
+    );
+
+    mount();
+
+    await waitFor(() => expect(screen.getByTestId("slide-stage")).toHaveStyle({ width: "390px" }));
+  });
+
   it("keeps slide previews folded until the mobile toggle is opened", async () => {
     mount();
     await ready();

@@ -1228,24 +1228,15 @@ function useFittedStageWidth(
     const area = areaRef.current;
     if (!area) return;
 
-    const query = window.matchMedia?.("(min-width: 1024px)");
     const resizeStage = (box: { width: number; height: number }) => {
       const widthForHeight = (box.height * spec.width) / spec.height;
-      const fitted =
-        (query?.matches ?? window.innerWidth >= 1024)
-          ? Math.min(box.width, widthForHeight)
-          : Math.max(box.width, widthForHeight);
+      const fitted = Math.min(box.width, widthForHeight);
       setWidth(Math.max(1, Math.floor(fitted)));
     };
     const observer = new ResizeObserver(([entry]) => resizeStage(entry.contentRect));
-    const handleBreakpoint = () => resizeStage(area.getBoundingClientRect());
     observer.observe(area);
-    query?.addEventListener("change", handleBreakpoint);
 
-    return () => {
-      observer.disconnect();
-      query?.removeEventListener("change", handleBreakpoint);
-    };
+    return () => observer.disconnect();
   }, [areaRef, spec.width, spec.height]);
 
   return width;
