@@ -1,27 +1,47 @@
 "use client";
 
 import type { Platform } from "@prisma/client";
-import { ArrowDown, ArrowUp, Loader2, Plus, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Loader2, Plus, Wand2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { v4 as uuidv4 } from "uuid";
+import { resolveFontFamily } from "@/components/design/font-catalogue";
+import { ScenarioInspector } from "@/components/posts/carousel/ScenarioInspector";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { carouselSpec } from "@/lib/carousel/platform-spec";
-import { DEFAULT_LAYOUT, isLayoutName, LAYOUT_LABELS, LAYOUT_NAMES } from "@/lib/design/layouts";
+  ScenarioStoryboard,
+  type StoryboardSlide,
+} from "@/components/posts/carousel/ScenarioStoryboard";
+import { Button } from "@/components/ui/button";
+import { carouselCanvas, carouselSpec } from "@/lib/carousel/platform-spec";
+import type { CarouselLayoutTheme } from "@/lib/carousel/theme";
+import { safeArea } from "@/lib/design/canvas-spec";
+import type { DesignDocument } from "@/lib/design/document";
+import { type FitReport, fitReport } from "@/lib/design/fit";
+import { ensureFontsLoaded, facesUsedBy, registerUploadedFont } from "@/lib/design/fonts";
+import {
+  DEFAULT_LAYOUT,
+  expandLayout,
+  isLayoutName,
+  type LayoutName,
+  layoutAutoLayout,
+} from "@/lib/design/layouts";
+import { PLACEHOLDER_BACKGROUND_COLOR } from "@/lib/design/placeholder";
+import type { MeasureText } from "@/lib/design/reflow";
+import { reflowAutoLayout } from "@/lib/design/reflow";
 import { responseError } from "@/lib/utils";
 
 export interface ScenarioSlideRow {
+  key: string;
   id: string | null;
+  headline: string;
+  body: string;
+  visualPrompt: string;
+  layout: string;
+}
+
+export interface ScenarioSlideInput {
+  id: string;
   headline: string;
   body: string;
   visualPrompt: string;
@@ -31,52 +51,195 @@ export interface ScenarioSlideRow {
 interface ScenarioEditorProps {
   postId: string;
   platform: Platform;
-  initialSlides: ScenarioSlideRow[];
+  initialSlides: ScenarioSlideInput[];
+  theme: CarouselLayoutTheme;
+  uploadedFonts: { assetId: string; name: string }[];
+}
+
+interface SlidePreview {
+  document: DesignDocument;
+  fit: FitReport | null;
+}
+
+function newKey(): string {
+  return uuidv4();
 }
 
 function emptySlide(): ScenarioSlideRow {
-  return { id: null, headline: "", body: "", visualPrompt: "", layout: DEFAULT_LAYOUT };
+  return {
+    key: newKey(),
+    id: null,
+    headline: "",
+    body: "",
+    visualPrompt: "",
+    layout: DEFAULT_LAYOUT,
+  };
 }
 
-function toRows(saved: Record<string, unknown>[]): ScenarioSlideRow[] {
-  return saved.map((slide) => ({
-    id: slide.id as string,
-    headline: (slide.headline as string) ?? "",
-    body: (slide.body as string) ?? "",
-    visualPrompt: slide.visualPrompt as string,
-    layout: slide.layout as string,
+export function toRows(saved: ScenarioSlideInput[], keys: string[] = []): ScenarioSlideRow[] {
+  return saved.map((slide, index) => ({
+    key: keys[index] ?? newKey(),
+    id: slide.id,
+    headline: slide.headline ?? "",
+    body: slide.body ?? "",
+    visualPrompt: slide.visualPrompt ?? "",
+    layout: slide.layout,
   }));
 }
 
-export function ScenarioEditor({ postId, platform, initialSlides }: ScenarioEditorProps) {
+function layoutOf(row: ScenarioSlideRow): LayoutName {
+  return isLayoutName(row.layout) ? row.layout : DEFAULT_LAYOUT;
+}
+
+export function ScenarioEditor({
+  postId,
+  platform,
+  initialSlides,
+  theme,
+  uploadedFonts,
+}: ScenarioEditorProps) {
   const router = useRouter();
   const { minSlides, maxSlides } = carouselSpec(platform);
-  const [slides, setSlides] = useState<ScenarioSlideRow[]>(initialSlides);
+  const spec = useMemo(() => carouselCanvas(platform), [platform]);
+  const [slides, setSlides] = useState<ScenarioSlideRow[]>(() => toRows(initialSlides));
+  const [selectedKey, setSelectedKey] = useState<string | null>(slides[0]?.key ?? null);
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [measured, setMeasured] = useState(0);
+  const measureRef = useRef<MeasureText | null>(null);
+  const previewCache = useRef(new Map<string, SlidePreview>());
 
   const complete = slides.every((slide) => slide.headline.trim() && slide.visualPrompt.trim());
   const countOk = slides.length >= minSlides && slides.length <= maxSlides;
 
-  function patch(index: number, changes: Partial<ScenarioSlideRow>) {
+  const previews = useMemo(() => {
+    const measure = measureRef.current;
+    const area = safeArea(spec);
+    const cache = previewCache.current;
+    const retained = new Map<string, SlidePreview>();
+    const byKey = new Map<string, SlidePreview>();
+
+    for (const row of slides) {
+      const layout = layoutOf(row);
+      const signature = `${measured}|${layout}|${row.headline}|${row.body}`;
+      const hit = cache.get(signature);
+      if (hit) {
+        retained.set(signature, hit);
+        byKey.set(row.key, hit);
+        continue;
+      }
+
+      const expanded: DesignDocument = {
+        background: { kind: "solid", color: PLACEHOLDER_BACKGROUND_COLOR },
+        autoLayout: layoutAutoLayout(layout),
+        layers: expandLayout(layout, {
+          spec,
+          headline: row.headline,
+          body: row.body,
+          fonts: theme.fonts,
+          colors: theme.colors,
+        }),
+      };
+      const document = measure ? (reflowAutoLayout(expanded, area, measure) ?? expanded) : expanded;
+      const preview: SlidePreview = {
+        document,
+        fit: measure ? fitReport({ document, layout, spec, measure }) : null,
+      };
+
+      retained.set(signature, preview);
+      byKey.set(row.key, preview);
+    }
+
+    previewCache.current = retained;
+    return byKey;
+  }, [slides, spec, theme, measured]);
+
+  const faces = useMemo(
+    () =>
+      [...previews.values()].flatMap(({ document }) => facesUsedBy(document, resolveFontFamily)),
+    [previews],
+  );
+  const facesRef = useRef(faces);
+  facesRef.current = faces;
+  const facesKey = useMemo(
+    () =>
+      faces
+        .map((face) => `${face.family}|${face.weight}|${face.italic}`)
+        .sort()
+        .join(","),
+    [faces],
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the face list, whose array identity changes every render
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      await Promise.all(uploadedFonts.map((font) => registerUploadedFont(font.assetId)));
+      await ensureFontsLoaded(facesRef.current);
+      const { textMeasurer } = await import("@/lib/design/measure-text");
+      if (cancelled) return;
+
+      measureRef.current = textMeasurer(resolveFontFamily);
+      setMeasured((generation) => generation + 1);
+    })().catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [facesKey, uploadedFonts]);
+
+  const storyboard: StoryboardSlide[] = slides.map((row, index) => {
+    const preview = previews.get(row.key);
+    return {
+      key: row.key,
+      document: preview?.document ?? {
+        background: { kind: "solid", color: "#111111" },
+        layers: [],
+      },
+      role: index === 0 ? "hook" : index === slides.length - 1 ? "cta" : null,
+      fit: preview?.fit ?? null,
+      incomplete: !row.headline.trim() || !row.visualPrompt.trim(),
+    };
+  });
+
+  const selectedIndex = slides.findIndex((row) => row.key === selectedKey);
+  const selected = selectedIndex >= 0 ? slides[selectedIndex] : null;
+
+  useEffect(() => {
+    if (slides.length === 0) return;
+    if (!slides.some((row) => row.key === selectedKey)) setSelectedKey(slides[0].key);
+  }, [slides, selectedKey]);
+
+  function patch(key: string, changes: Partial<ScenarioSlideRow>) {
     setSlides((current) =>
-      current.map((slide, i) => (i === index ? { ...slide, ...changes } : slide)),
+      current.map((slide) => (slide.key === key ? { ...slide, ...changes } : slide)),
     );
   }
 
-  function move(index: number, direction: -1 | 1) {
-    const target = index + direction;
-    if (target < 0 || target >= slides.length) return;
-    setSlides((current) => {
-      const next = [...current];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
+  function reorder(next: StoryboardSlide[]) {
+    setSlides((current) =>
+      next.flatMap((entry) => {
+        const row = current.find((slide) => slide.key === entry.key);
+        return row ? [row] : [];
+      }),
+    );
   }
 
-  async function save(): Promise<boolean> {
+  function addSlide() {
+    const slide = emptySlide();
+    setSlides((current) => [...current, slide]);
+    setSelectedKey(slide.key);
+  }
+
+  function deleteSlide(key: string) {
+    setSlides((current) => current.filter((slide) => slide.key !== key));
+  }
+
+  async function save(): Promise<ScenarioSlideRow[] | null> {
     setSaving(true);
+    const keys = slides.map((slide) => slide.key);
     try {
       const res = await fetch(`/api/posts/${postId}/carousel/scenario`, {
         method: "PATCH",
@@ -94,32 +257,64 @@ export function ScenarioEditor({ postId, platform, initialSlides }: ScenarioEdit
       if (!res.ok) throw await responseError(res, "Failed to save");
 
       const { slides: saved } = await res.json();
-      setSlides(toRows(saved));
-      return true;
+      const rows = toRows(saved, keys);
+      setSlides(rows);
+      return rows;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save");
-      return false;
+      return null;
     } finally {
       setSaving(false);
     }
   }
 
-  async function regenerate(slideId: string | null) {
-    setRegenerating(slideId ?? "all");
+  async function regenerate(key: string) {
+    // A slide the user just added has no id yet, and the server rewrites by id.
+    let slideId = slides.find((row) => row.key === key)?.id ?? null;
+    if (!slideId) {
+      const saved = await save();
+      slideId = saved?.find((row) => row.key === key)?.id ?? null;
+      if (!slideId) return;
+    }
+
+    setRegenerating(slideId);
     try {
       const res = await fetch(`/api/posts/${postId}/carousel/scenario/regenerate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(slideId ? { slideId } : {}),
+        body: JSON.stringify({ slideId }),
       });
       if (!res.ok) throw await responseError(res, "Failed to regenerate");
 
       const { slides: fresh } = await res.json();
-      setSlides(toRows(fresh));
-      toast.success(slideId ? "Slide rewritten" : "Carousel rewritten");
+      setSlides((current) =>
+        toRows(
+          fresh,
+          current.map((slide) => slide.key),
+        ),
+      );
+      toast.success("Slide rewritten");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to regenerate");
     } finally {
+      setRegenerating(null);
+    }
+  }
+
+  /** Rewriting every slide is the planning job again, so it runs on the worker and the page
+   *  swaps to the planning spinner rather than holding the editor open for a minute. */
+  async function rewriteAll() {
+    // The rewrite asks for as many slides as the saved plan has, so the edits land first.
+    if (!(await save())) return;
+
+    setRegenerating("all");
+    try {
+      const res = await fetch(`/api/posts/${postId}/carousel/scenario/plan`, { method: "POST" });
+      if (!res.ok) throw await responseError(res, "Failed to start the rewrite");
+
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to start the rewrite");
       setRegenerating(null);
     }
   }
@@ -146,183 +341,90 @@ export function ScenarioEditor({ postId, platform, initialSlides }: ScenarioEdit
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-muted-foreground text-sm">
-          {slides.length} slide{slides.length === 1 ? "" : "s"} · edit the plan before generating
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => regenerate(null)}
-          disabled={regenerating !== null || generating}
-        >
-          {regenerating === "all" ? (
-            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Wand2 className="mr-1.5 h-3.5 w-3.5" />
-          )}
-          Rewrite all
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        {slides.map((slide, index) => (
-          <div
-            key={slide.id ?? `new-${index}`}
-            className="space-y-3 rounded-lg border border-border p-4"
-            data-testid="scenario-slide"
+    <div className="flex flex-col gap-6 lg:flex-row">
+      <div className="min-w-0 flex-1 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-muted-foreground text-sm">
+            {slides.length} slide{slides.length === 1 ? "" : "s"} · drag to reorder, click to edit
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={rewriteAll}
+            disabled={regenerating !== null || generating || saving || !countOk}
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium text-muted-foreground text-xs">Slide {index + 1}</span>
-              <div className="flex gap-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  title="Move up"
-                  onClick={() => move(index, -1)}
-                  disabled={index === 0}
-                >
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  title="Move down"
-                  onClick={() => move(index, 1)}
-                  disabled={index === slides.length - 1}
-                >
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </Button>
-                {slide.id && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    title="Rewrite this slide"
-                    onClick={() => regenerate(slide.id)}
-                    disabled={regenerating !== null}
-                  >
-                    {regenerating === slide.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  title="Delete slide"
-                  onClick={() => setSlides((current) => current.filter((_, i) => i !== index))}
-                  disabled={slides.length <= minSlides}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
+            {regenerating === "all" ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            Rewrite all
+          </Button>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor={`headline-${index}`}>Headline</Label>
-              <Input
-                id={`headline-${index}`}
-                value={slide.headline}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  patch(index, { headline: e.target.value })
-                }
-              />
-            </div>
+        <ScenarioStoryboard
+          slides={storyboard}
+          selectedKey={selectedKey}
+          spec={spec}
+          onSelect={setSelectedKey}
+          onReorder={reorder}
+        />
 
-            <div className="space-y-2">
-              <Label htmlFor={`body-${index}`}>Body</Label>
-              <Textarea
-                id={`body-${index}`}
-                value={slide.body}
-                rows={2}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  patch(index, { body: e.target.value })
-                }
-              />
-            </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addSlide}
+            disabled={slides.length >= maxSlides}
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Add slide
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={save} disabled={saving}>
+            {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            Save plan
+          </Button>
+        </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
-              <div className="space-y-2">
-                <Label htmlFor={`visual-${index}`}>Visual</Label>
-                <Textarea
-                  id={`visual-${index}`}
-                  value={slide.visualPrompt}
-                  rows={2}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                    patch(index, { visualPrompt: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Layout</Label>
-                <Select
-                  value={slide.layout}
-                  onValueChange={(value: string | null) => value && patch(index, { layout: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue>
-                      {isLayoutName(slide.layout) ? LAYOUT_LABELS[slide.layout] : slide.layout}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LAYOUT_NAMES.map((name) => (
-                      <SelectItem key={name} value={name}>
-                        {LAYOUT_LABELS[name]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        ))}
+        {!countOk && (
+          <p className="text-destructive text-xs">
+            This platform needs between {minSlides} and {maxSlides} slides.
+          </p>
+        )}
+
+        <div className="border-t pt-4">
+          <Button onClick={approve} disabled={generating || saving || !complete || !countOk}>
+            {generating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Starting...
+              </>
+            ) : (
+              `Approve · generate ${slides.length} background${slides.length === 1 ? "" : "s"}`
+            )}
+          </Button>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setSlides((current) => [...current, emptySlide()])}
-          disabled={slides.length >= maxSlides}
-        >
-          <Plus className="mr-1.5 h-3.5 w-3.5" />
-          Add slide
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={save} disabled={saving}>
-          {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-          Save plan
-        </Button>
-      </div>
-
-      {!countOk && (
-        <p className="text-destructive text-xs">
-          This platform needs between {minSlides} and {maxSlides} slides.
-        </p>
-      )}
-
-      <div className="border-t pt-4">
-        <Button onClick={approve} disabled={generating || saving || !complete || !countOk}>
-          {generating ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Starting...
-            </>
-          ) : (
-            "Approve and generate slides"
-          )}
-        </Button>
-        <p className="mt-2 text-muted-foreground text-xs">
-          Generates a background for every slide. The plan is locked once this starts.
-        </p>
+      <div className="w-full lg:w-80 lg:flex-none lg:border-l lg:pl-6">
+        {selected ? (
+          <ScenarioInspector
+            key={selected.key}
+            slide={selected}
+            position={selectedIndex + 1}
+            total={slides.length}
+            fit={previews.get(selected.key)?.fit ?? null}
+            regenerating={regenerating === selected.id}
+            deletable={slides.length > minSlides}
+            onChange={(changes) => patch(selected.key, changes)}
+            onRegenerate={() => regenerate(selected.key)}
+            onDelete={() => deleteSlide(selected.key)}
+          />
+        ) : (
+          <p className="text-muted-foreground text-sm">Add a slide to start planning.</p>
+        )}
       </div>
     </div>
   );

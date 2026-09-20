@@ -52,20 +52,31 @@ test.describe("carousel", () => {
     await page.getByLabel("Slides").fill("3");
     await page.getByRole("button", { name: "Plan the carousel" }).click();
 
-    await page.waitForURL(/\/posts\/[a-z0-9]+$/, { timeout: 120_000 });
-    await expect(page.getByTestId("scenario-slide")).toHaveCount(3);
+    // The worker writes the plan, so the detail page waits on a spinner that leaves the rest of
+    // the app usable — the sidebar stays clickable while it spins.
+    await page.waitForURL(/\/posts\/[a-z0-9]+$/, { timeout: 30_000 });
+    await expect(page.getByTestId("scenario-planning")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Posts" }).first()).toBeVisible();
+    await expect(page.getByTestId("scenario-slide")).toHaveCount(3, { timeout: 120_000 });
 
-    // Edit the plan and confirm it survives a reload
-    const firstHeadline = page.locator("#headline-0");
-    await firstHeadline.fill("Edited headline");
+    // Rewriting the whole plan is the same worker job, so it goes behind the same spinner.
+    await page.getByRole("button", { name: /Rewrite all/ }).click();
+    await expect(page.getByTestId("scenario-planning")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("scenario-slide")).toHaveCount(3, { timeout: 120_000 });
+
+    // Edit the plan through the inspector and confirm it survives a reload
+    await page.getByTestId("scenario-slide").first().click();
+    await page.locator("#scenario-headline").fill("Edited headline");
     await page.getByRole("button", { name: "Save plan" }).click();
     await expect(page.getByText("Save plan")).toBeVisible();
     await page.waitForTimeout(1000);
     await page.reload();
-    await expect(page.locator("#headline-0")).toHaveValue("Edited headline");
+    await expect(page.getByTestId("scenario-slide")).toHaveCount(3);
+    await page.getByTestId("scenario-slide").first().click();
+    await expect(page.locator("#scenario-headline")).toHaveValue("Edited headline");
 
     // Approve and wait for the backgrounds
-    await page.getByRole("button", { name: "Approve and generate slides" }).click();
+    await page.getByRole("button", { name: /^Approve · generate 3 backgrounds$/ }).click();
     await expect(page.getByTestId("slide-stage")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByTestId("filmstrip-slide")).toHaveCount(3);
     await expect(page.getByRole("button", { name: "Complete post" })).toBeEnabled({

@@ -1,6 +1,7 @@
 import type { Platform } from "@prisma/client";
+import type { CarouselLayoutTheme } from "@/lib/carousel/theme";
 import { CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
-import { ScenarioEditor, type ScenarioSlideRow } from "./ScenarioEditor";
+import { ScenarioEditor, type ScenarioSlideInput } from "./ScenarioEditor";
 import { ScenarioPlanning } from "./ScenarioPlanning";
 import type { EditorSlide } from "./SlideEditor";
 import { SlideEditor } from "./SlideEditor";
@@ -14,8 +15,9 @@ interface CarouselPostViewProps {
   slideCount: number | null;
   errorMessage: string | null;
   generationStartedAt: string | null;
-  scenarioSlides: ScenarioSlideRow[];
+  scenarioSlides: ScenarioSlideInput[];
   editorSlides: EditorSlide[];
+  layoutTheme: CarouselLayoutTheme;
   logoAssetId: string | null;
   uploadedFonts: { assetId: string; name: string }[];
 }
@@ -31,6 +33,7 @@ export function CarouselPostView({
   generationStartedAt,
   scenarioSlides,
   editorSlides,
+  layoutTheme,
   logoAssetId,
   uploadedFonts,
 }: CarouselPostViewProps) {
@@ -49,7 +52,15 @@ export function CarouselPostView({
       );
     }
 
-    return <ScenarioEditor postId={postId} platform={platform} initialSlides={scenarioSlides} />;
+    return (
+      <ScenarioEditor
+        postId={postId}
+        platform={platform}
+        initialSlides={scenarioSlides}
+        theme={layoutTheme}
+        uploadedFonts={uploadedFonts}
+      />
+    );
   }
 
   if (carouselStage === CAROUSEL_STAGE.EDITING) {

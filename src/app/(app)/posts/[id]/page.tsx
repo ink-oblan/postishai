@@ -9,6 +9,7 @@ import { VideoSection } from "@/components/posts/VideoSection";
 import { extractAssetIds } from "@/lib/brand-assets";
 import { type FontItem, parseList } from "@/lib/brand-fields";
 import { slideImageState } from "@/lib/carousel/slide-view";
+import { carouselLayoutTheme } from "@/lib/carousel/theme";
 import { CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { listVoices } from "@/lib/heygen/client";
@@ -100,6 +101,7 @@ export default async function PostDetailPage({
             design: slide.design,
             ...slideImageState(slide),
           }))}
+          layoutTheme={carouselLayoutTheme(brand)}
           logoAssetId={logoAssetId}
           uploadedFonts={uploadedFonts}
         />

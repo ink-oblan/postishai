@@ -307,3 +307,29 @@ export function layoutAutoLayout(name: LayoutName): AutoLayout {
   const { anchor, gap } = RECIPES[name];
   return { anchor, gap };
 }
+
+export interface NominalFontSizes {
+  heading: number;
+  body: number;
+}
+
+export function layoutNominalFontSizes(name: LayoutName, spec: CanvasSpec): NominalFontSizes {
+  const recipe = RECIPES[name];
+
+  return {
+    heading: Math.round(spec.width * recipe.headingScale),
+    body: Math.round(spec.width * recipe.bodyScale),
+  };
+}
+
+export interface LayoutSketch {
+  anchor: StackAnchor;
+  align: TextAlign;
+  headingScale: number;
+  bodyScale: number;
+}
+
+export function layoutSketch(name: LayoutName): LayoutSketch {
+  const { anchor, align, headingScale, bodyScale } = RECIPES[name];
+  return { anchor, align, headingScale, bodyScale };
+}
