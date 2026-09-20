@@ -132,7 +132,7 @@ export interface EditorShortcutOptions {
 
 export interface ShortcutGroup {
   title: string;
-  shortcuts: { keys: string; label: string }[];
+  shortcuts: { keys: string; label: string; note?: string }[];
 }
 
 export const EDITOR_SHORTCUT_GROUPS: ShortcutGroup[] = [
@@ -142,7 +142,7 @@ export const EDITOR_SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: "Ctrl+Z", label: "Undo" },
       { keys: "Ctrl+Shift+Z", label: "Redo" },
       { keys: "Ctrl+D", label: "Duplicate" },
-      { keys: "Ctrl+S", label: "Save slide" },
+      { keys: "Ctrl+S", label: "Save now", note: "edits autosave anyway" },
       { keys: "Delete", label: "Delete layer" },
       { keys: "Esc", label: "Deselect" },
     ],

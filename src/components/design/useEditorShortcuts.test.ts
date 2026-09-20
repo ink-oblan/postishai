@@ -6,7 +6,7 @@ import {
   NUDGE_STEP_COARSE,
   useEditorShortcuts,
 } from "@/components/design/useEditorShortcuts";
-import type { Layer } from "@/lib/design/document";
+import type { DesignDocument, Layer } from "@/lib/design/document";
 
 const TEXT_LAYER: Layer = {
   id: "layer-1",
@@ -30,10 +30,17 @@ const TEXT_LAYER: Layer = {
 };
 
 function editorStub(selectedId: string | null = "layer-1"): DesignEditorState {
+  const document: DesignDocument = {
+    background: { kind: "solid", color: "#111111" },
+    layers: [TEXT_LAYER],
+  };
   return {
-    document: { background: { kind: "solid", color: "#111111" }, layers: [TEXT_LAYER] },
+    slideId: "slide-1",
+    document,
+    documents: { "slide-1": document },
     selectedId,
     dirty: false,
+    dirtySlideIds: [],
     canUndo: true,
     canRedo: true,
     select: vi.fn(),
@@ -50,11 +57,12 @@ function editorStub(selectedId: string | null = "layer-1"): DesignEditorState {
     deleteLayer: vi.fn(),
     raiseLayer: vi.fn(),
     lowerLayer: vi.fn(),
-    setDocument: vi.fn(),
+    restyleSlides: vi.fn(),
+    openSlide: vi.fn(),
     applyReflow: vi.fn(),
     undo: vi.fn(),
     redo: vi.fn(),
-    markClean: vi.fn(),
+    markSaved: vi.fn(),
   };
 }
 

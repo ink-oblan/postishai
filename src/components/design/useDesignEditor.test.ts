@@ -1,6 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { type DesignEditorState, useDesignEditor } from "@/components/design/useDesignEditor";
+import {
+  type DesignEditorState,
+  type SlideDocuments,
+  useDesignEditor,
+} from "@/components/design/useDesignEditor";
 import type { CanvasSpec } from "@/lib/design/canvas-spec";
 import type { DesignDocument, Layer } from "@/lib/design/document";
 
@@ -28,8 +32,20 @@ const initial: DesignDocument = {
   layers: [layer],
 };
 
-function setup() {
-  return renderHook(() => useDesignEditor(initial, spec));
+const SLIDE = "slide-a";
+const OTHER = "slide-b";
+
+const otherLayer: Layer = { ...layer, id: "layer-2", fill: "#0000ff" };
+const otherInitial: DesignDocument = {
+  background: { kind: "solid", color: "#222222" },
+  layers: [otherLayer],
+};
+
+function setup(
+  documents: SlideDocuments = { [SLIDE]: initial, [OTHER]: otherInitial },
+  slideId: string | null = SLIDE,
+) {
+  return renderHook(() => useDesignEditor({ documents, slideId }, spec));
 }
 
 describe("useDesignEditor", () => {
@@ -150,34 +166,110 @@ describe("useDesignEditor", () => {
   });
 
   it("pastes in place when the spot is free, as on another slide", () => {
-    const { result } = renderHook(() =>
-      useDesignEditor({ background: { kind: "solid", color: "#111111" }, layers: [] }, spec),
-    );
+    const { result } = setup({ [SLIDE]: { ...initial, layers: [] } });
 
     act(() => result.current.pasteLayer(layer));
     expect(result.current.document.layers[0]).toMatchObject({ x: 100, y: 200 });
   });
 
-  it("clears the history when a new slide document is loaded", () => {
-    const { result } = setup();
+  describe("across slides", () => {
+    it("keeps a slide's history when another one is opened and left again", () => {
+      const { result } = setup();
 
-    act(() => result.current.updateLayer("layer-1", { x: 500 }));
-    act(() => result.current.undo());
-    act(() =>
-      result.current.setDocument(
-        { background: { kind: "solid", color: "#000000" }, layers: [] },
-        { markClean: true },
-      ),
-    );
+      act(() => result.current.updateLayer("layer-1", { x: 500 }));
+      act(() => result.current.openSlide(OTHER));
+      expect(result.current.document).toBe(otherInitial);
+      expect(result.current.canUndo).toBe(true);
 
-    expect(result.current.canUndo).toBe(false);
-    expect(result.current.canRedo).toBe(false);
-    expect(result.current.dirty).toBe(false);
+      act(() => result.current.openSlide(SLIDE));
+      expect(result.current.document.layers[0].x).toBe(500);
+
+      act(() => result.current.undo());
+      expect(result.current.document.layers[0].x).toBe(100);
+    });
+
+    it("brings the slide a step was taken on back up when it is undone", () => {
+      const { result } = setup();
+
+      act(() => result.current.updateLayer("layer-1", { x: 500 }));
+      act(() => result.current.openSlide(OTHER));
+      act(() => result.current.updateLayer("layer-2", { x: 700 }));
+      act(() => result.current.openSlide(SLIDE));
+
+      act(() => result.current.undo());
+      expect(result.current.slideId).toBe(OTHER);
+      expect(result.current.documents[OTHER].layers[0].x).toBe(100);
+
+      act(() => result.current.openSlide(SLIDE));
+      act(() => result.current.redo());
+      expect(result.current.slideId).toBe(OTHER);
+      expect(result.current.documents[OTHER].layers[0].x).toBe(700);
+    });
+
+    const restyled: SlideDocuments = {
+      [SLIDE]: { ...initial, layers: [{ ...layer, fill: "#00ff00" }] },
+      [OTHER]: { ...otherInitial, layers: [{ ...otherLayer, fill: "#00ff00" }] },
+    };
+
+    it("takes every slide back through a carousel-wide restyle in one step", () => {
+      const { result } = setup();
+
+      act(() => result.current.restyleSlides(restyled));
+      act(() => result.current.openSlide(OTHER));
+      act(() => result.current.updateLayer("layer-2", { x: 700 }));
+
+      act(() => result.current.undo());
+      act(() => result.current.undo());
+      expect(result.current.documents[SLIDE]).toBe(initial);
+      expect(result.current.documents[OTHER]).toBe(otherInitial);
+      expect(result.current.slideId).toBe(SLIDE);
+
+      act(() => result.current.redo());
+      expect(result.current.documents[OTHER].layers[0]).toMatchObject({ fill: "#00ff00" });
+      expect(result.current.canUndo).toBe(true);
+    });
+
+    it("leaves a restyle that changes nothing out of the history", () => {
+      const { result } = setup();
+
+      act(() => result.current.restyleSlides({ [SLIDE]: initial, [OTHER]: otherInitial }));
+
+      expect(result.current.canUndo).toBe(false);
+      expect(result.current.dirty).toBe(false);
+    });
+
+    it("tracks the slides waiting to be written back", () => {
+      const { result } = setup();
+
+      act(() => result.current.updateLayer("layer-1", { x: 500 }));
+      expect(result.current.dirtySlideIds).toEqual([SLIDE]);
+
+      act(() => result.current.restyleSlides(restyled));
+      expect(result.current.dirtySlideIds).toEqual([SLIDE, OTHER]);
+
+      act(() => result.current.markSaved(result.current.documents));
+      expect(result.current.dirtySlideIds).toEqual([]);
+      expect(result.current.dirty).toBe(false);
+
+      act(() => result.current.undo());
+      expect(result.current.dirtySlideIds).toEqual([SLIDE, OTHER]);
+    });
+
+    it("keeps a stale save from clearing an edit made while it was in flight", () => {
+      const { result } = setup();
+
+      act(() => result.current.updateLayer("layer-1", { x: 500 }));
+      const inFlight = result.current.documents;
+      act(() => result.current.updateLayer("layer-1", { x: 700 }));
+
+      act(() => result.current.markSaved(inFlight));
+      expect(result.current.dirtySlideIds).toEqual([SLIDE]);
+    });
   });
 
   describe("autoLayout", () => {
     const stacked: DesignDocument = { ...initial, autoLayout: { anchor: "middle", gap: 40 } };
-    const withStack = () => renderHook(() => useDesignEditor(stacked, spec));
+    const withStack = () => setup({ [SLIDE]: stacked });
 
     it("keeps the automatic stacking through a restyle", () => {
       const { result } = withStack();
@@ -207,7 +299,9 @@ describe("useDesignEditor", () => {
     it("restacks without touching the history or the dirty flag", () => {
       const { result } = withStack();
 
-      act(() => result.current.applyReflow({ ...stacked, layers: [{ ...layer, y: 400 }] }));
+      act(() =>
+        result.current.applyReflow({ [SLIDE]: { ...stacked, layers: [{ ...layer, y: 400 }] } }),
+      );
 
       expect(result.current.document.layers[0].y).toBe(400);
       expect(result.current.canUndo).toBe(false);

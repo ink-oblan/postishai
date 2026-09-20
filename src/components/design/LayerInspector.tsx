@@ -14,6 +14,7 @@ import {
   Underline,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -68,6 +69,8 @@ interface LayerInspectorProps {
   onDelete: () => void;
   onRaise: () => void;
   onLower: () => void;
+  /** Turning a plate on reads the photo behind the copy, so the colour is chosen upstream. */
+  onTogglePlate: (on: boolean) => void;
 }
 
 export function LayerInspector({
@@ -78,6 +81,7 @@ export function LayerInspector({
   onDelete,
   onRaise,
   onLower,
+  onTogglePlate,
 }: LayerInspectorProps) {
   if (!layer) {
     return (
@@ -235,6 +239,61 @@ export function LayerInspector({
                 ))}
               </div>
             </div>
+          </div>
+
+          <div className="space-y-2 border-t pt-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="text-highlight">Text highlighting</Label>
+              <Checkbox
+                id="text-highlight"
+                checked={Boolean(layer.background)}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  onTogglePlate(event.target.checked)
+                }
+              />
+            </div>
+            <p className="text-muted-foreground text-xs">
+              A band drawn behind the copy, tinted to the photo behind it and darkened only as far
+              as the text needs.
+            </p>
+
+            {layer.background && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="plate-color">Colour</Label>
+                  <Input
+                    id="plate-color"
+                    type="color"
+                    value={layer.background.color.slice(0, 7)}
+                    className={COLOR_INPUT_CLASS}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      layer.background &&
+                      onChange({ background: { ...layer.background, color: e.target.value } })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plate-opacity">Opacity</Label>
+                  <Input
+                    id="plate-opacity"
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={layer.background.opacity}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      layer.background &&
+                      onChange({
+                        background: {
+                          ...layer.background,
+                          opacity: Math.min(1, Math.max(0, Number(e.target.value))),
+                        },
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

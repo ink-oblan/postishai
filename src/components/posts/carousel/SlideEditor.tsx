@@ -2,7 +2,21 @@
 
 import type { Platform } from "@prisma/client";
 import type Konva from "konva";
-import { Check, Eye, ImageIcon, Loader2, Plus, Redo2, Type, Undo2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  ImageIcon,
+  Loader2,
+  Plus,
+  Redo2,
+  SlidersHorizontal,
+  Type,
+  Undo2,
+  X,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -11,20 +25,32 @@ import { builtinFontChoices, resolveFontFamily } from "@/components/design/font-
 import { LayerInspector } from "@/components/design/LayerInspector";
 import { rasterizeStage, waitForBackground } from "@/components/design/rasterize";
 import { ShortcutDialog } from "@/components/design/ShortcutDialog";
-import { useDesignEditor } from "@/components/design/useDesignEditor";
+import { sampleBackgroundRegion } from "@/components/design/sample-background";
+import {
+  EMPTY_DOCUMENT,
+  type SlideDocuments,
+  useDesignEditor,
+} from "@/components/design/useDesignEditor";
 import { useEditorShortcuts } from "@/components/design/useEditorShortcuts";
 import { BackgroundPicker } from "@/components/posts/carousel/BackgroundPicker";
 import {
   CarouselPreviewDialog,
   type PreviewSlide,
 } from "@/components/posts/carousel/CarouselPreviewDialog";
+import { MobileEditorToolbar } from "@/components/posts/carousel/MobileEditorToolbar";
 import { type FilmstripSlide, SlideFilmstrip } from "@/components/posts/carousel/SlideFilmstrip";
 import { BlockingOverlay } from "@/components/ui/blocking-overlay";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { carouselCanvas } from "@/lib/carousel/platform-spec";
 import { CAROUSEL_SLIDE_STATUS } from "@/lib/constants";
 import { safeArea } from "@/lib/design/canvas-spec";
-import { type DesignDocument, parseDesignDocument } from "@/lib/design/document";
+import {
+  type DesignDocument,
+  parseDesignDocument,
+  type TextBackground,
+} from "@/lib/design/document";
 import {
   brandAssetUrl,
   ensureFontsLoaded,
@@ -33,6 +59,14 @@ import {
   uploadedFontFamily,
 } from "@/lib/design/fonts";
 import { textMeasurer } from "@/lib/design/measure-text";
+import {
+  defaultTextPlate,
+  inferPlateColor,
+  platedRegion,
+  platePaddingForGap,
+  textColorsOf,
+  withTextPlates,
+} from "@/lib/design/plate";
 import { reflowAutoLayout } from "@/lib/design/reflow";
 import { POLLING } from "@/lib/polling-config";
 import { responseError, wrapIndex } from "@/lib/utils";
@@ -70,8 +104,11 @@ interface SlideEditorProps {
   uploadedFonts: { assetId: string; name: string }[];
 }
 
-const MAX_STAGE_WIDTH = 420;
-const MIN_STAGE_WIDTH = 160;
+const INITIAL_STAGE_WIDTH = 420;
+const AUTOSAVE_DELAY_MS = 1000;
+const SAVE_TOAST_ID = "slide-save";
+const MIN_MOBILE_ZOOM = 0.75;
+const MAX_MOBILE_ZOOM = 2.5;
 
 export function SlideEditor({
   postId,
@@ -83,8 +120,10 @@ export function SlideEditor({
   const router = useRouter();
   const spec = useMemo(() => carouselCanvas(platform), [platform]);
   const [slides, setSlides] = useState(initialSlides);
-  const [selectedSlideId, setSelectedSlideId] = useState(initialSlides[0]?.id ?? null);
   const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const [initializing, setInitializing] = useState(true);
+  const operation = useRef(false);
   const [publishing, setPublishing] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [previewSlides, setPreviewSlides] = useState<PreviewSlide[]>([]);
@@ -94,21 +133,44 @@ export function SlideEditor({
   );
   const [frozenSelectionId, setFrozenSelectionId] = useState<string | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
+  const [mobileFilmstripOpen, setMobileFilmstripOpen] = useState(false);
+  const [mobileZoom, setMobileZoom] = useState(1);
+  const [mobilePan, setMobilePan] = useState({ x: 0, y: 0 });
+  const [pinching, setPinching] = useState(false);
+  const [platingAll, setPlatingAll] = useState(false);
   const stageRef = useRef<Konva.Stage | null>(null);
   const stageAreaRef = useRef<HTMLDivElement | null>(null);
+  const zoomGestureRef = useRef({
+    points: new Map<number, { x: number; y: number }>(),
+    distance: 0,
+    zoom: 1,
+  });
+  const panGestureRef = useRef<{
+    pointerId: number;
+    start: { x: number; y: number };
+    origin: { x: number; y: number };
+  } | null>(null);
   const stageWidth = useFittedStageWidth(stageAreaRef, spec);
 
+  const initialDocuments = useMemo(
+    () =>
+      Object.fromEntries(
+        initialSlides.map((slide) => [slide.id, documentFor(slide)]),
+      ) as SlideDocuments,
+    [initialSlides],
+  );
+  const editor = useDesignEditor(
+    { documents: initialDocuments, slideId: initialSlides[0]?.id ?? null },
+    spec,
+  );
+  const { select, openSlide, applyReflow } = editor;
+
+  const selectedSlideId = editor.slideId;
   const selectedSlide = slides.find((slide) => slide.id === selectedSlideId) ?? null;
 
-  // Read once, on mount: the effect below is what swaps documents afterwards.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only, or every render re-parses
-  const initialDocument = useMemo(() => documentFor(selectedSlide), []);
-  const editor = useDesignEditor(initialDocument, spec);
-  const { setDocument, select, applyReflow } = editor;
-
-  // The restack below runs off a snapshot, so it needs the selection as of when it finishes.
-  const selectedSlideIdRef = useRef(selectedSlideId);
-  selectedSlideIdRef.current = selectedSlideId;
+  const editorRef = useRef(editor);
+  editorRef.current = editor;
 
   const fonts = useMemo(
     () => [
@@ -121,17 +183,31 @@ export function SlideEditor({
     [uploadedFonts],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the open slide, which is what drops the selection
   useEffect(() => {
-    for (const font of uploadedFonts) registerUploadedFont(font.assetId);
-  }, [uploadedFonts]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on slide identity, or polling would discard edits
-  useEffect(() => {
-    setDocument(documentFor(selectedSlide), { markClean: true });
     select(null);
-  }, [selectedSlideId, setDocument, select]);
+  }, [selectedSlideId, select]);
 
   const orderedSlides = useMemo(() => [...slides].sort((a, b) => a.order - b.order), [slides]);
+
+  const highlighting = useMemo(() => {
+    let highlighted = 0;
+    let total = 0;
+
+    for (const slide of orderedSlides) {
+      const document = editor.documents[slide.id] ?? EMPTY_DOCUMENT;
+      for (const layer of document.layers) {
+        if (layer.type !== "text") continue;
+        total += 1;
+        if (layer.background) highlighted += 1;
+      }
+    }
+
+    return {
+      all: total > 0 && highlighted === total,
+      some: highlighted > 0 && highlighted < total,
+    };
+  }, [editor.documents, orderedSlides]);
 
   useEffect(
     () => () => {
@@ -140,24 +216,13 @@ export function SlideEditor({
     [previewSlides],
   );
 
-  const stepSlide = useCallback(
-    (delta: number) => {
-      setSelectedSlideId((current) => {
-        const index = orderedSlides.findIndex((slide) => slide.id === current);
-        if (index === -1) return orderedSlides[0]?.id ?? current;
-
-        const next = wrapIndex(index + delta, orderedSlides.length);
-        return orderedSlides[next]?.id ?? current;
-      });
-    },
-    [orderedSlides],
-  );
-
   const anyPending = slides.some(
     (slide) =>
       slide.status === CAROUSEL_SLIDE_STATUS.PENDING ||
       slide.status === CAROUSEL_SLIDE_STATUS.GENERATING,
   );
+
+  const anyFailed = slides.some((slide) => slide.status === CAROUSEL_SLIDE_STATUS.FAILED);
 
   // While backgrounds are still generating the stage has nothing to draw, so poll until they land.
   useEffect(() => {
@@ -212,25 +277,172 @@ export function SlideEditor({
     [postId],
   );
 
-  const saveDesign = useCallback(async () => {
-    if (!selectedSlide) return false;
+  const writeSlides = useCallback(
+    async (ids: string[]) => {
+      const saved: SlideDocuments = {};
+      try {
+        for (const id of ids) {
+          const document = editorRef.current.documents[id];
+          if (!document) continue;
+          await persistDesign(id, document);
+          saved[id] = document;
+        }
+        setSaveFailed(false);
+        return true;
+      } catch (err) {
+        setSaveFailed(true);
+        toast.error(err instanceof Error ? err.message : "Failed to save slide", {
+          id: SAVE_TOAST_ID,
+        });
+        return false;
+      } finally {
+        if (Object.keys(saved).length > 0) editorRef.current.markSaved(saved);
+      }
+    },
+    [persistDesign],
+  );
+
+  const writes = useRef<Promise<boolean>>(Promise.resolve(true));
+
+  const flush = useCallback(
+    (ids?: string[]) => {
+      const run = writes.current.then(() => writeSlides(ids ?? editorRef.current.dirtySlideIds));
+      writes.current = run.catch(() => false);
+      return run;
+    },
+    [writeSlides],
+  );
+
+  const saveDirty = useCallback(async () => {
+    if (editorRef.current.dirtySlideIds.length === 0) return true;
     setSaving(true);
     try {
-      await persistDesign(selectedSlide.id, editor.document);
-      setSlides((current) =>
-        current.map((slide) =>
-          slide.id === selectedSlide.id ? { ...slide, design: editor.document } : slide,
-        ),
-      );
-      editor.markClean();
-      return true;
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save slide");
-      return false;
+      return await flush();
     } finally {
       setSaving(false);
     }
-  }, [editor, persistDesign, selectedSlide]);
+  }, [flush]);
+
+  useEffect(() => {
+    if (initializing) return;
+
+    const pending = editor.dirtySlideIds.filter((id) => id !== editor.slideId);
+    if (pending.length > 0) void flush(pending);
+  }, [editor.dirtySlideIds, editor.slideId, flush, initializing]);
+
+  const openSlideDirty = editor.slideId !== null && editor.dirtySlideIds.includes(editor.slideId);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the document so every edit pushes the save back
+  useEffect(() => {
+    if (initializing || !openSlideDirty) return;
+
+    const timer = setTimeout(() => void flush(), AUTOSAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [editor.document, flush, initializing, openSlideDirty]);
+
+  useEffect(() => () => void flush(), [flush]);
+
+  useEffect(() => {
+    if (!editor.dirty) return;
+
+    function warnBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+    }
+
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [editor.dirty]);
+
+  const selectSlide = useCallback(
+    (id: string) => {
+      if (initializing || operation.current) return;
+      openSlide(id);
+    },
+    [initializing, openSlide],
+  );
+
+  const stepSlide = useCallback(
+    (delta: number) => {
+      const index = orderedSlides.findIndex((slide) => slide.id === selectedSlideId);
+      const next = orderedSlides[wrapIndex(index + delta, orderedSlides.length)];
+      if (next) selectSlide(next.id);
+    },
+    [orderedSlides, selectSlide, selectedSlideId],
+  );
+
+  /**
+   * A plate colour is per slide, not per carousel: it is read off the photograph behind that
+   * slide's own copy, so each one gets a band that belongs to its picture. A slide still waiting
+   * on its background has nothing to read, and falls back to the neutral plate.
+   */
+  const inferPlateFor = useCallback(
+    async (slide: EditorSlide, document: DesignDocument): Promise<TextBackground> => {
+      const url = slideBackgroundUrl(slide);
+      const region = platedRegion(document);
+      const textColors = textColorsOf(document);
+      if (!url || !region || textColors.length === 0) return defaultTextPlate();
+
+      try {
+        const sample = await sampleBackgroundRegion(url, spec, region);
+        if (!sample) return defaultTextPlate();
+        return defaultTextPlate(inferPlateColor({ sample, textColors }));
+      } catch {
+        return defaultTextPlate();
+      }
+    },
+    [slideBackgroundUrl, spec],
+  );
+
+  const togglePlate = useCallback(
+    async (on: boolean) => {
+      const id = editor.selectedId;
+      if (!id) return;
+      if (!on) {
+        editor.updateLayer(id, { background: undefined });
+        return;
+      }
+
+      const plate = selectedSlide
+        ? await inferPlateFor(selectedSlide, editor.document)
+        : defaultTextPlate();
+      const padding = editor.document.autoLayout
+        ? platePaddingForGap(editor.document.autoLayout.gap)
+        : plate.padding;
+
+      editor.updateLayer(id, { background: { ...plate, padding } });
+    },
+    [editor, inferPlateFor, selectedSlide],
+  );
+
+  const applyHighlightToAll = useCallback(
+    async (adding: boolean) => {
+      if (initializing || operation.current) return;
+      operation.current = true;
+      setPlatingAll(true);
+      try {
+        const documents = Object.fromEntries(
+          await Promise.all(
+            orderedSlides.map(async (slide): Promise<[string, DesignDocument]> => {
+              const document = editorRef.current.documents[slide.id] ?? EMPTY_DOCUMENT;
+              const plate = adding ? await inferPlateFor(slide, document) : null;
+              return [slide.id, withTextPlates(document, plate)];
+            }),
+          ),
+        );
+
+        editorRef.current.restyleSlides(documents);
+        toast.success(
+          adding ? "Highlighted every text block to match its photo" : "Removed every highlight",
+        );
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to update every slide");
+      } finally {
+        setPlatingAll(false);
+        operation.current = false;
+      }
+    },
+    [inferPlateFor, initializing, orderedSlides],
+  );
 
   /**
    * The generator stacks a slide's text against a guess at how the copy will wrap — it has no
@@ -240,6 +452,7 @@ export function SlideEditor({
    * up front, over all slides rather than just the open one, keeps preview and publish reading
    * corrected documents instead of racing the editor for them.
    *
+   * Editing and export stay blocked until these corrections have been saved.
    * Deliberately without an abort: the ref is what keeps this to one run, and a correction that
    * lands after a remount is still worth saving. Cancelling on teardown would instead mean Strict
    * Mode's double mount aborts the only run there is.
@@ -253,35 +466,34 @@ export function SlideEditor({
     void (async () => {
       await Promise.all(uploadedFonts.map((font) => registerUploadedFont(font.assetId)));
 
-      const documents = initialSlides.map((slide) => ({ slide, document: documentFor(slide) }));
+      const documents = Object.entries(initialDocuments);
       await ensureFontsLoaded(
-        documents.flatMap(({ document }) => facesUsedBy(document, resolveFontFamily)),
+        documents.flatMap(([, document]) => facesUsedBy(document, resolveFontFamily)),
       );
 
       const measure = textMeasurer(resolveFontFamily);
       const area = safeArea(spec);
-      const corrected = documents.flatMap(({ slide, document }) => {
+      const corrected: SlideDocuments = {};
+      for (const [id, document] of documents) {
         const next = reflowAutoLayout(document, area, measure);
-        return next ? [{ id: slide.id, document: next }] : [];
-      });
-      if (corrected.length === 0) return;
+        if (next) corrected[id] = next;
+      }
+      if (Object.keys(corrected).length === 0) return;
 
-      setSlides((current) =>
-        current.map((slide) => {
-          const fix = corrected.find((entry) => entry.id === slide.id);
-          return fix ? { ...slide, design: fix.document } : slide;
-        }),
-      );
-
-      const open = corrected.find((entry) => entry.id === selectedSlideIdRef.current);
-      if (open) applyReflow(open.document);
+      applyReflow(corrected);
 
       // Best effort: a slide that fails to save is simply restacked again on the next visit.
       await Promise.all(
-        corrected.map((entry) => persistDesign(entry.id, entry.document).catch(() => {})),
+        Object.entries(corrected).map(([id, document]) =>
+          persistDesign(id, document).catch(() => {}),
+        ),
       );
-    })();
-  }, [applyReflow, initialSlides, persistDesign, spec, uploadedFonts]);
+    })()
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to prepare slide layouts");
+      })
+      .finally(() => setInitializing(false));
+  }, [applyReflow, initialDocuments, persistDesign, spec, uploadedFonts]);
 
   // Every slide has to be drawn to export it, and only one stage exists — so each slide is
   // selected in turn and rasterised once the stage has actually rendered it.
@@ -290,9 +502,8 @@ export function SlideEditor({
 
     for (const [index, slide] of orderedSlides.entries()) {
       setRenderProgress({ current: index + 1, total: orderedSlides.length });
-      setSelectedSlideId(slide.id);
-      const document = documentFor(slide);
-      setDocument(document, { markClean: true });
+      openSlide(slide.id);
+      const document = editorRef.current.documents[slide.id] ?? EMPTY_DOCUMENT;
       await nextPaint();
 
       const stage = stageRef.current;
@@ -306,13 +517,11 @@ export function SlideEditor({
     }
 
     return rendered;
-  }, [orderedSlides, setDocument, slideBackgroundUrl, spec]);
+  }, [openSlide, orderedSlides, slideBackgroundUrl, spec]);
 
   useEditorShortcuts(editor, {
-    enabled: !publishing && !previewing && !previewOpen,
-    onSave: () => {
-      if (editor.dirty && !saving) void saveDesign();
-    },
+    enabled: !initializing && !saving && !publishing && !previewing && !previewOpen && !platingAll,
+    onSave: () => void flush(),
     onNextSlide: () => stepSlide(1),
     onPreviousSlide: () => stepSlide(-1),
     onShowShortcuts: () => setShortcutsOpen(true),
@@ -320,19 +529,22 @@ export function SlideEditor({
 
   /** Winds the render-run state back down: the slide the user was on, and every busy flag. */
   function endRenderRun(restoreTo: string | null, setBusy: (busy: boolean) => void) {
-    if (restoreTo) setSelectedSlideId(restoreTo);
+    if (restoreTo) openSlide(restoreTo);
     setRenderProgress(null);
     setBusy(false);
     setFrozenSelectionId(null);
+    operation.current = false;
   }
 
   async function handlePreview() {
-    if (editor.dirty && !(await saveDesign())) return;
+    if (initializing || operation.current) return;
+    operation.current = true;
 
     const restoreTo = selectedSlideId;
     setFrozenSelectionId(restoreTo);
     setPreviewing(true);
     try {
+      if (!(await saveDirty())) return;
       const rendered = await renderSlides();
 
       setPreviewSlides(
@@ -352,12 +564,17 @@ export function SlideEditor({
   }
 
   async function handlePublish() {
-    if (editor.dirty && !(await saveDesign())) return;
+    if (initializing || operation.current) return;
+    operation.current = true;
 
     const restoreTo = selectedSlideId;
     setFrozenSelectionId(restoreTo);
     setPublishing(true);
     try {
+      if (!(await saveDirty())) {
+        endRenderRun(restoreTo, setPublishing);
+        return;
+      }
       const form = new FormData();
       for (const { slide, blob } of await renderSlides()) {
         form.append("slides", blob, `${slide.order + 1}.png`);
@@ -386,20 +603,159 @@ export function SlideEditor({
     status: slide.status,
     hasImage: slide.hasImage,
     imageUrl: slideBackgroundUrl(slide),
+    document: editor.documents[slide.id] ?? EMPTY_DOCUMENT,
   }));
 
   const selectedLayer =
     editor.document.layers.find((layer) => layer.id === editor.selectedId) ?? null;
 
   const rendering = previewing || publishing;
+  const busy = initializing || saving || rendering;
+
+  useEffect(() => {
+    setMobilePan((current) =>
+      clampViewportPan(current, mobileZoom, stageAreaRef.current, stageWidth, spec),
+    );
+  }, [mobileZoom, spec, stageWidth]);
+
+  const resetMobileViewport = useCallback(() => {
+    zoomGestureRef.current.points.clear();
+    zoomGestureRef.current.distance = 0;
+    zoomGestureRef.current.zoom = 1;
+    panGestureRef.current = null;
+    setPinching(false);
+    setMobileZoom(1);
+    setMobilePan({ x: 0, y: 0 });
+  }, []);
+
+  const handleViewportPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.pointerType !== "touch") return;
+      const gesture = zoomGestureRef.current;
+      gesture.points.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (gesture.points.size === 1 && mobileZoom > 1) {
+        panGestureRef.current = null;
+        const stage = stageRef.current;
+        const point = stage?.getPointerPosition();
+        // The background layer does not listen for input, so any hit is an editable layer or
+        // transformer handle. Empty pixels are therefore safe to use for moving the viewport.
+        const hitLayer = Boolean(point && stage?.getIntersection(point));
+        if (!hitLayer) {
+          panGestureRef.current = {
+            pointerId: event.pointerId,
+            start: { x: event.clientX, y: event.clientY },
+            origin: mobilePan,
+          };
+          setPinching(true);
+        }
+        return;
+      }
+      if (gesture.points.size !== 2) return;
+
+      panGestureRef.current = null;
+      gesture.distance = pointerDistance(gesture.points);
+      gesture.zoom = mobileZoom;
+      setPinching(true);
+    },
+    [mobilePan, mobileZoom],
+  );
+
+  const handleViewportPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const gesture = zoomGestureRef.current;
+      if (event.pointerType !== "touch" || !gesture.points.has(event.pointerId)) return;
+      gesture.points.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      const pan = panGestureRef.current;
+      if (gesture.points.size === 1 && pan?.pointerId === event.pointerId) {
+        event.preventDefault();
+        setMobilePan(
+          clampViewportPan(
+            {
+              x: pan.origin.x + event.clientX - pan.start.x,
+              y: pan.origin.y + event.clientY - pan.start.y,
+            },
+            mobileZoom,
+            stageAreaRef.current,
+            stageWidth,
+            spec,
+          ),
+        );
+        return;
+      }
+      if (gesture.points.size !== 2 || gesture.distance <= 0) return;
+
+      event.preventDefault();
+      setMobileZoom(
+        clampMobileZoom(gesture.zoom * (pointerDistance(gesture.points) / gesture.distance)),
+      );
+    },
+    [mobileZoom, spec, stageWidth],
+  );
+
+  const finishViewportPointer = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "touch") return;
+    const gesture = zoomGestureRef.current;
+    gesture.points.delete(event.pointerId);
+    if (panGestureRef.current?.pointerId === event.pointerId) panGestureRef.current = null;
+    if (gesture.points.size < 2) {
+      gesture.distance = 0;
+      setPinching(false);
+    }
+  }, []);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b pb-4">
+    <div className="fixed inset-0 z-50 flex min-h-0 flex-1 flex-col overflow-hidden bg-black lg:relative lg:inset-auto lg:z-auto lg:gap-4 lg:overflow-visible lg:bg-transparent">
+      <div
+        inert={busy}
+        className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 bg-gradient-to-b from-black/80 to-transparent px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-8 text-white lg:hidden"
+      >
+        <button
+          type="button"
+          onClick={() => router.push("/posts")}
+          aria-label="Back to posts"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-black/50 backdrop-blur-md"
+        >
+          <ArrowLeft className="size-5" />
+        </button>
+        <div className="min-w-0 flex-1 text-center text-white/80 text-xs" aria-live="polite">
+          {anyPending ? (
+            "Preparing backgrounds…"
+          ) : anyFailed ? (
+            <span className="text-red-300">A background needs attention</span>
+          ) : saveFailed ? (
+            <button type="button" onClick={() => void flush()} className="text-red-300 underline">
+              Save failed — retry
+            </button>
+          ) : editor.dirty ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Loader2 className="size-3 animate-spin" /> Saving changes…
+            </span>
+          ) : (
+            "All changes saved"
+          )}
+        </div>
+        <Button
+          onClick={handlePublish}
+          disabled={busy || anyPending || anyFailed || slides.length === 0}
+          className="h-11 shrink-0 rounded-full bg-white px-4 text-black hover:bg-white/90"
+        >
+          {publishing ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Check className="mr-1 size-4" />
+          )}
+          Done
+        </Button>
+      </div>
+
+      <div
+        inert={busy}
+        className="hidden shrink-0 flex-wrap items-start justify-between gap-2 border-b pb-4 lg:flex"
+      >
         <button
           type="button"
           onClick={() => setShortcutsOpen(true)}
-          className="text-muted-foreground text-xs underline-offset-2 hover:underline"
+          className="hidden text-muted-foreground text-xs underline-offset-2 hover:underline lg:block"
         >
           Press{" "}
           <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">
@@ -407,24 +763,59 @@ export function SlideEditor({
           </kbd>{" "}
           for keyboard shortcuts
         </button>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="grid w-full grid-cols-2 items-center gap-2 lg:flex lg:w-auto lg:flex-wrap lg:justify-end">
           {anyPending && (
-            <span className="text-muted-foreground text-xs">Waiting for backgrounds…</span>
+            <span className="col-span-2 text-muted-foreground text-xs lg:col-span-1">
+              Waiting for backgrounds…
+            </span>
+          )}
+          {!anyPending && anyFailed && (
+            <span className="col-span-2 text-destructive text-xs lg:col-span-1">
+              A background failed — regenerate it before completing
+            </span>
+          )}
+          {saveFailed ? (
+            <button
+              type="button"
+              onClick={() => void flush()}
+              className="col-span-2 text-destructive text-xs underline-offset-2 hover:underline lg:col-span-1"
+            >
+              Couldn't save — retry
+            </button>
+          ) : (
+            <span
+              aria-live="polite"
+              className="col-span-2 flex items-center gap-1 text-muted-foreground text-xs lg:col-span-1"
+            >
+              {editor.dirty ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <Check className="h-3 w-3" />
+                  Saved
+                </>
+              )}
+            </span>
           )}
           <Button
             type="button"
             variant="outline"
-            onClick={saveDesign}
-            disabled={saving || !editor.dirty}
+            onClick={() => setMobileControlsOpen(true)}
+            disabled={busy}
+            className="min-h-10 w-full lg:hidden"
           >
-            {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-            Save slide
+            <SlidersHorizontal className="mr-1.5 h-4 w-4" />
+            Controls
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={handlePreview}
-            disabled={previewing || publishing || anyPending || slides.length === 0}
+            disabled={busy || anyPending || slides.length === 0}
+            className="hidden min-h-10 lg:inline-flex"
           >
             {previewing ? (
               <>
@@ -438,7 +829,11 @@ export function SlideEditor({
               </>
             )}
           </Button>
-          <Button onClick={handlePublish} disabled={previewing || publishing || anyPending}>
+          <Button
+            onClick={handlePublish}
+            disabled={busy || anyPending || anyFailed || slides.length === 0}
+            className="min-h-10 w-full lg:w-auto"
+          >
             {publishing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -454,17 +849,33 @@ export function SlideEditor({
         </div>
       </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col gap-6 lg:flex-row">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+      <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row lg:gap-6">
+        <div
+          inert={busy || mobileControlsOpen}
+          className="relative flex min-h-0 min-w-0 flex-1 flex-col lg:gap-3"
+        >
           {/** biome-ignore lint/a11y/noStaticElementInteractions: deselect mirrors the canvas's own click-away, and Esc already does it from the keyboard */}
           <div
             ref={stageAreaRef}
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) editor.select(null);
             }}
-            className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden"
+            onPointerDown={handleViewportPointerDown}
+            onPointerMove={handleViewportPointerMove}
+            onPointerUp={finishViewportPointer}
+            onPointerCancel={finishViewportPointer}
+            className="absolute inset-0 flex min-h-0 min-w-0 flex-1 touch-none items-center justify-center overflow-hidden lg:relative lg:touch-auto"
           >
-            <div style={{ width: stageWidth }} data-testid="slide-stage">
+            <div
+              className={`lg:!transform-none shrink-0 origin-center overflow-hidden lg:rounded-lg ${
+                pinching ? "" : "transition-transform duration-150 ease-out"
+              }`}
+              style={{
+                width: stageWidth,
+                transform: `translate3d(${mobilePan.x}px, ${mobilePan.y}px, 0) scale(${mobileZoom})`,
+              }}
+              data-testid="slide-stage"
+            >
               <DesignStage
                 document={editor.document}
                 spec={spec}
@@ -482,15 +893,93 @@ export function SlideEditor({
             </div>
           </div>
 
-          <SlideFilmstrip
-            slides={filmstrip}
-            selectedId={frozenSelectionId ?? selectedSlideId}
-            onSelect={setSelectedSlideId}
-            canvas={spec}
+          <div className="pointer-events-none absolute inset-x-0 bottom-[9.75rem] z-20 flex h-12 items-center justify-start overflow-visible px-2 lg:pointer-events-auto lg:static lg:block lg:h-auto lg:p-0">
+            <div
+              className={`pointer-events-auto relative flex min-h-12 max-w-full items-center overflow-hidden rounded-2xl bg-black/60 shadow-xl backdrop-blur-xl transition-[width] duration-300 ease-out lg:h-auto lg:min-h-0 lg:w-full lg:overflow-visible lg:rounded-none lg:bg-transparent lg:shadow-none lg:backdrop-blur-none ${
+                mobileFilmstripOpen ? "w-full" : "h-12 w-12"
+              }`}
+            >
+              <button
+                type="button"
+                aria-label={mobileFilmstripOpen ? "Hide slide previews" : "Show slide previews"}
+                aria-expanded={mobileFilmstripOpen}
+                onClick={() => setMobileFilmstripOpen((open) => !open)}
+                className="absolute top-1/2 left-1 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md transition-colors lg:hidden"
+              >
+                {mobileFilmstripOpen ? (
+                  <ChevronLeft className="size-5" />
+                ) : (
+                  <ChevronRight className="size-5" />
+                )}
+              </button>
+              <div
+                className={`min-w-0 flex-1 px-12 transition-opacity duration-200 lg:pointer-events-auto lg:px-0 lg:opacity-100 ${
+                  mobileFilmstripOpen ? "opacity-100" : "pointer-events-none opacity-0"
+                }`}
+              >
+                <SlideFilmstrip
+                  slides={filmstrip}
+                  selectedId={frozenSelectionId ?? selectedSlideId}
+                  onSelect={selectSlide}
+                  canvas={spec}
+                  centerSignal={mobileFilmstripOpen}
+                  logoUrl={brandAssetUrl}
+                  resolveFontFamily={resolveFontFamily}
+                />
+              </div>
+            </div>
+          </div>
+
+          <MobileEditorToolbar
+            layer={selectedLayer}
+            busy={busy || platingAll}
+            canUndo={editor.canUndo}
+            canRedo={editor.canRedo}
+            zoom={mobileZoom}
+            canAddLogo={Boolean(logoAssetId)}
+            onAddText={() => editor.addTextLayer("body", "Inter", "#ffffff")}
+            onAddShape={() => editor.addShapeLayer("#000000")}
+            onAddLogo={() => logoAssetId && editor.addLogoLayer(logoAssetId)}
+            onUndo={editor.undo}
+            onRedo={editor.redo}
+            onResetZoom={resetMobileViewport}
+            onChange={(patch) => editor.selectedId && editor.updateLayer(editor.selectedId, patch)}
+            onToggleHighlight={(on) => void togglePlate(on)}
+            onDuplicate={() => editor.selectedId && editor.duplicateLayer(editor.selectedId)}
+            onDelete={() => editor.selectedId && editor.deleteLayer(editor.selectedId)}
+            onRaise={() => editor.selectedId && editor.raiseLayer(editor.selectedId)}
+            onLower={() => editor.selectedId && editor.lowerLayer(editor.selectedId)}
+            onDeselect={() => editor.select(null)}
+            onOpenDetails={() => setMobileControlsOpen(true)}
           />
         </div>
 
-        <div className="min-h-0 w-full flex-1 space-y-5 overflow-y-auto lg:w-96 lg:flex-none lg:border-l lg:pl-6">
+        <div
+          inert={busy}
+          className={`${
+            mobileControlsOpen
+              ? "absolute inset-x-2 top-[max(4.5rem,env(safe-area-inset-top))] bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-30 block"
+              : "hidden"
+          } min-h-0 w-auto flex-1 space-y-5 overflow-y-auto rounded-2xl border bg-background/95 p-4 shadow-2xl backdrop-blur-xl lg:static lg:block lg:w-96 lg:flex-none lg:rounded-none lg:border-y-0 lg:border-r-0 lg:bg-transparent lg:py-0 lg:pr-3 lg:pl-6 lg:shadow-none lg:backdrop-blur-none`}
+        >
+          <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex items-center justify-between border-b bg-background px-4 py-3 lg:hidden">
+            <div>
+              <p className="font-semibold text-sm">
+                {selectedLayer ? `${selectedLayer.type} controls` : "Slide controls"}
+              </p>
+              <p className="text-muted-foreground text-xs">Changes appear on the canvas live.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Close controls"
+              onClick={() => setMobileControlsOpen(false)}
+              className="size-10 rounded-full"
+            >
+              <X />
+            </Button>
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -527,7 +1016,7 @@ export function SlideEditor({
               size="sm"
               title="Undo (Ctrl+Z)"
               onClick={editor.undo}
-              disabled={!editor.canUndo}
+              disabled={!editor.canUndo || platingAll}
             >
               <Undo2 className="mr-1.5 h-3.5 w-3.5" />
               Undo
@@ -538,7 +1027,7 @@ export function SlideEditor({
               size="sm"
               title="Redo (Ctrl+Shift+Z)"
               onClick={editor.redo}
-              disabled={!editor.canRedo}
+              disabled={!editor.canRedo || platingAll}
             >
               <Redo2 className="mr-1.5 h-3.5 w-3.5" />
               Redo
@@ -553,7 +1042,27 @@ export function SlideEditor({
             onDelete={() => editor.selectedId && editor.deleteLayer(editor.selectedId)}
             onRaise={() => editor.selectedId && editor.raiseLayer(editor.selectedId)}
             onLower={() => editor.selectedId && editor.lowerLayer(editor.selectedId)}
+            onTogglePlate={(on) => void togglePlate(on)}
           />
+
+          <div className="space-y-2 border-t pt-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="highlight-all"
+                indeterminate={highlighting.some}
+                checked={highlighting.all}
+                disabled={busy || platingAll}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  void applyHighlightToAll(event.target.checked)
+                }
+              />
+              <Label htmlFor="highlight-all">Highlight text on every slide</Label>
+              {platingAll && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Applies to every text block in the carousel.
+            </p>
+          </div>
 
           {selectedSlide && (
             <BackgroundPicker
@@ -570,20 +1079,39 @@ export function SlideEditor({
                   ),
                 )
               }
+              onRestored={(imageVersion) =>
+                setSlides((current) =>
+                  current.map((slide) =>
+                    slide.id === selectedSlide.id
+                      ? {
+                          ...slide,
+                          status: CAROUSEL_SLIDE_STATUS.COMPLETED,
+                          hasImage: true,
+                          imageVersion,
+                        }
+                      : slide,
+                  ),
+                )
+              }
             />
           )}
         </div>
-
-        <BlockingOverlay
-          active={rendering}
-          title={publishing && !renderProgress ? "Uploading slides…" : "Rendering slides…"}
-          description={
-            renderProgress
-              ? `Slide ${renderProgress.current} of ${renderProgress.total}`
-              : undefined
-          }
-        />
       </div>
+      <BlockingOverlay
+        active={busy}
+        title={
+          initializing
+            ? "Preparing slide layouts…"
+            : saving
+              ? "Saving slide…"
+              : publishing && !renderProgress
+                ? "Uploading slides…"
+                : "Rendering slides…"
+        }
+        description={
+          renderProgress ? `Slide ${renderProgress.current} of ${renderProgress.total}` : undefined
+        }
+      />
 
       <CarouselPreviewDialog
         open={previewOpen}
@@ -597,24 +1125,62 @@ export function SlideEditor({
   );
 }
 
+function clampMobileZoom(value: number): number {
+  return Math.min(MAX_MOBILE_ZOOM, Math.max(MIN_MOBILE_ZOOM, Math.round(value * 100) / 100));
+}
+
+function clampViewportPan(
+  pan: { x: number; y: number },
+  zoom: number,
+  area: HTMLDivElement | null,
+  stageWidth: number,
+  spec: { width: number; height: number },
+): { x: number; y: number } {
+  if (!area || zoom <= 1) return { x: 0, y: 0 };
+
+  const box = area.getBoundingClientRect();
+  const stageHeight = (stageWidth * spec.height) / spec.width;
+  const maxX = Math.max(0, (stageWidth * zoom - box.width) / 2);
+  const maxY = Math.max(0, (stageHeight * zoom - box.height) / 2);
+  return {
+    x: Math.min(maxX, Math.max(-maxX, pan.x)),
+    y: Math.min(maxY, Math.max(-maxY, pan.y)),
+  };
+}
+
+function pointerDistance(points: Map<number, { x: number; y: number }>): number {
+  const [first, second] = [...points.values()];
+  return first && second ? Math.hypot(second.x - first.x, second.y - first.y) : 0;
+}
+
 function useFittedStageWidth(
   areaRef: React.RefObject<HTMLDivElement | null>,
   spec: { width: number; height: number },
 ): number {
-  const [width, setWidth] = useState(MAX_STAGE_WIDTH);
+  const [width, setWidth] = useState(INITIAL_STAGE_WIDTH);
 
   useEffect(() => {
     const area = areaRef.current;
     if (!area) return;
 
-    const observer = new ResizeObserver(([entry]) => {
-      const box = entry.contentRect;
-      const fitted = Math.min(box.width, (box.height * spec.width) / spec.height, MAX_STAGE_WIDTH);
-      setWidth(Math.max(Math.floor(fitted), MIN_STAGE_WIDTH));
-    });
+    const query = window.matchMedia?.("(min-width: 1024px)");
+    const resizeStage = (box: { width: number; height: number }) => {
+      const widthForHeight = (box.height * spec.width) / spec.height;
+      const fitted =
+        (query?.matches ?? window.innerWidth >= 1024)
+          ? Math.min(box.width, widthForHeight)
+          : Math.max(box.width, widthForHeight);
+      setWidth(Math.max(1, Math.floor(fitted)));
+    };
+    const observer = new ResizeObserver(([entry]) => resizeStage(entry.contentRect));
+    const handleBreakpoint = () => resizeStage(area.getBoundingClientRect());
     observer.observe(area);
+    query?.addEventListener("change", handleBreakpoint);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      query?.removeEventListener("change", handleBreakpoint);
+    };
   }, [areaRef, spec.width, spec.height]);
 
   return width;
@@ -624,9 +1190,8 @@ function useFittedStageWidth(
  * The slide row owns its background image, so the document only carries the solid colour drawn
  * underneath it. Storing the path here too would go stale the moment it is regenerated.
  */
-function documentFor(slide: EditorSlide | null): DesignDocument {
-  const parsed = slide ? parseDesignDocument(slide.design) : undefined;
-  return parsed?.document ?? { background: { kind: "solid", color: "#111111" }, layers: [] };
+function documentFor(slide: EditorSlide): DesignDocument {
+  return parseDesignDocument(slide.design)?.document ?? EMPTY_DOCUMENT;
 }
 
 /** Two frames: one for React to commit the new document, one for Konva to draw it. */

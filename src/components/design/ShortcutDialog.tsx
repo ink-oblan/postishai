@@ -32,7 +32,15 @@ export function ShortcutDialog({ open, onOpenChange }: ShortcutDialogProps) {
                       <kbd className="min-w-32 shrink-0 rounded border bg-muted px-1.5 py-0.5 text-center font-mono text-[10px]">
                         {shortcut.keys}
                       </kbd>
-                      <span className="text-muted-foreground">{shortcut.label}</span>
+                      <span className="text-muted-foreground">
+                        {shortcut.label}
+                        {shortcut.note && (
+                          <span className="text-muted-foreground/70 text-xs">
+                            {" "}
+                            — {shortcut.note}
+                          </span>
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>

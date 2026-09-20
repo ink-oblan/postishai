@@ -53,12 +53,12 @@ export default async function PostDetailPage({
       <div
         className={
           designing
-            ? "flex h-full min-h-0 flex-col gap-4 overflow-hidden px-6 py-6 sm:px-10"
+            ? "flex h-full min-h-0 flex-col overflow-hidden lg:gap-4 lg:px-10 lg:py-6"
             : "space-y-6 px-6 py-8 sm:px-10"
         }
       >
         <PostDetailClient postId={post.id} />
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="hidden shrink-0 items-center gap-3 lg:flex">
           <Link
             href="/posts"
             className="inline-flex items-center text-muted-foreground text-sm hover:text-foreground"
@@ -68,9 +68,9 @@ export default async function PostDetailPage({
           </Link>
         </div>
 
-        <div className="shrink-0">
-          <h1 className="font-semibold text-xl">{post.title}</h1>
-          <p className="mt-1 text-muted-foreground text-sm">
+        <div className="hidden min-w-0 shrink-0 lg:block">
+          <h1 className="truncate font-semibold text-lg sm:text-xl">{post.title}</h1>
+          <p className="text-muted-foreground text-xs sm:mt-1 sm:text-sm">
             {PLATFORM_LABELS[post.platform]} carousel ·{" "}
             {post.carouselStage === CAROUSEL_STAGE.SCENARIO ? "Plan" : "Design"}
           </p>

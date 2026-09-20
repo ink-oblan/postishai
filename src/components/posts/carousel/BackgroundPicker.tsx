@@ -19,6 +19,7 @@ interface BackgroundPickerProps {
   visualPrompt: string;
   status: string;
   onRegenerated: () => void;
+  onRestored: (imageVersion: number) => void;
 }
 
 export function BackgroundPicker({
@@ -27,6 +28,7 @@ export function BackgroundPicker({
   visualPrompt,
   status,
   onRegenerated,
+  onRestored,
 }: BackgroundPickerProps) {
   const [prompt, setPrompt] = useState(visualPrompt);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -82,11 +84,11 @@ export function BackgroundPicker({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageId }),
       });
+      const body = await res.json();
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to switch background");
+        throw new Error(body.error ?? "Failed to switch background");
       }
-      onRegenerated();
+      onRestored(body.imageVersion);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to switch background");
     } finally {
