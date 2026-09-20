@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import {
-  generateScenario,
+  coerceLayout,
+  generateSlideRewrite,
   mockScenario,
   SCENARIO_PLANNING_ERROR,
   ScenarioResponseError,
@@ -51,18 +52,23 @@ export const POST = withAuth(async function POST(
 
   const slideCount = post.slides.length;
 
-  let generated: ScenarioSlide[];
+  let replacement: ScenarioSlide;
   try {
     if (isMockEnabled()) {
       await mockDelay(MOCK_TIMINGS.CAROUSEL_SCENARIO);
-      generated = mockScenario(post.title, slideCount);
+      replacement = mockScenario(post.title, slideCount)[index];
     } else {
-      generated = await generateScenario({
+      replacement = await generateSlideRewrite({
         title: post.title,
         platform: post.platform,
-        slideCount,
         details: post.details,
         brand: post.brandProfile,
+        slides: post.slides.map((slide) => ({
+          headline: slide.headline ?? "",
+          body: slide.body ?? "",
+          layout: coerceLayout(slide.layout),
+        })),
+        index,
         llmModelId: post.llmModelId,
       });
     }
@@ -74,7 +80,6 @@ export const POST = withAuth(async function POST(
     return NextResponse.json({ error: "Failed to replan the carousel" }, { status: 500 });
   }
 
-  const replacement = generated[index] ?? generated[0];
   await prisma.carouselSlide.update({
     where: { id: targetId },
     data: {

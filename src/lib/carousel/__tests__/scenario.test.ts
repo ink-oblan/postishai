@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildSlideRewritePrompt,
   mockScenario,
   parseScenarioResponse,
   ScenarioResponseError,
+  type ScenarioSlideContext,
 } from "@/lib/carousel/scenario";
 
 function response(slides: unknown): string {
@@ -81,5 +83,40 @@ describe("mockScenario", () => {
     expect(slides[0]).toMatchObject({ headline: "Test post", layout: "cover" });
     expect(slides[3].layout).toBe("cta");
     expect(slides[1].layout).toBe("statement");
+  });
+});
+
+describe("buildSlideRewritePrompt", () => {
+  const plan: ScenarioSlideContext[] = [
+    { headline: "The hook", body: "", layout: "cover" },
+    { headline: "The middle", body: "Supporting line.", layout: "statement" },
+    { headline: "The close", body: "", layout: "cta" },
+  ];
+
+  const build = (index: number) =>
+    buildSlideRewritePrompt({
+      title: "Test post",
+      platform: "INSTAGRAM",
+      details: null,
+      brand: null,
+      slides: plan,
+      index,
+    });
+
+  it("asks for one slide and shows the rest of the plan as context", async () => {
+    const prompt = await build(1);
+
+    expect(prompt).toContain("REWRITE SLIDE 2");
+    expect(prompt).toContain("Return JSON only, one slide");
+    expect(prompt).toContain("The hook");
+    expect(prompt).toContain("The close");
+    expect(prompt).toContain("Supporting line.");
+    expect(prompt).toMatch(/Slide 2 \[statement\] {2}<-- REWRITE THIS ONE/);
+  });
+
+  it("pins the layout the sequence depends on and frees the ones it does not", async () => {
+    expect(await build(0)).toContain('keep "cover"');
+    expect(await build(2)).toContain('keep "cta"');
+    expect(await build(1)).toContain('one of "statement", "list" or "quote"');
   });
 });

@@ -12,6 +12,12 @@ export interface ScenarioSlide {
   layout: LayoutName;
 }
 
+export interface ScenarioSlideContext {
+  headline: string;
+  body: string;
+  layout: LayoutName;
+}
+
 export class ScenarioResponseError extends Error {}
 
 export const MAX_HEADLINE = 120;
@@ -58,6 +64,40 @@ export function buildScenarioPrompt(options: {
     slideCount: options.slideCount,
     details: options.details?.trim() || null,
     brand: brandVars(options.brand),
+  });
+}
+
+function rewriteLayoutRule(index: number, slideCount: number): string {
+  if (index === 0) return 'keep "cover" — this slide is the hook that stops the scroll';
+  if (index === slideCount - 1) return 'keep "cta" — this slide closes with the call to action';
+  return 'one of "statement", "list" or "quote"';
+}
+
+export function buildSlideRewritePrompt(options: {
+  title: string;
+  platform: Platform;
+  details?: string | null;
+  brand: BrandProfile | null;
+  slides: ScenarioSlideContext[];
+  index: number;
+}): Promise<string> {
+  const { slides, index } = options;
+
+  return renderPromptTemplate("carousel-slide-rewrite-prompt.txt", {
+    title: options.title,
+    platformLabel: PLATFORM_LABELS[options.platform],
+    slideCount: slides.length,
+    details: options.details?.trim() || null,
+    brand: brandVars(options.brand),
+    position: index + 1,
+    layoutRule: rewriteLayoutRule(index, slides.length),
+    plan: slides.map((slide, at) => ({
+      position: at + 1,
+      headline: slide.headline,
+      body: slide.body,
+      layout: slide.layout,
+      isTarget: at === index,
+    })),
   });
 }
 
@@ -160,4 +200,18 @@ export async function generateScenario(options: {
   const prompt = await buildScenarioPrompt(options);
   const raw = await getLLMAdapter(options.llmModelId).generate(prompt);
   return parseScenarioResponse(raw, options.slideCount);
+}
+
+export async function generateSlideRewrite(options: {
+  title: string;
+  platform: Platform;
+  details?: string | null;
+  brand: BrandProfile | null;
+  slides: ScenarioSlideContext[];
+  index: number;
+  llmModelId: string;
+}): Promise<ScenarioSlide> {
+  const prompt = await buildSlideRewritePrompt(options);
+  const raw = await getLLMAdapter(options.llmModelId).generate(prompt);
+  return parseScenarioResponse(raw, 1)[0];
 }
