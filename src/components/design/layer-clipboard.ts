@@ -20,8 +20,8 @@ interface CopiedStyle {
 }
 
 /**
- * Module scoped rather than editor state: the editor swaps its whole document when the slide
- * changes, and copying a layer from one slide onto another is the point of having a clipboard.
+ * Module scoped rather than editor state: the editor swaps its whole document when the page
+ * changes, and copying a layer from one page onto another is the point of having a clipboard.
  */
 let copiedLayer: Layer | null = null;
 let copiedStyle: CopiedStyle | null = null;

@@ -326,7 +326,7 @@ export function LayerInspector({
 
       {layer.type === "logo" && (
         <p className="text-muted-foreground text-xs">
-          Drag or resize the logo on the slide to position it.
+          Drag or resize the logo on the canvas to position it.
         </p>
       )}
     </div>

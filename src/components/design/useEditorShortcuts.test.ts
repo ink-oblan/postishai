@@ -35,12 +35,12 @@ function editorStub(selectedId: string | null = "layer-1"): DesignEditorState {
     layers: [TEXT_LAYER],
   };
   return {
-    slideId: "slide-1",
+    pageId: "slide-1",
     document,
     documents: { "slide-1": document },
     selectedId,
     dirty: false,
-    dirtySlideIds: [],
+    dirtyPageIds: [],
     canUndo: true,
     canRedo: true,
     select: vi.fn(),
@@ -57,8 +57,8 @@ function editorStub(selectedId: string | null = "layer-1"): DesignEditorState {
     deleteLayer: vi.fn(),
     raiseLayer: vi.fn(),
     lowerLayer: vi.fn(),
-    restyleSlides: vi.fn(),
-    openSlide: vi.fn(),
+    restylePages: vi.fn(),
+    openPage: vi.fn(),
     applyReflow: vi.fn(),
     undo: vi.fn(),
     redo: vi.fn(),
@@ -239,36 +239,36 @@ describe("useEditorShortcuts", () => {
   });
 
   it("steps through the slides only while nothing is selected", () => {
-    const onNextSlide = vi.fn();
-    const onPreviousSlide = vi.fn();
+    const onNextPage = vi.fn();
+    const onPreviousPage = vi.fn();
     const { unmount } = renderHook(() =>
-      useEditorShortcuts(editorStub(null), { onNextSlide, onPreviousSlide }),
+      useEditorShortcuts(editorStub(null), { onNextPage, onPreviousPage }),
     );
 
     expect(press({ key: "ArrowRight" }).defaultPrevented).toBe(true);
     press({ key: " " });
-    expect(onNextSlide).toHaveBeenCalledTimes(2);
+    expect(onNextPage).toHaveBeenCalledTimes(2);
 
     press({ key: "ArrowLeft" });
-    expect(onPreviousSlide).toHaveBeenCalledTimes(1);
+    expect(onPreviousPage).toHaveBeenCalledTimes(1);
 
     unmount();
-    renderHook(() => useEditorShortcuts(editorStub(), { onNextSlide, onPreviousSlide }));
+    renderHook(() => useEditorShortcuts(editorStub(), { onNextPage, onPreviousPage }));
 
     press({ key: "ArrowRight" });
     press({ key: " " });
-    expect(onNextSlide).toHaveBeenCalledTimes(2);
+    expect(onNextPage).toHaveBeenCalledTimes(2);
   });
 
   it("leaves a focused button to handle its own space press", () => {
-    const onNextSlide = vi.fn();
-    renderHook(() => useEditorShortcuts(editorStub(null), { onNextSlide }));
+    const onNextPage = vi.fn();
+    renderHook(() => useEditorShortcuts(editorStub(null), { onNextPage }));
 
     const button = document.createElement("button");
     document.body.append(button);
 
     press({ key: " " }, button);
-    expect(onNextSlide).not.toHaveBeenCalled();
+    expect(onNextPage).not.toHaveBeenCalled();
   });
 
   it("ignores keys typed into a field", () => {

@@ -7,8 +7,8 @@ import { ensureFontsLoaded, facesUsedBy, remeasureText } from "@/lib/design/font
 import { BACKGROUND_NODE_NAME, EDITOR_CHROME_NAME } from "./DesignStage";
 
 /**
- * The background is loaded asynchronously by the stage, so switching slides and exporting in
- * the same tick would rasterise whatever was on screen before — a slide with no photograph.
+ * The background is loaded asynchronously by the stage, so switching pages and exporting in
+ * the same tick would rasterise whatever was on screen before — a page with no photograph.
  */
 export async function waitForBackground(
   stage: Konva.Stage,
@@ -32,7 +32,7 @@ export async function waitForBackground(
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
-  throw new Error("The slide background did not finish loading");
+  throw new Error("The background did not finish loading");
 }
 
 function exportBox(stage: Konva.Stage) {
@@ -54,7 +54,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string): Promise<Blob
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);
-      else reject(new Error("The slide could not be encoded"));
+      else reject(new Error("The image could not be encoded"));
     }, mimeType);
   });
 }
@@ -77,7 +77,7 @@ export async function waitForLogos(
         (candidate: Konva.Node) => candidate.id() === logo.id,
       );
       if (node?.getAttr("imageLoadStatus") === "error") {
-        throw new Error("A slide logo failed to load. Check the brand asset and try again.");
+        throw new Error("A logo failed to load. Check the asset and try again.");
       }
       const image = typeof node?.image === "function" ? node.image() : null;
       if (
@@ -93,7 +93,7 @@ export async function waitForLogos(
     if (ready) return;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  throw new Error("The slide logos did not finish loading");
+  throw new Error("The logos did not finish loading");
 }
 
 /**

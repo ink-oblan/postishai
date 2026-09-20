@@ -88,8 +88,8 @@ function useImage(url: string | null): LoadedImage {
   if (settled?.url === url) return settled;
 
   /**
-   * Switching slides swaps the URL a frame before the next photograph has decoded, and dropping
-   * the old one there is what made the slide flash its flat background mid-swipe. The previous
+   * Switching pages swaps the URL a frame before the next photograph has decoded, and dropping
+   * the old one there is what made the page flash its flat background mid-swipe. The previous
    * asset stays on screen until the new one is ready; export is unaffected, since
    * `waitForBackground` and `waitForLogos` match the node's image by src rather than by presence.
    */
@@ -209,7 +209,7 @@ export function DesignStage({
   /**
    * A canvas does not pull a webfont the way the DOM does: Konva draws with whatever is loaded
    * at that moment, so a face nobody has rendered yet comes out in the fallback. Asking for it
-   * here is what makes the slide show the typeface that was actually picked.
+   * here is what makes the page show the typeface that was actually picked.
    */
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the face list, whose array identity changes every render
   useEffect(() => {
@@ -562,7 +562,7 @@ export function DesignStage({
               fill={document.background.kind === "solid" ? document.background.color : "#111111"}
             />
           )}
-          {/* A slide whose photograph is still on the wire reads as broken when left flat black. */}
+          {/* A page whose photograph is still on the wire reads as broken when left flat black. */}
           {backgroundUrl && !background && <BackgroundPlaceholder spec={spec} />}
         </Layer>
 

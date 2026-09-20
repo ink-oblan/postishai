@@ -14,10 +14,10 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
   const pending = new Promise<HTMLImageElement>((resolve, reject) => {
     const element = new window.Image();
-    // Slide backgrounds are served as bytes from our own API, so this keeps the canvas readable.
+    // Backgrounds are served as bytes from our own API, so this keeps the canvas readable.
     element.crossOrigin = "anonymous";
     element.onload = () => resolve(element);
-    element.onerror = () => reject(new Error("The slide background could not be read"));
+    element.onerror = () => reject(new Error("The background could not be read"));
     element.src = url;
   });
 
@@ -26,7 +26,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Averages the photograph behind one region of the slide. The stage draws its background
+ * Averages the photograph behind one region of the page. The stage draws its background
  * cover-cropped, so the region is mapped through that same crop rather than through the image's
  * own dimensions — otherwise a tall photo is sampled somewhere the viewer never sees.
  */

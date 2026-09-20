@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { DesignEditorLabels } from "@/components/design/design-editor-contract";
 import {
   copyLayer,
   copyLayerStyle,
@@ -125,8 +126,8 @@ export interface EditorShortcutOptions {
    */
   enabled?: boolean;
   onSave?: () => void;
-  onNextSlide?: () => void;
-  onPreviousSlide?: () => void;
+  onNextPage?: () => void;
+  onPreviousPage?: () => void;
   onShowShortcuts?: () => void;
 }
 
@@ -135,68 +136,73 @@ export interface ShortcutGroup {
   shortcuts: { keys: string; label: string; note?: string }[];
 }
 
-export const EDITOR_SHORTCUT_GROUPS: ShortcutGroup[] = [
-  {
-    title: "Edit",
-    shortcuts: [
-      { keys: "Ctrl+Z", label: "Undo" },
-      { keys: "Ctrl+Shift+Z", label: "Redo" },
-      { keys: "Ctrl+D", label: "Duplicate" },
-      { keys: "Ctrl+S", label: "Save now", note: "edits autosave anyway" },
-      { keys: "Delete", label: "Delete layer" },
-      { keys: "Esc", label: "Deselect" },
-    ],
-  },
-  {
-    title: "Clipboard",
-    shortcuts: [
-      { keys: "Ctrl+C / Ctrl+X", label: "Copy or cut the layer" },
-      { keys: "Ctrl+V", label: "Paste in place — including onto another slide" },
-      { keys: "Ctrl+Shift+V", label: "Paste over the selected layer" },
-      { keys: "Ctrl+Alt+C", label: "Copy the layer's styling" },
-      { keys: "Ctrl+Alt+V", label: "Paste styling onto the same kind of layer" },
-    ],
-  },
-  {
-    title: "Text",
-    shortcuts: [
-      { keys: "Ctrl+B", label: "Bold" },
-      { keys: "Ctrl+I", label: "Italic" },
-      { keys: "Ctrl+U", label: "Underline" },
-      { keys: "Ctrl+Shift+X", label: "Strikethrough" },
-    ],
-  },
-  {
-    title: "Arrange",
-    shortcuts: [
-      { keys: "Arrows", label: "Move (Shift for bigger steps)" },
-      { keys: "Alt+A / Alt+D", label: "Align to the left / right of the safe area" },
-      { keys: "Alt+W / Alt+S", label: "Align to the top / bottom of the safe area" },
-      { keys: "Alt+H / Alt+V", label: "Center across / down the safe area" },
-      { keys: "Ctrl+[ / ]", label: "Send backward / bring forward" },
-    ],
-  },
-  {
-    title: "Slides",
-    shortcuts: [
-      { keys: "Space / ← →", label: "Next or previous slide (nothing selected)" },
-      { keys: "Ctrl+Shift+?", label: "Show this list" },
-    ],
-  },
-];
+export function editorShortcutGroups(labels?: DesignEditorLabels): ShortcutGroup[] {
+  const page = labels?.page ?? "page";
+  const pages = labels?.pages ?? "pages";
+
+  return [
+    {
+      title: "Edit",
+      shortcuts: [
+        { keys: "Ctrl+Z", label: "Undo" },
+        { keys: "Ctrl+Shift+Z", label: "Redo" },
+        { keys: "Ctrl+D", label: "Duplicate" },
+        { keys: "Ctrl+S", label: "Save now", note: "edits autosave anyway" },
+        { keys: "Delete", label: "Delete layer" },
+        { keys: "Esc", label: "Deselect" },
+      ],
+    },
+    {
+      title: "Clipboard",
+      shortcuts: [
+        { keys: "Ctrl+C / Ctrl+X", label: "Copy or cut the layer" },
+        { keys: "Ctrl+V", label: `Paste in place — including onto another ${page}` },
+        { keys: "Ctrl+Shift+V", label: "Paste over the selected layer" },
+        { keys: "Ctrl+Alt+C", label: "Copy the layer's styling" },
+        { keys: "Ctrl+Alt+V", label: "Paste styling onto the same kind of layer" },
+      ],
+    },
+    {
+      title: "Text",
+      shortcuts: [
+        { keys: "Ctrl+B", label: "Bold" },
+        { keys: "Ctrl+I", label: "Italic" },
+        { keys: "Ctrl+U", label: "Underline" },
+        { keys: "Ctrl+Shift+X", label: "Strikethrough" },
+      ],
+    },
+    {
+      title: "Arrange",
+      shortcuts: [
+        { keys: "Arrows", label: "Move (Shift for bigger steps)" },
+        { keys: "Alt+A / Alt+D", label: "Align to the left / right of the safe area" },
+        { keys: "Alt+W / Alt+S", label: "Align to the top / bottom of the safe area" },
+        { keys: "Alt+H / Alt+V", label: "Center across / down the safe area" },
+        { keys: "Ctrl+[ / ]", label: "Send backward / bring forward" },
+      ],
+    },
+    {
+      title: pages,
+      shortcuts: [
+        { keys: "Space / ← →", label: `Next or previous ${page} (nothing selected)` },
+        { keys: "Ctrl+Shift+?", label: "Show this list" },
+      ],
+    },
+  ];
+}
 
 export function useEditorShortcuts(
   editor: DesignEditorState,
   {
     enabled = true,
     onSave,
-    onNextSlide,
-    onPreviousSlide,
+    onNextPage,
+    onPreviousPage,
     onShowShortcuts,
   }: EditorShortcutOptions = {},
 ) {
-  const latest = useRef({ editor, onSave, onNextSlide, onPreviousSlide, onShowShortcuts });
-  latest.current = { editor, onSave, onNextSlide, onPreviousSlide, onShowShortcuts };
+  const latest = useRef({ editor, onSave, onNextPage, onPreviousPage, onShowShortcuts });
+  latest.current = { editor, onSave, onNextPage, onPreviousPage, onShowShortcuts };
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -214,7 +220,7 @@ export function useEditorShortcuts(
 
       if (claimsKey(event, key)) event.preventDefault();
 
-      const { editor, onSave, onNextSlide, onPreviousSlide, onShowShortcuts } = latest.current;
+      const { editor, onSave, onNextPage, onPreviousPage, onShowShortcuts } = latest.current;
       const { selectedId } = editor;
       const selected = selectedId
         ? (editor.document.layers.find((layer) => layer.id === selectedId) ?? null)
@@ -275,7 +281,7 @@ export function useEditorShortcuts(
         if (key === "v") {
           const copied = readCopiedLayer();
           if (copied) {
-            // Pasting in place is what carries a layer to the same spot on another slide;
+            // Pasting in place is what carries a layer to the same spot on another page;
             // Shift anchors it on the selection instead, the way Figma pastes over one.
             const over = event.shiftKey && selected ? { x: selected.x, y: selected.y } : undefined;
             editor.pasteLayer(copied, over);
@@ -305,14 +311,14 @@ export function useEditorShortcuts(
 
       if (!selectedId) {
         if (key === " " && !isActivatableTarget(event.target)) {
-          onNextSlide?.();
+          onNextPage?.();
           return;
         }
         if (key === "ArrowRight") {
-          onNextSlide?.();
+          onNextPage?.();
           return;
         }
-        if (key === "ArrowLeft") onPreviousSlide?.();
+        if (key === "ArrowLeft") onPreviousPage?.();
         return;
       }
 

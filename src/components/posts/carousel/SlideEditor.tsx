@@ -30,8 +30,8 @@ import { LayerInspector } from "@/components/design/LayerInspector";
 import { rasterizeStage, waitForBackground } from "@/components/design/rasterize";
 import { ShortcutDialog } from "@/components/design/ShortcutDialog";
 import { sampleBackgroundRegion } from "@/components/design/sample-background";
-import { type SlideDocuments, useDesignEditor } from "@/components/design/useDesignEditor";
-import { useEditorShortcuts } from "@/components/design/useEditorShortcuts";
+import { type PageDocuments, useDesignEditor } from "@/components/design/useDesignEditor";
+import { editorShortcutGroups, useEditorShortcuts } from "@/components/design/useEditorShortcuts";
 import { BackgroundPicker } from "@/components/posts/carousel/BackgroundPicker";
 import {
   CarouselPreviewDialog,
@@ -103,6 +103,8 @@ interface SlideEditorProps {
   uploadedFonts: { assetId: string; name: string }[];
 }
 
+const CAROUSEL_LABELS = { page: "slide", pages: "Slides" };
+
 const INITIAL_STAGE_WIDTH = 420;
 const AUTOSAVE_DELAY_MS = 1000;
 const SAVE_TOAST_ID = "slide-save";
@@ -158,16 +160,16 @@ export function SlideEditor({
     () =>
       Object.fromEntries(
         initialSlides.map((slide) => [slide.id, documentFor(slide)]),
-      ) as SlideDocuments,
+      ) as PageDocuments,
     [initialSlides],
   );
   const editor = useDesignEditor(
-    { documents: initialDocuments, slideId: initialSlides[0]?.id ?? null },
+    { documents: initialDocuments, pageId: initialSlides[0]?.id ?? null },
     spec,
   );
-  const { select, openSlide, applyReflow } = editor;
+  const { select, openPage, applyReflow } = editor;
 
-  const selectedSlideId = editor.slideId;
+  const selectedSlideId = editor.pageId;
   const selectedSlide = slides.find((slide) => slide.id === selectedSlideId) ?? null;
 
   const editorRef = useRef(editor);
@@ -267,8 +269,8 @@ export function SlideEditor({
   const backgroundUrl = selectedSlide ? slideBackgroundUrl(selectedSlide) : null;
 
   const persistDesign = useCallback(
-    async (slideId: string, design: DesignDocument) => {
-      const res = await fetch(`/api/posts/${postId}/carousel/slides/${slideId}`, {
+    async (pageId: string, design: DesignDocument) => {
+      const res = await fetch(`/api/posts/${postId}/carousel/slides/${pageId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ design }),
@@ -280,7 +282,7 @@ export function SlideEditor({
 
   const writeSlides = useCallback(
     async (ids: string[]) => {
-      const saved: SlideDocuments = {};
+      const saved: PageDocuments = {};
       try {
         for (const id of ids) {
           const document = editorRef.current.documents[id];
@@ -307,7 +309,7 @@ export function SlideEditor({
 
   const flush = useCallback(
     (ids?: string[]) => {
-      const run = writes.current.then(() => writeSlides(ids ?? editorRef.current.dirtySlideIds));
+      const run = writes.current.then(() => writeSlides(ids ?? editorRef.current.dirtyPageIds));
       writes.current = run.catch(() => false);
       return run;
     },
@@ -315,7 +317,7 @@ export function SlideEditor({
   );
 
   const saveDirty = useCallback(async () => {
-    if (editorRef.current.dirtySlideIds.length === 0) return true;
+    if (editorRef.current.dirtyPageIds.length === 0) return true;
     setSaving(true);
     try {
       return await flush();
@@ -327,11 +329,11 @@ export function SlideEditor({
   useEffect(() => {
     if (initializing) return;
 
-    const pending = editor.dirtySlideIds.filter((id) => id !== editor.slideId);
+    const pending = editor.dirtyPageIds.filter((id) => id !== editor.pageId);
     if (pending.length > 0) void flush(pending);
-  }, [editor.dirtySlideIds, editor.slideId, flush, initializing]);
+  }, [editor.dirtyPageIds, editor.pageId, flush, initializing]);
 
-  const openSlideDirty = editor.slideId !== null && editor.dirtySlideIds.includes(editor.slideId);
+  const openSlideDirty = editor.pageId !== null && editor.dirtyPageIds.includes(editor.pageId);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the document so every edit pushes the save back
   useEffect(() => {
@@ -357,9 +359,9 @@ export function SlideEditor({
   const selectSlide = useCallback(
     (id: string) => {
       if (initializing || operation.current) return;
-      openSlide(id);
+      openPage(id);
     },
-    [initializing, openSlide],
+    [initializing, openPage],
   );
 
   const stepSlide = useCallback(
@@ -431,7 +433,7 @@ export function SlideEditor({
           ),
         );
 
-        editorRef.current.restyleSlides(documents);
+        editorRef.current.restylePages(documents);
         toast.success(
           adding ? "Highlighted every text block to match its photo" : "Removed every highlight",
         );
@@ -474,7 +476,7 @@ export function SlideEditor({
 
       const measure = textMeasurer(resolveFontFamily);
       const area = safeArea(spec);
-      const corrected: SlideDocuments = {};
+      const corrected: PageDocuments = {};
       for (const [id, document] of documents) {
         const next = reflowAutoLayout(document, area, measure);
         if (next) corrected[id] = next;
@@ -503,7 +505,7 @@ export function SlideEditor({
 
     for (const [index, slide] of orderedSlides.entries()) {
       setRenderProgress({ current: index + 1, total: orderedSlides.length });
-      openSlide(slide.id);
+      openPage(slide.id);
       const document = editorRef.current.documents[slide.id] ?? EMPTY_DOCUMENT;
       await nextPaint();
 
@@ -521,19 +523,19 @@ export function SlideEditor({
     }
 
     return rendered;
-  }, [openSlide, orderedSlides, slideBackgroundUrl, spec]);
+  }, [openPage, orderedSlides, slideBackgroundUrl, spec]);
 
   useEditorShortcuts(editor, {
     enabled: !initializing && !saving && !publishing && !previewing && !previewOpen && !platingAll,
     onSave: () => void flush(),
-    onNextSlide: () => stepSlide(1),
-    onPreviousSlide: () => stepSlide(-1),
+    onNextPage: () => stepSlide(1),
+    onPreviousPage: () => stepSlide(-1),
     onShowShortcuts: () => setShortcutsOpen(true),
   });
 
   /** Winds the render-run state back down: the slide the user was on, and every busy flag. */
   function endRenderRun(restoreTo: string | null, setBusy: (busy: boolean) => void) {
-    if (restoreTo) openSlide(restoreTo);
+    if (restoreTo) openPage(restoreTo);
     setRenderProgress(null);
     setBusy(false);
     setFrozenSelectionId(null);
@@ -1186,7 +1188,11 @@ export function SlideEditor({
         canvas={spec}
       />
 
-      <ShortcutDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <ShortcutDialog
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
+        groups={editorShortcutGroups(CAROUSEL_LABELS)}
+      />
     </div>
   );
 }

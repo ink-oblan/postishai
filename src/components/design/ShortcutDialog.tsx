@@ -1,15 +1,20 @@
 "use client";
 
 import { Dialog } from "@base-ui/react";
-import { EDITOR_SHORTCUT_GROUPS } from "@/components/design/useEditorShortcuts";
+import { editorShortcutGroups, type ShortcutGroup } from "@/components/design/useEditorShortcuts";
 import { Button } from "@/components/ui/button";
 
 interface ShortcutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  groups?: ShortcutGroup[];
 }
 
-export function ShortcutDialog({ open, onOpenChange }: ShortcutDialogProps) {
+export function ShortcutDialog({
+  open,
+  onOpenChange,
+  groups = editorShortcutGroups(),
+}: ShortcutDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -21,7 +26,7 @@ export function ShortcutDialog({ open, onOpenChange }: ShortcutDialogProps) {
           </Dialog.Description>
 
           <div className="mt-4 space-y-4">
-            {EDITOR_SHORTCUT_GROUPS.map((group) => (
+            {groups.map((group) => (
               <div key={group.title}>
                 <h3 className="mb-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
                   {group.title}

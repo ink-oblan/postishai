@@ -20,7 +20,7 @@ const MAX_PASTE_STEPS = 12;
 const NEW_HEADING_SCALE = 0.075;
 const NEW_BODY_SCALE = 0.038;
 
-export type SlideDocuments = Record<string, DesignDocument>;
+export type PageDocuments = Record<string, DesignDocument>;
 
 function newLayerId(): string {
   return `layer-${Math.random().toString(36).slice(2, 10)}`;
@@ -28,7 +28,7 @@ function newLayerId(): string {
 
 /**
  * A paste keeps the copied position — that is what carries a layer to the same spot on another
- * slide — unless something already sits exactly there, in which case it steps clear so the new
+ * page — unless something already sits exactly there, in which case it steps clear so the new
  * copy is visible rather than hiding under the old one. Repeated pastes keep stepping.
  */
 function freeSpot(layers: Layer[], from: Layer): { x: number; y: number } {
@@ -46,7 +46,7 @@ function freeSpot(layers: Layer[], from: Layer): { x: number; y: number } {
 export type AlignEdge = "left" | "right" | "top" | "bottom" | "centerX" | "centerY";
 
 /**
- * Alignment targets the safe area rather than the whole canvas: it is the box the slide's copy
+ * Alignment targets the safe area rather than the whole canvas: it is the box the page's copy
  * has to live inside, and it is the guide already drawn on the stage.
  */
 function alignedPosition(layer: Layer, area: Box, edge: AlignEdge): { x: number } | { y: number } {
@@ -67,14 +67,14 @@ function alignedPosition(layer: Layer, area: Box, edge: AlignEdge): { x: number 
 }
 
 interface HistoryEntry {
-  slideId: string;
-  before: SlideDocuments;
-  after: SlideDocuments;
+  pageId: string;
+  before: PageDocuments;
+  after: PageDocuments;
 }
 
 interface EditorState {
-  documents: SlideDocuments;
-  slideId: string | null;
+  documents: PageDocuments;
+  pageId: string | null;
   past: HistoryEntry[];
   future: HistoryEntry[];
   dirty: string[];
@@ -83,8 +83,8 @@ interface EditorState {
 }
 
 export interface DesignEditorInit {
-  documents: SlideDocuments;
-  slideId: string | null;
+  documents: PageDocuments;
+  pageId: string | null;
 }
 
 type EditorAction =
@@ -95,18 +95,18 @@ type EditorAction =
       /** Set by edits that leave the generated stack's shape alone, such as recolouring. */
       keepAutoLayout?: boolean;
     }
-  | { type: "changeSlides"; documents: SlideDocuments }
-  | { type: "open"; slideId: string }
-  | { type: "reflow"; documents: SlideDocuments }
+  | { type: "changePages"; documents: PageDocuments }
+  | { type: "open"; pageId: string }
+  | { type: "reflow"; documents: PageDocuments }
   | { type: "undo" }
   | { type: "redo" }
   | { type: "endGesture" }
-  | { type: "saved"; documents: SlideDocuments };
+  | { type: "saved"; documents: PageDocuments };
 
 function initialState(init: DesignEditorInit): EditorState {
   return {
     documents: init.documents,
-    slideId: init.slideId,
+    pageId: init.pageId,
     past: [],
     future: [],
     dirty: [],
@@ -123,9 +123,9 @@ function push(entries: HistoryEntry[], entry: HistoryEntry): HistoryEntry[] {
   return [...entries, entry].slice(-MAX_HISTORY);
 }
 
-function touched(documents: SlideDocuments, next: SlideDocuments) {
-  const before: SlideDocuments = {};
-  const after: SlideDocuments = {};
+function touched(documents: PageDocuments, next: PageDocuments) {
+  const before: PageDocuments = {};
+  const after: PageDocuments = {};
 
   for (const [id, document] of Object.entries(next)) {
     const current = documents[id];
@@ -154,10 +154,10 @@ function withoutAutoLayout(document: DesignDocument): DesignDocument {
 function reduce(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case "change": {
-      const slideId = state.slideId;
-      if (!slideId) return state;
+      const pageId = state.pageId;
+      if (!pageId) return state;
 
-      const current = state.documents[slideId] ?? EMPTY_DOCUMENT;
+      const current = state.documents[pageId] ?? EMPTY_DOCUMENT;
       const changed = action.change(current);
       const next = action.keepAutoLayout ? changed : withoutAutoLayout(changed);
       if (next === current) return state;
@@ -166,39 +166,39 @@ function reduce(state: EditorState, action: EditorAction): EditorState {
       const fold =
         action.coalesce &&
         state.coalescing &&
-        previous?.slideId === slideId &&
+        previous?.pageId === pageId &&
         Object.keys(previous.after).length === 1;
       const entry: HistoryEntry =
         fold && previous
-          ? { ...previous, after: { [slideId]: next } }
-          : { slideId, before: { [slideId]: current }, after: { [slideId]: next } };
+          ? { ...previous, after: { [pageId]: next } }
+          : { pageId, before: { [pageId]: current }, after: { [pageId]: next } };
 
       return {
         ...state,
-        documents: { ...state.documents, [slideId]: next },
+        documents: { ...state.documents, [pageId]: next },
         past: fold ? [...state.past.slice(0, -1), entry] : push(state.past, entry),
         future: [],
-        dirty: markDirty(state.dirty, [slideId]),
+        dirty: markDirty(state.dirty, [pageId]),
         coalescing: action.coalesce,
       };
     }
-    case "changeSlides": {
+    case "changePages": {
       const { before, after, ids } = touched(state.documents, action.documents);
       if (ids.length === 0) return state;
 
       return {
         ...state,
         documents: { ...state.documents, ...after },
-        past: push(state.past, { slideId: state.slideId ?? ids[0], before, after }),
+        past: push(state.past, { pageId: state.pageId ?? ids[0], before, after }),
         future: [],
         dirty: markDirty(state.dirty, ids),
         coalescing: false,
       };
     }
     case "open":
-      return action.slideId === state.slideId
+      return action.pageId === state.pageId
         ? state
-        : { ...state, slideId: action.slideId, coalescing: false };
+        : { ...state, pageId: action.pageId, coalescing: false };
     /**
      * A correction to a generated layout rather than an edit of the user's: it stays out of the
      * history, because undoing back into overlapping text is not something anyone asks for.
@@ -212,7 +212,7 @@ function reduce(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         documents: { ...state.documents, ...entry.before },
-        slideId: entry.slideId,
+        pageId: entry.pageId,
         past: state.past.slice(0, -1),
         future: push(state.future, entry),
         dirty: markDirty(state.dirty, Object.keys(entry.before)),
@@ -226,7 +226,7 @@ function reduce(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         documents: { ...state.documents, ...entry.after },
-        slideId: entry.slideId,
+        pageId: entry.pageId,
         past: push(state.past, entry),
         future: state.future.slice(0, -1),
         dirty: markDirty(state.dirty, Object.keys(entry.after)),
@@ -243,12 +243,12 @@ function reduce(state: EditorState, action: EditorAction): EditorState {
 }
 
 export interface DesignEditorState {
-  slideId: string | null;
+  pageId: string | null;
   document: DesignDocument;
-  documents: SlideDocuments;
+  documents: PageDocuments;
   selectedId: string | null;
   dirty: boolean;
-  dirtySlideIds: string[];
+  dirtyPageIds: string[];
   canUndo: boolean;
   canRedo: boolean;
   select: (id: string | null) => void;
@@ -270,24 +270,24 @@ export interface DesignEditorState {
   raiseLayer: (id: string) => void;
   lowerLayer: (id: string) => void;
   /**
-   * A restyle that spans whole slides, landing as one undo step across all of them. Generated
+   * A restyle that spans whole pages, landing as one undo step across all of them. Generated
    * stacking survives it, since changing how a block looks — unlike moving one — is still the
    * generator's layout.
    */
-  restyleSlides: (documents: SlideDocuments) => void;
-  openSlide: (id: string) => void;
+  restylePages: (documents: PageDocuments) => void;
+  openPage: (id: string) => void;
   /** Swaps in restacked generated layouts without touching history or the dirty set. */
-  applyReflow: (documents: SlideDocuments) => void;
+  applyReflow: (documents: PageDocuments) => void;
   undo: () => void;
   redo: () => void;
-  markSaved: (documents: SlideDocuments) => void;
+  markSaved: (documents: PageDocuments) => void;
 }
 
 export function useDesignEditor(init: DesignEditorInit, spec: CanvasSpec): DesignEditorState {
   const [state, dispatch] = useReducer(reduce, init, initialState);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const area = useMemo(() => safeArea(spec), [spec]);
-  const document = (state.slideId ? state.documents[state.slideId] : null) ?? EMPTY_DOCUMENT;
+  const document = (state.pageId ? state.documents[state.pageId] : null) ?? EMPTY_DOCUMENT;
 
   const mutate = useCallback(
     (change: (doc: DesignDocument) => DesignDocument, coalesce: boolean, keepAutoLayout = false) =>
@@ -488,20 +488,20 @@ export function useDesignEditor(init: DesignEditorInit, spec: CanvasSpec): Desig
   const undo = useCallback(() => dispatch({ type: "undo" }), []);
   const redo = useCallback(() => dispatch({ type: "redo" }), []);
 
-  const restyleSlides = useCallback(
-    (documents: SlideDocuments) => dispatch({ type: "changeSlides", documents }),
+  const restylePages = useCallback(
+    (documents: PageDocuments) => dispatch({ type: "changePages", documents }),
     [],
   );
 
-  const openSlide = useCallback((id: string) => dispatch({ type: "open", slideId: id }), []);
+  const openPage = useCallback((id: string) => dispatch({ type: "open", pageId: id }), []);
 
   const applyReflow = useCallback(
-    (documents: SlideDocuments) => dispatch({ type: "reflow", documents }),
+    (documents: PageDocuments) => dispatch({ type: "reflow", documents }),
     [],
   );
 
   const markSaved = useCallback(
-    (documents: SlideDocuments) => dispatch({ type: "saved", documents }),
+    (documents: PageDocuments) => dispatch({ type: "saved", documents }),
     [],
   );
 
@@ -509,12 +509,12 @@ export function useDesignEditor(init: DesignEditorInit, spec: CanvasSpec): Desig
   const lowerLayer = useCallback((id: string) => reorder(id, -1), [reorder]);
 
   return {
-    slideId: state.slideId,
+    pageId: state.pageId,
     document,
     documents: state.documents,
     selectedId,
     dirty: state.dirty.length > 0,
-    dirtySlideIds: state.dirty,
+    dirtyPageIds: state.dirty,
     canUndo: state.past.length > 0,
     canRedo: state.future.length > 0,
     select: setSelectedId,
@@ -531,8 +531,8 @@ export function useDesignEditor(init: DesignEditorInit, spec: CanvasSpec): Desig
     deleteLayer,
     raiseLayer,
     lowerLayer,
-    restyleSlides,
-    openSlide,
+    restylePages,
+    openPage,
     applyReflow,
     undo,
     redo,

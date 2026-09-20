@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
   type DesignEditorState,
-  type SlideDocuments,
+  type PageDocuments,
   useDesignEditor,
 } from "@/components/design/useDesignEditor";
 import type { CanvasSpec } from "@/lib/design/canvas-spec";
@@ -42,10 +42,10 @@ const otherInitial: DesignDocument = {
 };
 
 function setup(
-  documents: SlideDocuments = { [SLIDE]: initial, [OTHER]: otherInitial },
-  slideId: string | null = SLIDE,
+  documents: PageDocuments = { [SLIDE]: initial, [OTHER]: otherInitial },
+  pageId: string | null = SLIDE,
 ) {
-  return renderHook(() => useDesignEditor({ documents, slideId }, spec));
+  return renderHook(() => useDesignEditor({ documents, pageId }, spec));
 }
 
 describe("useDesignEditor", () => {
@@ -177,11 +177,11 @@ describe("useDesignEditor", () => {
       const { result } = setup();
 
       act(() => result.current.updateLayer("layer-1", { x: 500 }));
-      act(() => result.current.openSlide(OTHER));
+      act(() => result.current.openPage(OTHER));
       expect(result.current.document).toBe(otherInitial);
       expect(result.current.canUndo).toBe(true);
 
-      act(() => result.current.openSlide(SLIDE));
+      act(() => result.current.openPage(SLIDE));
       expect(result.current.document.layers[0].x).toBe(500);
 
       act(() => result.current.undo());
@@ -192,21 +192,21 @@ describe("useDesignEditor", () => {
       const { result } = setup();
 
       act(() => result.current.updateLayer("layer-1", { x: 500 }));
-      act(() => result.current.openSlide(OTHER));
+      act(() => result.current.openPage(OTHER));
       act(() => result.current.updateLayer("layer-2", { x: 700 }));
-      act(() => result.current.openSlide(SLIDE));
+      act(() => result.current.openPage(SLIDE));
 
       act(() => result.current.undo());
-      expect(result.current.slideId).toBe(OTHER);
+      expect(result.current.pageId).toBe(OTHER);
       expect(result.current.documents[OTHER].layers[0].x).toBe(100);
 
-      act(() => result.current.openSlide(SLIDE));
+      act(() => result.current.openPage(SLIDE));
       act(() => result.current.redo());
-      expect(result.current.slideId).toBe(OTHER);
+      expect(result.current.pageId).toBe(OTHER);
       expect(result.current.documents[OTHER].layers[0].x).toBe(700);
     });
 
-    const restyled: SlideDocuments = {
+    const restyled: PageDocuments = {
       [SLIDE]: { ...initial, layers: [{ ...layer, fill: "#00ff00" }] },
       [OTHER]: { ...otherInitial, layers: [{ ...otherLayer, fill: "#00ff00" }] },
     };
@@ -214,15 +214,15 @@ describe("useDesignEditor", () => {
     it("takes every slide back through a carousel-wide restyle in one step", () => {
       const { result } = setup();
 
-      act(() => result.current.restyleSlides(restyled));
-      act(() => result.current.openSlide(OTHER));
+      act(() => result.current.restylePages(restyled));
+      act(() => result.current.openPage(OTHER));
       act(() => result.current.updateLayer("layer-2", { x: 700 }));
 
       act(() => result.current.undo());
       act(() => result.current.undo());
       expect(result.current.documents[SLIDE]).toBe(initial);
       expect(result.current.documents[OTHER]).toBe(otherInitial);
-      expect(result.current.slideId).toBe(SLIDE);
+      expect(result.current.pageId).toBe(SLIDE);
 
       act(() => result.current.redo());
       expect(result.current.documents[OTHER].layers[0]).toMatchObject({ fill: "#00ff00" });
@@ -232,7 +232,7 @@ describe("useDesignEditor", () => {
     it("leaves a restyle that changes nothing out of the history", () => {
       const { result } = setup();
 
-      act(() => result.current.restyleSlides({ [SLIDE]: initial, [OTHER]: otherInitial }));
+      act(() => result.current.restylePages({ [SLIDE]: initial, [OTHER]: otherInitial }));
 
       expect(result.current.canUndo).toBe(false);
       expect(result.current.dirty).toBe(false);
@@ -242,17 +242,17 @@ describe("useDesignEditor", () => {
       const { result } = setup();
 
       act(() => result.current.updateLayer("layer-1", { x: 500 }));
-      expect(result.current.dirtySlideIds).toEqual([SLIDE]);
+      expect(result.current.dirtyPageIds).toEqual([SLIDE]);
 
-      act(() => result.current.restyleSlides(restyled));
-      expect(result.current.dirtySlideIds).toEqual([SLIDE, OTHER]);
+      act(() => result.current.restylePages(restyled));
+      expect(result.current.dirtyPageIds).toEqual([SLIDE, OTHER]);
 
       act(() => result.current.markSaved(result.current.documents));
-      expect(result.current.dirtySlideIds).toEqual([]);
+      expect(result.current.dirtyPageIds).toEqual([]);
       expect(result.current.dirty).toBe(false);
 
       act(() => result.current.undo());
-      expect(result.current.dirtySlideIds).toEqual([SLIDE, OTHER]);
+      expect(result.current.dirtyPageIds).toEqual([SLIDE, OTHER]);
     });
 
     it("keeps a stale save from clearing an edit made while it was in flight", () => {
@@ -263,7 +263,7 @@ describe("useDesignEditor", () => {
       act(() => result.current.updateLayer("layer-1", { x: 700 }));
 
       act(() => result.current.markSaved(inFlight));
-      expect(result.current.dirtySlideIds).toEqual([SLIDE]);
+      expect(result.current.dirtyPageIds).toEqual([SLIDE]);
     });
   });
 
