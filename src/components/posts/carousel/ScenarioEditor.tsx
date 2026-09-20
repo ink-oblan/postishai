@@ -119,10 +119,13 @@ export function ScenarioEditor({
     const cache = previewCache.current;
     const retained = new Map<string, SlidePreview>();
     const byKey = new Map<string, SlidePreview>();
+    // The brand's fonts and colours are baked into a built document, so a cached one outlives
+    // its theme unless the theme is part of what identifies it.
+    const themeKey = JSON.stringify(theme);
 
     for (const row of slides) {
       const layout = layoutOf(row);
-      const signature = `${measured}|${layout}|${row.headline}|${row.body}`;
+      const signature = `${measured}|${themeKey}|${layout}|${row.headline}|${row.body}`;
       const hit = cache.get(signature);
       if (hit) {
         retained.set(signature, hit);

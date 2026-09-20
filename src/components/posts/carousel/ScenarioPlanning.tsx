@@ -54,13 +54,22 @@ export function ScenarioPlanning({
   useEffect(() => {
     if (!planning) return;
 
+    let settled = false;
+
     const poll = setInterval(async () => {
+      if (settled) return;
+
       try {
         const res = await fetch(`/api/posts/${postId}/carousel/status`);
         if (!res.ok) return;
 
         const data = (await res.json()) as { status: string; errorMessage: string | null };
         if (data.status === POST_STATUS.GENERATING) return;
+
+        // The plan has landed either way, so stop asking: the spinner stays up until the
+        // refreshed page swaps this view out, and that is the RSC payload's job, not another tick.
+        settled = true;
+        clearInterval(poll);
 
         if (data.status === POST_STATUS.FAILED) {
           setError(data.errorMessage ?? "The plan could not be written");
@@ -70,7 +79,7 @@ export function ScenarioPlanning({
 
         // A rewrite that failed comes back as a draft, because the slides it was replacing are
         // still there — say so once, since the editor below is about to show the older plan.
-        if (data.errorMessage) toast.error(data.errorMessage);
+        if (data.errorMessage) toast.error(data.errorMessage, { id: `carousel-plan-${postId}` });
 
         // The spinner stays up until the refreshed page swaps this view for the editor, so a
         // server render that has not caught up yet cannot flash an empty plan.
