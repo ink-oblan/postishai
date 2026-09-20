@@ -134,7 +134,7 @@ export const POST = withAuth(async function POST(
     });
   });
 
-  await Promise.all(
+  const queued = await Promise.allSettled(
     post.slides.map((slide) =>
       queueSlideBackground({
         slideId: slide.id,
@@ -146,6 +146,27 @@ export const POST = withAuth(async function POST(
       }),
     ),
   );
+
+  const failed = queued.flatMap((result, index) =>
+    result.status === "rejected" ? [{ slide: post.slides[index], reason: result.reason }] : [],
+  );
+
+  if (failed.length > 0) {
+    for (const { slide, reason } of failed) {
+      console.error(
+        `[carousel/generate] postId=${post.id} slideId=${slide.id} enqueue failed:`,
+        reason,
+      );
+    }
+
+    await prisma.carouselSlide.updateMany({
+      where: { id: { in: failed.map(({ slide }) => slide.id) } },
+      data: {
+        status: CAROUSEL_SLIDE_STATUS.FAILED,
+        errorMessage: "The background job could not be queued",
+      },
+    });
+  }
 
   return NextResponse.json({ ok: true, slideCount: post.slides.length });
 });
