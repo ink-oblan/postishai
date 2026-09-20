@@ -5,40 +5,14 @@ import { type ColorItem, type FontItem, parseList } from "@/lib/brand-fields";
 import { carouselCanvas } from "@/lib/carousel/platform-spec";
 import { coerceLayout, SCENARIO_PLANNING_ERROR } from "@/lib/carousel/scenario";
 import { queueSlideBackground } from "@/lib/carousel/slide-background";
+import { carouselLayoutTheme } from "@/lib/carousel/theme";
 import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import type { DesignDocument } from "@/lib/design/document";
 import { pickFontPair } from "@/lib/design/fonts";
-import { expandLayout, layoutAutoLayout, layoutOverlay } from "@/lib/design/layouts";
+import { expandLayout, layoutAutoLayout } from "@/lib/design/layouts";
+import { PLACEHOLDER_BACKGROUND_COLOR } from "@/lib/design/placeholder";
 import { DEFAULT_IMAGE_MODEL_ID, getImageAdapter } from "@/lib/image-models/registry";
-
-const DEFAULT_HEADING_COLOR = "#ffffff";
-const DEFAULT_BODY_COLOR = "#ededed";
-const DEFAULT_SCRIM_COLOR = "#000000";
-
-/**
- * The scrim is what keeps light text readable over an arbitrary photo, so it wants the darkest
- * colour the brand has rather than its most characteristic one.
- */
-function darkest(colors: ColorItem[]): string {
-  let best = DEFAULT_SCRIM_COLOR;
-  let bestLuminance = Number.POSITIVE_INFINITY;
-
-  for (const color of colors) {
-    const hex = color.hex.slice(1, 7);
-    if (hex.length < 6) continue;
-    const r = Number.parseInt(hex.slice(0, 2), 16);
-    const g = Number.parseInt(hex.slice(2, 4), 16);
-    const b = Number.parseInt(hex.slice(4, 6), 16);
-    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    if (luminance < bestLuminance) {
-      bestLuminance = luminance;
-      best = color.hex;
-    }
-  }
-
-  return best;
-}
 
 export const POST = withAuth(async function POST(
   req: NextRequest,
@@ -77,29 +51,16 @@ export const POST = withAuth(async function POST(
 
   const canvas = carouselCanvas(post.platform);
 
-  const typography = parseList<FontItem>(post.brandProfile?.typography);
   const colors = parseList<ColorItem>(post.brandProfile?.colors);
-  const fontPair = pickFontPair(typography);
-
-  // Font families are resolved to real CSS names in the browser, where the catalogue lives.
-  // Storing the brand's own names keeps the document readable without that lookup.
-  const layoutFonts = {
-    heading: fontPair?.heading.name ?? "Inter",
-    body: fontPair?.body.name ?? "Inter",
-  };
-  const layoutColors = {
-    heading: DEFAULT_HEADING_COLOR,
-    body: DEFAULT_BODY_COLOR,
-    scrim: darkest(colors),
-  };
+  const fontPair = pickFontPair(parseList<FontItem>(post.brandProfile?.typography));
+  const { fonts: layoutFonts, colors: layoutColors } = carouselLayoutTheme(post.brandProfile);
 
   await prisma.$transaction(async (tx) => {
     for (const slide of post.slides) {
       const layout = coerceLayout(slide.layout);
       const design: DesignDocument = {
-        // The real path lands when the image job finishes; until then the slide draws its scrim.
-        background: { kind: "solid", color: layoutColors.scrim },
-        overlay: layoutOverlay(layout, layoutColors),
+        // The real path lands when the image job finishes; until then the slide draws flat.
+        background: { kind: "solid", color: PLACEHOLDER_BACKGROUND_COLOR },
         // Laid out here against an estimate; the editor restacks it once it can measure the font.
         autoLayout: layoutAutoLayout(layout),
         layers: expandLayout(layout, {

@@ -13,6 +13,19 @@ export interface LayerBase {
   rotation: number;
 }
 
+/**
+ * Drawn as a plate behind one text block, which is what keeps light copy legible over a
+ * photograph nobody chose. It hangs off the layer rather than sitting beside it as a shape so
+ * that reflow — which refuses to touch a document holding anything but text — keeps running,
+ * and so the plate follows the copy through a rewrap, a shrink or a drag without being synced.
+ */
+export interface TextBackground {
+  color: string;
+  opacity: number;
+  padding: number;
+  cornerRadius: number;
+}
+
 export interface TextLayer extends LayerBase {
   type: "text";
   text: string;
@@ -26,6 +39,7 @@ export interface TextLayer extends LayerBase {
   lineHeight: number;
   align: TextAlign;
   color: string;
+  background?: TextBackground;
 }
 
 /** Konva takes the weight and the slant as one string, in CSS `font` shorthand order. */
@@ -71,11 +85,6 @@ export type Background =
   | { kind: "image"; imagePath: string; crop?: { x: number; y: number; w: number; h: number } }
   | { kind: "solid"; color: string };
 
-export interface Overlay {
-  color: string;
-  opacity: number;
-}
-
 export type StackAnchor = "top" | "middle" | "bottom";
 
 /**
@@ -91,7 +100,6 @@ export interface AutoLayout {
 
 export interface DesignDocument {
   background: Background;
-  overlay?: Overlay;
   autoLayout?: AutoLayout;
   layers: Layer[];
 }
@@ -131,6 +139,20 @@ function parseBase(raw: Record<string, unknown>): LayerBase | undefined {
   return { id, x, y, width, height, rotation: num(raw.rotation) ?? 0 };
 }
 
+/** Absent on anything saved before plates existed, which reads as text drawn straight on. */
+function parseTextBackground(raw: unknown): TextBackground | undefined {
+  if (!isRecord(raw)) return undefined;
+  const color = str(raw.color);
+  if (!color) return undefined;
+
+  return {
+    color,
+    opacity: clamp(num(raw.opacity) ?? 1, 0, 1),
+    padding: Math.max(0, num(raw.padding) ?? 0),
+    cornerRadius: Math.max(0, num(raw.cornerRadius) ?? 0),
+  };
+}
+
 function parseLayer(raw: unknown): Layer | undefined {
   if (!isRecord(raw)) return undefined;
   const base = parseBase(raw);
@@ -142,6 +164,8 @@ function parseLayer(raw: unknown): Layer | undefined {
     const fontSize = num(raw.fontSize);
     const color = str(raw.color);
     if (text === undefined || !fontFamily || fontSize === undefined || !color) return undefined;
+
+    const background = parseTextBackground(raw.background);
 
     return {
       ...base,
@@ -158,6 +182,7 @@ function parseLayer(raw: unknown): Layer | undefined {
       lineHeight: clamp(num(raw.lineHeight) ?? 1.2, 0.5, 4),
       align: TEXT_ALIGNS.includes(raw.align as TextAlign) ? (raw.align as TextAlign) : "left",
       color,
+      ...(background ? { background } : {}),
     };
   }
 
@@ -212,15 +237,6 @@ function parseBackground(raw: unknown): Background | undefined {
   return undefined;
 }
 
-function parseOverlay(raw: unknown): Overlay | undefined {
-  if (!isRecord(raw)) return undefined;
-  const color = str(raw.color);
-  const opacity = num(raw.opacity);
-  if (!color || opacity === undefined) return undefined;
-
-  return { color, opacity: clamp(opacity, 0, 1) };
-}
-
 function parseAutoLayout(raw: unknown): AutoLayout | undefined {
   if (!isRecord(raw)) return undefined;
   const gap = num(raw.gap);
@@ -256,13 +272,11 @@ export function parseDesignDocument(value: unknown): ParsedDesign | undefined {
     return [layer];
   });
 
-  const overlay = parseOverlay(value.overlay);
   const autoLayout = parseAutoLayout(value.autoLayout);
 
   return {
     document: {
       background,
-      ...(overlay ? { overlay } : {}),
       ...(autoLayout ? { autoLayout } : {}),
       layers,
     },

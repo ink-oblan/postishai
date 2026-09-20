@@ -123,15 +123,53 @@ describe("parseDesignDocument", () => {
     expect(parsed?.dropped).toBe(1);
   });
 
-  it("reads a solid background and an overlay", () => {
+  it("reads a solid background", () => {
     const parsed = parseDesignDocument({
       background: { kind: "solid", color: "#101010" },
-      overlay: { color: "#000000", opacity: 0.4 },
       layers: [],
     });
 
     expect(parsed?.document.background).toEqual({ kind: "solid", color: "#101010" });
-    expect(parsed?.document.overlay).toEqual({ color: "#000000", opacity: 0.4 });
+  });
+
+  it("round-trips a text plate", () => {
+    const parsed = parseDesignDocument({
+      background,
+      layers: [
+        {
+          ...heading,
+          background: { color: "#000000", opacity: 0.7, padding: 16, cornerRadius: 0 },
+        },
+      ],
+    });
+    const [layer] = parsed?.document.layers ?? [];
+
+    expect(layer?.type === "text" && layer.background).toEqual({
+      color: "#000000",
+      opacity: 0.7,
+      padding: 16,
+      cornerRadius: 0,
+    });
+  });
+
+  // A plate is optional, and text saved before they existed must keep parsing rather than drop.
+  it("leaves a text layer without a plate unplated", () => {
+    const parsed = parseDesignDocument({ background, layers: [heading] });
+    const [layer] = parsed?.document.layers ?? [];
+
+    expect(parsed?.dropped).toBe(0);
+    expect(layer?.type === "text" && layer.background).toBeUndefined();
+  });
+
+  it("drops a plate with no colour rather than drawing an invisible one", () => {
+    const parsed = parseDesignDocument({
+      background,
+      layers: [{ ...heading, background: { opacity: 0.7 } }],
+    });
+    const [layer] = parsed?.document.layers ?? [];
+
+    expect(parsed?.dropped).toBe(0);
+    expect(layer?.type === "text" && layer.background).toBeUndefined();
   });
 
   it("ignores a partial crop rather than cropping to nonsense", () => {

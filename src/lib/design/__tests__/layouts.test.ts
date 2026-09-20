@@ -27,7 +27,7 @@ function input(spec: CanvasSpec, overrides: Partial<LayoutInput> = {}): LayoutIn
     headline: "Five habits that actually stuck",
     body: "The ones I still do a year later, and the one I quietly dropped.",
     fonts: { heading: "Inter", body: "Inter" },
-    colors: { heading: "#ffffff", body: "#e5e5e5", scrim: "#000000" },
+    colors: { heading: "#ffffff", body: "#e5e5e5", plate: "#000000" },
     ...overrides,
   };
 }
@@ -135,7 +135,7 @@ describe("expandLayout", () => {
       "statement",
       input(PORTRAIT, {
         fonts: { heading: "Playfair Display", body: "Lora" },
-        colors: { heading: "#ff0000", body: "#00ff00", scrim: "#000000" },
+        colors: { heading: "#ff0000", body: "#00ff00", plate: "#000000" },
       }),
     );
     const [heading, body] = layers as TextLayer[];
@@ -144,5 +144,28 @@ describe("expandLayout", () => {
     expect(heading.color).toBe("#ff0000");
     expect(body.fontFamily).toBe("Lora");
     expect(body.color).toBe("#00ff00");
+  });
+
+  it("plates every text block in the layout's colour", () => {
+    const layers = expandLayout("statement", input(PORTRAIT)) as TextLayer[];
+
+    expect(layers).not.toHaveLength(0);
+    for (const layer of layers) {
+      expect(layer.background?.color).toBe("#000000");
+      expect(layer.background?.opacity).toBeGreaterThan(0);
+    }
+  });
+
+  /**
+   * The pair has to read as one band. If the padding stopped being half the gap, a stripe of
+   * photograph would reopen between the headline's plate and the body's.
+   */
+  it("pads plates so the heading's meets the body's", () => {
+    const [heading, body] = expandLayout("statement", input(PORTRAIT)) as TextLayer[];
+    const padding = heading.background?.padding ?? 0;
+
+    expect(padding).toBeGreaterThan(0);
+    expect(body.background?.padding).toBe(padding);
+    expect(heading.y + heading.height + padding).toBe(body.y - padding);
   });
 });

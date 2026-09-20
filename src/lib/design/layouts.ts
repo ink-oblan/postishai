@@ -7,6 +7,7 @@ import type {
   TextAlign,
   TextLayer,
 } from "@/lib/design/document";
+import { defaultTextPlate, platePaddingForGap } from "@/lib/design/plate";
 import { stackStart } from "@/lib/design/reflow";
 
 export const LAYOUT_NAMES = ["cover", "statement", "list", "quote", "cta"] as const;
@@ -35,7 +36,7 @@ export interface LayoutFonts {
 export interface LayoutColors {
   heading: string;
   body: string;
-  scrim: string;
+  plate: string;
 }
 
 export interface LayoutInput {
@@ -109,6 +110,7 @@ function textLayer(
     lineHeight: number;
     align: TextAlign;
     color: string;
+    background?: TextLayer["background"];
   },
 ): TextLayer {
   return {
@@ -135,7 +137,7 @@ interface LayoutRecipe {
   headingWeight: number;
   bodyScale: number;
   gap: number;
-  scrimOpacity: number;
+  plateOpacity: number;
 }
 
 const RECIPES: Record<LayoutName, LayoutRecipe> = {
@@ -146,7 +148,7 @@ const RECIPES: Record<LayoutName, LayoutRecipe> = {
     headingWeight: 800,
     bodyScale: 0.042,
     gap: 40,
-    scrimOpacity: 0.45,
+    plateOpacity: 0.7,
   },
   statement: {
     anchor: "bottom",
@@ -155,7 +157,7 @@ const RECIPES: Record<LayoutName, LayoutRecipe> = {
     headingWeight: 700,
     bodyScale: 0.04,
     gap: 32,
-    scrimOpacity: 0.4,
+    plateOpacity: 0.7,
   },
   list: {
     anchor: "top",
@@ -164,7 +166,7 @@ const RECIPES: Record<LayoutName, LayoutRecipe> = {
     headingWeight: 700,
     bodyScale: 0.038,
     gap: 36,
-    scrimOpacity: 0.5,
+    plateOpacity: 0.75,
   },
   quote: {
     anchor: "middle",
@@ -173,7 +175,7 @@ const RECIPES: Record<LayoutName, LayoutRecipe> = {
     headingWeight: 600,
     bodyScale: 0.034,
     gap: 44,
-    scrimOpacity: 0.5,
+    plateOpacity: 0.75,
   },
   cta: {
     anchor: "bottom",
@@ -182,7 +184,7 @@ const RECIPES: Record<LayoutName, LayoutRecipe> = {
     headingWeight: 800,
     bodyScale: 0.042,
     gap: 32,
-    scrimOpacity: 0.45,
+    plateOpacity: 0.7,
   },
 };
 
@@ -247,6 +249,7 @@ export function expandLayout(name: LayoutName, input: LayoutInput): DesignDocume
           lineHeight: role.lineHeight,
           align: recipe.align,
           color: role.color,
+          background: layoutPlate(recipe, input.colors),
         }),
     });
   }
@@ -291,8 +294,12 @@ function shrinkToFit(layers: Layer[], area: Box): Layer[] {
   });
 }
 
-export function layoutOverlay(name: LayoutName, colors: LayoutColors): DesignDocument["overlay"] {
-  return { color: colors.scrim, opacity: RECIPES[name].scrimOpacity };
+function layoutPlate(recipe: LayoutRecipe, colors: LayoutColors): TextLayer["background"] {
+  return {
+    ...defaultTextPlate(colors.plate),
+    opacity: recipe.plateOpacity,
+    padding: platePaddingForGap(recipe.gap),
+  };
 }
 
 /** The part of the recipe the browser needs to restack the blocks against real font metrics. */
