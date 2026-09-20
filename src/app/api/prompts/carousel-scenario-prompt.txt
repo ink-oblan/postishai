@@ -34,7 +34,8 @@ For every slide give:
 - "visualPrompt": a description of the background photograph or illustration for an image
   generation model. Describe subject, setting, lighting, mood and colour. Demand generous empty
   space where the text will sit. Never ask for text, words, letters, numbers, logos or UI in the
-  image. 25 words or fewer.
+  image, and avoid subjects that inevitably carry writing — signs, screens, phones, books,
+  packaging, posters, whiteboards. 25 words or fewer.
 - "layout": one of "cover", "statement", "list", "quote", "cta".
   Use "cover" for slide 1, "cta" for the last slide, and pick whichever of "statement", "list"
   or "quote" suits each slide in between.
