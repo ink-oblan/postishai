@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
+import { assertMockMode } from "./mock-mode";
 
 /**
  * Pinned here rather than imported so the test states the contract independently of the code it
@@ -13,6 +14,8 @@ type PlatformName = keyof typeof CANVASES;
 
 /** Rounding at the edges of a restack is fine; a collision you could see on the slide is not. */
 const TOLERANCE = 2;
+
+test.beforeAll(async ({ request }) => assertMockMode(request));
 
 interface TextBox {
   id: string;

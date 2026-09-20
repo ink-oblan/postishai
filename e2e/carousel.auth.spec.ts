@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { assertMockMode } from "./mock-mode";
 
 const PNG_SIGNATURE = "89504e470d0a1a0a";
 
@@ -27,6 +28,8 @@ async function exportedSlideSize(page: Page) {
     return stage.toDataURL({ mimeType: "image/png", pixelRatio: 1080 / stage.width() });
   });
 }
+
+test.beforeAll(async ({ request }) => assertMockMode(request));
 
 test.describe("carousel", () => {
   test("the carousel post type is offered", async ({ page }) => {
