@@ -1,7 +1,6 @@
 import type Konva from "konva";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DesignDocument } from "@/lib/design/document";
-import { brandAssetUrl } from "@/lib/design/fonts";
 import { rasterizeStage, waitForLogos } from "./rasterize";
 
 vi.mock("./DesignStage", () => ({
@@ -27,9 +26,11 @@ const document: DesignDocument = {
     rotation: 0,
   })),
 };
+const assetUrl = (assetId: string) => `/assets/${assetId}`;
+
 function image(assetId: string) {
   const element = new Image();
-  element.src = brandAssetUrl(assetId);
+  element.src = assetUrl(assetId);
   Object.defineProperties(element, { complete: { value: true }, naturalWidth: { value: 100 } });
   return element;
 }
@@ -63,11 +64,16 @@ describe("logo rasterization", () => {
     const { stage, nodes, loaded, toBlob } = canvas();
     loaded("one");
     nodes.set("two", { id: () => "two", getAttr: () => "loading" });
-    const render = rasterizeStage(stage, document, {
-      width: 1080,
-      height: 1350,
-      safeZone: { top: 0, right: 0, bottom: 0, left: 0 },
-    });
+    const render = rasterizeStage(
+      stage,
+      document,
+      {
+        width: 1080,
+        height: 1350,
+        safeZone: { top: 0, right: 0, bottom: 0, left: 0 },
+      },
+      { assetUrl },
+    );
     await vi.advanceTimersByTimeAsync(100);
     expect(toBlob).not.toHaveBeenCalled();
     loaded("two");
@@ -80,11 +86,12 @@ describe("logo rasterization", () => {
     loaded("one");
     nodes.set("two", { id: () => "two", getAttr: () => "error" });
     await expect(
-      rasterizeStage(stage, document, {
-        width: 1080,
-        height: 1350,
-        safeZone: { top: 0, right: 0, bottom: 0, left: 0 },
-      }),
+      rasterizeStage(
+        stage,
+        document,
+        { width: 1080, height: 1350, safeZone: { top: 0, right: 0, bottom: 0, left: 0 } },
+        { assetUrl },
+      ),
     ).rejects.toThrow("logo failed to load");
     expect(toBlob).not.toHaveBeenCalled();
   });
@@ -93,7 +100,7 @@ describe("logo rasterization", () => {
     loaded("one");
     loaded("two", "previous-logo");
     let finished = false;
-    const wait = waitForLogos(stage, document).then(() => {
+    const wait = waitForLogos(stage, document, assetUrl).then(() => {
       finished = true;
     });
     await vi.advanceTimersByTimeAsync(50);
@@ -105,7 +112,7 @@ describe("logo rasterization", () => {
   });
   it("reports logos that never reach the stage", async () => {
     const { stage } = canvas();
-    const wait = expect(waitForLogos(stage, document, 100)).rejects.toThrow(
+    const wait = expect(waitForLogos(stage, document, assetUrl, 100)).rejects.toThrow(
       "logos did not finish loading",
     );
     await vi.advanceTimersByTimeAsync(100);
@@ -113,7 +120,7 @@ describe("logo rasterization", () => {
   });
   it("does not delay documents without logos", async () => {
     const { stage } = canvas();
-    await waitForLogos(stage, { ...document, layers: [] });
+    await waitForLogos(stage, { ...document, layers: [] }, assetUrl);
     expect(vi.getTimerCount()).toBe(0);
   });
 });

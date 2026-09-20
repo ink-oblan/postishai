@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-import { resolveFontFamily } from "@/components/design/font-catalogue";
+import { registerBrandFont, resolveFontFamily } from "@/app/(app)/brand/lib/font-catalogue";
 import { ScenarioInspector } from "@/components/posts/carousel/ScenarioInspector";
 import {
   ScenarioStoryboard,
@@ -18,7 +18,7 @@ import type { CarouselLayoutTheme } from "@/lib/carousel/theme";
 import { safeArea } from "@/lib/design/canvas-spec";
 import type { DesignDocument } from "@/lib/design/document";
 import { type FitReport, fitReport } from "@/lib/design/fit";
-import { ensureFontsLoaded, facesUsedBy, registerUploadedFont } from "@/lib/design/fonts";
+import { ensureFontsLoaded, facesUsedBy } from "@/lib/design/fonts";
 import {
   DEFAULT_LAYOUT,
   expandLayout,
@@ -176,7 +176,7 @@ export function ScenarioEditor({
     let cancelled = false;
 
     void (async () => {
-      await Promise.all(uploadedFonts.map((font) => registerUploadedFont(font.assetId)));
+      await Promise.all(uploadedFonts.map((font) => registerBrandFont(font.assetId)));
       await ensureFontsLoaded(facesRef.current);
       const { textMeasurer } = await import("@/lib/design/measure-text");
       if (cancelled) return;

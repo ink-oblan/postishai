@@ -16,14 +16,15 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 vi.mock("next/dynamic", () => ({ default: () => TestStage }));
 vi.mock("sonner", () => ({ toast: { error: mocks.error, success: vi.fn() } }));
-vi.mock("@/components/design/font-catalogue", () => ({
+vi.mock("@/app/(app)/brand/lib/font-catalogue", () => ({
   builtinFontChoices: () => [],
   resolveFontFamily: (name: string) => name,
+  brandAssetUrl: (assetId: string) => `/assets/${assetId}`,
+  registerBrandFont: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/design/fonts", async (original) => ({
   ...(await original<object>()),
   ensureFontsLoaded: mocks.fonts,
-  registerUploadedFont: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/design/measure-text", () => ({ textMeasurer: () => vi.fn() }));
 vi.mock("@/lib/design/reflow", () => ({ reflowAutoLayout: mocks.reflow }));

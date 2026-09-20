@@ -3,7 +3,7 @@
 import type Konva from "konva";
 import type { CanvasSpec } from "@/lib/design/canvas-spec";
 import type { DesignDocument } from "@/lib/design/document";
-import { brandAssetUrl, ensureFontsLoaded, facesUsedBy, remeasureText } from "@/lib/design/fonts";
+import { ensureFontsLoaded, facesUsedBy, remeasureText } from "@/lib/design/fonts";
 import { BACKGROUND_NODE_NAME, EDITOR_CHROME_NAME } from "./DesignStage";
 
 /**
@@ -63,6 +63,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string): Promise<Blob
 export async function waitForLogos(
   stage: Konva.Stage,
   document: DesignDocument,
+  assetUrl: (assetId: string) => string,
   timeoutMs = 15_000,
 ): Promise<void> {
   const logos = document.layers.filter((layer) => layer.type === "logo");
@@ -84,7 +85,7 @@ export async function waitForLogos(
         !image.complete ||
         image.naturalWidth === 0 ||
         new URL(image.src, window.location.origin).href !==
-          new URL(brandAssetUrl(logo.assetId), window.location.origin).href
+          new URL(assetUrl(logo.assetId), window.location.origin).href
       ) {
         ready = false;
       }
@@ -103,11 +104,11 @@ export async function rasterizeStage(
   stage: Konva.Stage,
   document: DesignDocument,
   spec: CanvasSpec,
-  resolveFontFamily?: (name: string) => string,
+  assets: { resolveFontFamily?: (name: string) => string; assetUrl: (assetId: string) => string },
 ): Promise<Blob> {
   await Promise.all([
-    ensureFontsLoaded(facesUsedBy(document, resolveFontFamily)),
-    waitForLogos(stage, document),
+    ensureFontsLoaded(facesUsedBy(document, assets.resolveFontFamily)),
+    waitForLogos(stage, document, assets.assetUrl),
   ]);
 
   // Selection handles and the safe-zone guide belong to the editor, not to the exported image.

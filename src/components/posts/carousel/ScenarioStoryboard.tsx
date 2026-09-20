@@ -2,8 +2,8 @@
 
 import { Reorder } from "framer-motion";
 import { AlertTriangle, GripVertical } from "lucide-react";
+import { resolveFontFamily } from "@/app/(app)/brand/lib/font-catalogue";
 import { DesignPreview } from "@/components/design/DesignPreview";
-import { resolveFontFamily } from "@/components/design/font-catalogue";
 import { Badge } from "@/components/ui/badge";
 import type { CanvasSpec } from "@/lib/design/canvas-spec";
 import type { DesignDocument } from "@/lib/design/document";

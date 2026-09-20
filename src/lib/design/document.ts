@@ -76,6 +76,7 @@ export interface ShapeLayer extends LayerBase {
 
 export interface LogoLayer extends LayerBase {
   type: "logo";
+  /** Opaque to the editor: whoever hosts it resolves the id to a URL. */
   assetId: string;
 }
 
@@ -103,6 +104,14 @@ export interface DesignDocument {
   autoLayout?: AutoLayout;
   layers: Layer[];
 }
+
+export const EMPTY_DOCUMENT: DesignDocument = {
+  background: { kind: "solid", color: "#111111" },
+  layers: [],
+};
+
+export const MIN_FONT_SIZE = 8;
+export const MAX_FONT_SIZE = 400;
 
 const TEXT_ALIGNS: readonly TextAlign[] = ["left", "center", "right"];
 const TEXT_ROLES: readonly TextRole[] = ["heading", "body"];
@@ -173,7 +182,7 @@ function parseLayer(raw: unknown): Layer | undefined {
       text,
       role: TEXT_ROLES.includes(raw.role as TextRole) ? (raw.role as TextRole) : "body",
       fontFamily,
-      fontSize: clamp(fontSize, 8, 400),
+      fontSize: clamp(fontSize, MIN_FONT_SIZE, MAX_FONT_SIZE),
       fontWeight: clamp(num(raw.fontWeight) ?? REGULAR_WEIGHT, 100, 900),
       // Absent in anything saved before these existed, which reads as unstyled.
       italic: raw.italic === true,
@@ -282,4 +291,9 @@ export function parseDesignDocument(value: unknown): ParsedDesign | undefined {
     },
     dropped,
   };
+}
+
+/** `parseDesignDocument` for callers that only want something drawable. */
+export function documentFrom(value: unknown): DesignDocument {
+  return parseDesignDocument(value)?.document ?? EMPTY_DOCUMENT;
 }

@@ -30,14 +30,14 @@ import {
   BOLD_WEIGHT,
   isBold,
   type Layer,
+  MAX_FONT_SIZE,
+  MIN_FONT_SIZE,
   REGULAR_WEIGHT,
   type TextLayer,
 } from "@/lib/design/document";
 import { cn } from "@/lib/utils";
 
 const STYLE_MENU_WIDTH = 176;
-const MIN_FONT_SIZE = 8;
-const MAX_FONT_SIZE = 400;
 const OPACITY_STEP = 0.125;
 
 type TextStyle = "bold" | "italic" | "underline" | "lineThrough";

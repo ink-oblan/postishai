@@ -15,13 +15,13 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 vi.mock("sonner", () => ({ toast: { error: mocks.error, success: mocks.success } }));
-vi.mock("@/components/design/font-catalogue", () => ({
+vi.mock("@/app/(app)/brand/lib/font-catalogue", () => ({
   resolveFontFamily: (name: string) => name,
+  registerBrandFont: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/design/fonts", async (original) => ({
   ...(await original<object>()),
   ensureFontsLoaded: vi.fn().mockResolvedValue(undefined),
-  registerUploadedFont: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/design/measure-text", () => ({ textMeasurer: () => () => 120 }));
 

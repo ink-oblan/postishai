@@ -3,13 +3,12 @@
 import { Dialog } from "@base-ui/react";
 import { Check, Loader2, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { resolveFontFamily } from "@/components/design/font-catalogue";
-import type { FontChoice } from "@/components/design/LayerInspector";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Layer, TextLayer } from "@/lib/design/document";
+import type { FontChoice } from "@/lib/design/fonts";
 import { cn } from "@/lib/utils";
 
 const SURFACE_CLASS = [
@@ -77,10 +76,18 @@ interface MobileFontSheetProps {
   onClose: () => void;
   value: string;
   fonts: FontChoice[];
+  resolveFontFamily: (name: string) => string;
   onSelect: (family: string) => void;
 }
 
-export function MobileFontSheet({ open, onClose, value, fonts, onSelect }: MobileFontSheetProps) {
+export function MobileFontSheet({
+  open,
+  onClose,
+  value,
+  fonts,
+  resolveFontFamily,
+  onSelect,
+}: MobileFontSheetProps) {
   return (
     <Sheet open={open} onClose={onClose} title="Font">
       <div className="flex flex-col gap-1">

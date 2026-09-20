@@ -13,7 +13,6 @@ import {
   Trash2,
   Underline,
 } from "lucide-react";
-import { resolveFontFamily } from "@/components/design/font-catalogue";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -29,9 +28,12 @@ import {
   BOLD_WEIGHT,
   isBold,
   type Layer,
+  MAX_FONT_SIZE,
+  MIN_FONT_SIZE,
   REGULAR_WEIGHT,
   type TextAlign,
 } from "@/lib/design/document";
+import type { FontChoice } from "@/lib/design/fonts";
 
 const ALIGNMENTS: { value: TextAlign; icon: typeof AlignLeft; label: string }[] = [
   { value: "left", icon: AlignLeft, label: "Align left" },
@@ -57,14 +59,10 @@ const DECORATIONS: {
 const COLOR_INPUT_CLASS =
   "h-9 overflow-hidden p-0 [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-0";
 
-export interface FontChoice {
-  name: string;
-  family: string;
-}
-
 interface LayerInspectorProps {
   layer: Layer | null;
   fonts: FontChoice[];
+  resolveFontFamily: (name: string) => string;
   onChange: (patch: Partial<Layer>) => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -77,6 +75,7 @@ interface LayerInspectorProps {
 export function LayerInspector({
   layer,
   fonts,
+  resolveFontFamily,
   onChange,
   onDuplicate,
   onDelete,
@@ -163,8 +162,8 @@ export function LayerInspector({
               <Input
                 id="layer-size"
                 type="number"
-                min={8}
-                max={400}
+                min={MIN_FONT_SIZE}
+                max={MAX_FONT_SIZE}
                 value={layer.fontSize}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   onChange({ fontSize: Number(e.target.value) || layer.fontSize })

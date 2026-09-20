@@ -20,16 +20,17 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { builtinFontChoices, resolveFontFamily } from "@/components/design/font-catalogue";
+import {
+  brandAssetUrl,
+  builtinFontChoices,
+  registerBrandFont,
+  resolveFontFamily,
+} from "@/app/(app)/brand/lib/font-catalogue";
 import { LayerInspector } from "@/components/design/LayerInspector";
 import { rasterizeStage, waitForBackground } from "@/components/design/rasterize";
 import { ShortcutDialog } from "@/components/design/ShortcutDialog";
 import { sampleBackgroundRegion } from "@/components/design/sample-background";
-import {
-  EMPTY_DOCUMENT,
-  type SlideDocuments,
-  useDesignEditor,
-} from "@/components/design/useDesignEditor";
+import { type SlideDocuments, useDesignEditor } from "@/components/design/useDesignEditor";
 import { useEditorShortcuts } from "@/components/design/useEditorShortcuts";
 import { BackgroundPicker } from "@/components/posts/carousel/BackgroundPicker";
 import {
@@ -51,16 +52,11 @@ import { CAROUSEL_SLIDE_STATUS } from "@/lib/constants";
 import { safeArea } from "@/lib/design/canvas-spec";
 import {
   type DesignDocument,
-  parseDesignDocument,
+  documentFrom,
+  EMPTY_DOCUMENT,
   type TextBackground,
 } from "@/lib/design/document";
-import {
-  brandAssetUrl,
-  ensureFontsLoaded,
-  facesUsedBy,
-  registerUploadedFont,
-  uploadedFontFamily,
-} from "@/lib/design/fonts";
+import { ensureFontsLoaded, facesUsedBy, uploadedFontFamily } from "@/lib/design/fonts";
 import { textMeasurer } from "@/lib/design/measure-text";
 import {
   defaultTextPlate,
@@ -469,7 +465,7 @@ export function SlideEditor({
     restacked.current = true;
 
     void (async () => {
-      await Promise.all(uploadedFonts.map((font) => registerUploadedFont(font.assetId)));
+      await Promise.all(uploadedFonts.map((font) => registerBrandFont(font.assetId)));
 
       const documents = Object.entries(initialDocuments);
       await ensureFontsLoaded(
@@ -517,7 +513,10 @@ export function SlideEditor({
       await waitForBackground(stage, slideBackgroundUrl(slide));
       rendered.push({
         slide,
-        blob: await rasterizeStage(stage, document, spec, resolveFontFamily),
+        blob: await rasterizeStage(stage, document, spec, {
+          resolveFontFamily,
+          assetUrl: brandAssetUrl,
+        }),
       });
     }
 
@@ -1108,6 +1107,7 @@ export function SlideEditor({
           <LayerInspector
             layer={selectedLayer}
             fonts={fonts}
+            resolveFontFamily={resolveFontFamily}
             onChange={(patch) => editor.selectedId && editor.updateLayer(editor.selectedId, patch)}
             onDuplicate={() => editor.selectedId && editor.duplicateLayer(editor.selectedId)}
             onDelete={() => editor.selectedId && editor.deleteLayer(editor.selectedId)}
@@ -1154,6 +1154,7 @@ export function SlideEditor({
           onClose={() => setMobileFontsOpen(false)}
           value={selectedLayer?.type === "text" ? selectedLayer.fontFamily : ""}
           fonts={fonts}
+          resolveFontFamily={resolveFontFamily}
           onSelect={(fontFamily) =>
             editor.selectedId && editor.updateLayer(editor.selectedId, { fontFamily })
           }
@@ -1247,7 +1248,7 @@ function useFittedStageWidth(
  * underneath it. Storing the path here too would go stale the moment it is regenerated.
  */
 function documentFor(slide: EditorSlide): DesignDocument {
-  return parseDesignDocument(slide.design)?.document ?? EMPTY_DOCUMENT;
+  return documentFrom(slide.design);
 }
 
 /** Two frames: one for React to commit the new document, one for Konva to draw it. */

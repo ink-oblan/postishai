@@ -11,17 +11,18 @@ export interface ResolvedFont {
 
 export const FALLBACK_FONT_FAMILY = "sans-serif";
 
+/** One entry in a font picker: the name a document stores, and the family it draws as. */
+export interface FontChoice {
+  name: string;
+  family: string;
+}
+
 /**
  * Uploaded fonts are registered under a name of our own making rather than the file's internal
  * one, which we never read — two uploads with the same internal family would otherwise collide.
  */
 export function uploadedFontFamily(assetId: string): string {
   return `brandfont-${assetId}`;
-}
-
-/** Where an uploaded brand asset — a font file, the logo — is served from. */
-export function brandAssetUrl(assetId: string): string {
-  return `/api/brand-profile/file?id=${encodeURIComponent(assetId)}`;
 }
 
 export function resolveFont(
@@ -123,15 +124,15 @@ export async function ensureFontsLoaded(faces: DrawnFace[]): Promise<void> {
 
 const registered = new Set<string>();
 
-/** Idempotently register an uploaded brand font so the browser can draw it. */
-export async function registerUploadedFont(assetId: string): Promise<void> {
+/** Idempotently register an uploaded font, served from wherever the caller keeps it. */
+export async function registerUploadedFont(assetId: string, url: string): Promise<void> {
   if (typeof document === "undefined" || !document.fonts) return;
 
   const family = uploadedFontFamily(assetId);
   if (registered.has(family)) return;
   registered.add(family);
 
-  const face = new FontFace(family, `url(${brandAssetUrl(assetId)})`);
+  const face = new FontFace(family, `url(${url})`);
   try {
     document.fonts.add(await face.load());
   } catch {

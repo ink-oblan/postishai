@@ -5,6 +5,7 @@ import { type Box, type CanvasSpec, safeArea } from "@/lib/design/canvas-spec";
 import {
   BOLD_WEIGHT,
   type DesignDocument,
+  EMPTY_DOCUMENT,
   type Layer,
   REGULAR_WEIGHT,
   type TextLayer,
@@ -18,11 +19,6 @@ const MAX_PASTE_STEPS = 12;
 /** Sizes for a layer added by hand, as a share of the canvas width. */
 const NEW_HEADING_SCALE = 0.075;
 const NEW_BODY_SCALE = 0.038;
-
-export const EMPTY_DOCUMENT: DesignDocument = {
-  background: { kind: "solid", color: "#111111" },
-  layers: [],
-};
 
 export type SlideDocuments = Record<string, DesignDocument>;
 
