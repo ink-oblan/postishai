@@ -7,8 +7,9 @@ import {
   MAX_BODY,
   MAX_HEADLINE,
   MAX_VISUAL_PROMPT,
+  SCENARIO_PLANNING_ERROR,
 } from "@/lib/carousel/scenario";
-import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE } from "@/lib/constants";
+import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 
 interface SlideInput {
@@ -61,6 +62,9 @@ export const PATCH = withAuth(async function PATCH(
       { status: 409 },
     );
   }
+  if (post.status === POST_STATUS.GENERATING) {
+    return NextResponse.json({ error: SCENARIO_PLANNING_ERROR }, { status: 409 });
+  }
 
   const body = await req.json();
   const slides = parseSlides((body as { slides?: unknown }).slides);
@@ -77,7 +81,11 @@ export const PATCH = withAuth(async function PATCH(
   }
 
   const existingIds = new Set(post.slides.map((slide) => slide.id));
-  const keptIds = new Set(slides.flatMap((slide) => (slide.id ? [slide.id] : [])));
+  const submittedIds = slides.flatMap((slide) => (slide.id ? [slide.id] : []));
+  const keptIds = new Set(submittedIds);
+  if (keptIds.size !== submittedIds.length) {
+    return NextResponse.json({ error: "A slide was submitted twice" }, { status: 400 });
+  }
   for (const keptId of keptIds) {
     if (!existingIds.has(keptId)) {
       return NextResponse.json({ error: "Unknown slide" }, { status: 400 });

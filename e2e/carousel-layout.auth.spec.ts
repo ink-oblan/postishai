@@ -138,6 +138,19 @@ async function createCarousel(
   expect(created.ok(), `plan failed: ${created.status()} ${await created.text()}`).toBeTruthy();
   const post = await created.json();
 
+  // The plan is written by the worker, so the post comes back empty and fills in afterwards.
+  await expect
+    .poll(
+      async () => {
+        const status = await request.get(`/api/posts/${post.id}/carousel/status`);
+        if (!status.ok()) return `status ${status.status()}`;
+        const { status: postStatus, errorMessage } = await status.json();
+        return postStatus === "FAILED" ? `FAILED: ${errorMessage}` : postStatus;
+      },
+      { timeout: 120_000, intervals: [1000] },
+    )
+    .toBe("DRAFT");
+
   const generated = await request.post(`/api/posts/${post.id}/carousel/generate`, {
     data: {},
     timeout: 120_000,

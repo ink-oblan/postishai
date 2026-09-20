@@ -5,6 +5,7 @@ import type {
   AvatarAnalyzePayload,
   AvatarGeneratePayload,
   AvatarVariationGeneratePayload,
+  CarouselScenarioPayload,
   CarouselSlideImagePayload,
   JobDefinition,
   JobPayloadMap,
@@ -20,6 +21,7 @@ export type {
   AvatarAnalyzePayload,
   AvatarGeneratePayload,
   AvatarVariationGeneratePayload,
+  CarouselScenarioPayload,
   CarouselSlideImagePayload,
   JobPayloadMap,
   JobType,
@@ -120,6 +122,14 @@ export function enqueuePostMetadataGenerateJob(payload: PostMetadataGeneratePayl
 
 export function enqueuePostGenerateJob(payload: PostGeneratePayload) {
   return enqueueJob("post.generate", payload);
+}
+
+export function enqueueCarouselScenarioJob(payload: CarouselScenarioPayload) {
+  return enqueueJob("carousel.scenario.generate", payload);
+}
+
+export function enqueueCarouselScenarioJobInDb(db: WorkerDb, payload: CarouselScenarioPayload) {
+  return enqueueJobInDb(db, "carousel.scenario.generate", payload);
 }
 
 export function enqueueCarouselSlideImageJob(payload: CarouselSlideImagePayload) {

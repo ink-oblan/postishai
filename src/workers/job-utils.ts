@@ -21,6 +21,14 @@ export function readRequiredString(payload: Record<string, unknown>, key: string
   return value;
 }
 
+export function readRequiredNumber(payload: Record<string, unknown>, key: string): number {
+  const value = payload[key];
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`Invalid job payload: ${key} is required`);
+  }
+  return value;
+}
+
 export function readOptionalString(
   payload: Record<string, unknown>,
   key: string,

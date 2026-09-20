@@ -15,6 +15,7 @@ export const GET = withAuth(async function GET(
     select: {
       carouselStage: true,
       status: true,
+      errorMessage: true,
       slides: {
         orderBy: { order: "asc" },
         select: {
@@ -41,6 +42,7 @@ export const GET = withAuth(async function GET(
   return NextResponse.json({
     carouselStage: post.carouselStage,
     status: post.status,
+    errorMessage: post.errorMessage,
     slides,
     pending: slides.filter(
       (slide) =>

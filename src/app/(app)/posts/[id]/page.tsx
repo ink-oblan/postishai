@@ -78,7 +78,12 @@ export default async function PostDetailPage({
         <CarouselPostView
           postId={post.id}
           platform={post.platform}
+          platformLabel={PLATFORM_LABELS[post.platform]}
           carouselStage={post.carouselStage}
+          status={post.status}
+          slideCount={post.carouselSlideCount}
+          errorMessage={post.errorMessage}
+          generationStartedAt={post.generationStartedAt?.toISOString() ?? null}
           scenarioSlides={slides.map((slide) => ({
             id: slide.id,
             headline: slide.headline ?? "",

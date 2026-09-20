@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
 import { type ColorItem, type FontItem, parseList } from "@/lib/brand-fields";
 import { carouselCanvas } from "@/lib/carousel/platform-spec";
-import { coerceLayout } from "@/lib/carousel/scenario";
+import { coerceLayout, SCENARIO_PLANNING_ERROR } from "@/lib/carousel/scenario";
 import { queueSlideBackground } from "@/lib/carousel/slide-background";
 import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
@@ -57,6 +57,9 @@ export const POST = withAuth(async function POST(
       { error: "This carousel has already been generated" },
       { status: 409 },
     );
+  }
+  if (post.status === POST_STATUS.GENERATING) {
+    return NextResponse.json({ error: SCENARIO_PLANNING_ERROR }, { status: 409 });
   }
   if (post.slides.length === 0) {
     return NextResponse.json({ error: "This carousel has no slides" }, { status: 409 });

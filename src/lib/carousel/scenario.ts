@@ -18,6 +18,9 @@ export const MAX_HEADLINE = 120;
 export const MAX_BODY = 400;
 export const MAX_VISUAL_PROMPT = 400;
 
+/** The worker owns the slides while it writes them, so nothing else may touch them meanwhile. */
+export const SCENARIO_PLANNING_ERROR = "The plan is still being written";
+
 export function clampText(value: unknown, max: number): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }

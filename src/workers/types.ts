@@ -26,6 +26,11 @@ export type PostMetadataGeneratePayload = {
   postId: string;
 };
 
+export type CarouselScenarioPayload = {
+  postId: string;
+  slideCount: number;
+};
+
 export type CarouselSlideImagePayload = {
   slideId: string;
   prompt: string;
@@ -39,6 +44,7 @@ export type JobPayloadMap = {
   "avatar.analyze": AvatarAnalyzePayload;
   "post.metadata.generate": PostMetadataGeneratePayload;
   "post.generate": PostGeneratePayload;
+  "carousel.scenario.generate": CarouselScenarioPayload;
   "carousel.slide.image.generate": CarouselSlideImagePayload;
 };
 

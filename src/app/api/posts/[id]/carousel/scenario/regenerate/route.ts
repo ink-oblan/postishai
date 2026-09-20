@@ -3,13 +3,18 @@ import { withAuth } from "@/lib/auth/dal";
 import {
   generateScenario,
   mockScenario,
+  SCENARIO_PLANNING_ERROR,
   ScenarioResponseError,
   type ScenarioSlide,
 } from "@/lib/carousel/scenario";
-import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE } from "@/lib/constants";
+import { CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { isMockEnabled, MOCK_TIMINGS, mockDelay } from "@/lib/mock-config";
 
+/**
+ * Rewrites a single slide in place. Rewriting the whole plan goes through the worker instead
+ * (`scenario/plan`) — one slide is a small enough edit to keep the editor mounted while it runs.
+ */
 export const POST = withAuth(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -28,12 +33,19 @@ export const POST = withAuth(async function POST(
       { status: 409 },
     );
   }
+  if (post.status === POST_STATUS.GENERATING) {
+    return NextResponse.json({ error: SCENARIO_PLANNING_ERROR }, { status: 409 });
+  }
 
   const body = await req.json().catch(() => ({}));
   const slideId = (body as { slideId?: unknown }).slideId;
   const targetId = typeof slideId === "string" && slideId ? slideId : null;
+  if (!targetId) {
+    return NextResponse.json({ error: "A slide is required" }, { status: 400 });
+  }
 
-  if (targetId && !post.slides.some((slide) => slide.id === targetId)) {
+  const index = post.slides.findIndex((slide) => slide.id === targetId);
+  if (index < 0) {
     return NextResponse.json({ error: "Unknown slide" }, { status: 400 });
   }
 
@@ -62,35 +74,16 @@ export const POST = withAuth(async function POST(
     return NextResponse.json({ error: "Failed to replan the carousel" }, { status: 500 });
   }
 
-  if (targetId) {
-    const index = post.slides.findIndex((slide) => slide.id === targetId);
-    const replacement = generated[index] ?? generated[0];
-
-    await prisma.carouselSlide.update({
-      where: { id: targetId },
-      data: {
-        headline: replacement.headline,
-        body: replacement.body || null,
-        visualPrompt: replacement.visualPrompt,
-        layout: replacement.layout,
-      },
-    });
-  } else {
-    await prisma.$transaction(
-      post.slides.map((slide, index) =>
-        prisma.carouselSlide.update({
-          where: { id: slide.id },
-          data: {
-            headline: generated[index].headline,
-            body: generated[index].body || null,
-            visualPrompt: generated[index].visualPrompt,
-            layout: generated[index].layout,
-            status: CAROUSEL_SLIDE_STATUS.PENDING,
-          },
-        }),
-      ),
-    );
-  }
+  const replacement = generated[index] ?? generated[0];
+  await prisma.carouselSlide.update({
+    where: { id: targetId },
+    data: {
+      headline: replacement.headline,
+      body: replacement.body || null,
+      visualPrompt: replacement.visualPrompt,
+      layout: replacement.layout,
+    },
+  });
 
   const slides = await prisma.carouselSlide.findMany({
     where: { postId: post.id },

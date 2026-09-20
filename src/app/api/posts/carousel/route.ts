@@ -4,17 +4,11 @@ import { broadcastPostStatusUpdate } from "@/app/api/dashboard/subscribe/route";
 import { withAuth } from "@/lib/auth/dal";
 import { broadcastWithContext } from "@/lib/broadcast-utils";
 import { isCarouselPlatform, slideCountError } from "@/lib/carousel/platform-spec";
-import {
-  generateScenario,
-  mockScenario,
-  ScenarioResponseError,
-  type ScenarioSlide,
-} from "@/lib/carousel/scenario";
-import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
+import { CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { DEFAULT_LLM_MODEL_ID, getLLMAdapter } from "@/lib/llm-models/registry";
-import { isMockEnabled, MOCK_TIMINGS, mockDelay } from "@/lib/mock-config";
+import { enqueueCarouselScenarioJobInDb } from "@/lib/worker/jobs";
 
 export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown, { userId }) {
   const body = await req.json();
@@ -55,55 +49,39 @@ export const POST = withAuth(async function POST(req: NextRequest, _ctx: unknown
     return NextResponse.json({ error: "Brand profile not found" }, { status: 404 });
   }
 
-  let slides: ScenarioSlide[];
-  try {
-    if (isMockEnabled()) {
-      await mockDelay(MOCK_TIMINGS.CAROUSEL_SCENARIO);
-      slides = mockScenario(trimmedTitle, count);
-    } else {
-      slides = await generateScenario({
-        title: trimmedTitle,
-        platform,
-        slideCount: count,
-        details,
-        brand,
-        llmModelId: selectedLlmModelId,
+  // The plan itself is an LLM call, so the post lands first and the worker fills it in. Creating
+  // and queueing together keeps a post from existing with nothing on the way to populate it.
+  const post = await prisma
+    .$transaction(async (tx) => {
+      const created = await tx.post.create({
+        data: {
+          type: "CAROUSEL",
+          title: trimmedTitle,
+          platform,
+          details: details?.trim() || null,
+          status: POST_STATUS.GENERATING,
+          carouselStage: CAROUSEL_STAGE.SCENARIO,
+          brandProfileId: brand?.id ?? null,
+          llmModelId: selectedLlmModelId,
+          userId,
+        },
+        include: { slides: { orderBy: { order: "asc" } } },
       });
-    }
-  } catch (err) {
-    if (err instanceof ScenarioResponseError) {
-      return NextResponse.json({ error: err.message }, { status: 502 });
-    }
-    console.error("[POST /api/posts/carousel] Scenario generation failed:", err);
+
+      await enqueueCarouselScenarioJobInDb(tx, { postId: created.id, slideCount: count });
+
+      return created;
+    })
+    .catch((err) => {
+      console.error("[POST /api/posts/carousel] Failed to queue the plan:", err);
+      return null;
+    });
+
+  if (!post) {
     return NextResponse.json({ error: "Failed to plan the carousel" }, { status: 500 });
   }
 
-  const post = await prisma.post.create({
-    data: {
-      type: "CAROUSEL",
-      title: trimmedTitle,
-      platform,
-      details: details?.trim() || null,
-      status: POST_STATUS.DRAFT,
-      carouselStage: CAROUSEL_STAGE.SCENARIO,
-      brandProfileId: brand?.id ?? null,
-      llmModelId: selectedLlmModelId,
-      userId,
-      slides: {
-        create: slides.map((slide, order) => ({
-          order,
-          headline: slide.headline,
-          body: slide.body || null,
-          visualPrompt: slide.visualPrompt,
-          layout: slide.layout,
-          status: CAROUSEL_SLIDE_STATUS.PENDING,
-        })),
-      },
-    },
-    include: { slides: { orderBy: { order: "asc" } } },
-  });
-
-  debugLog(`[POST /api/posts/carousel] created postId=${post.id} slides=${post.slides.length}`);
+  debugLog(`[POST /api/posts/carousel] created postId=${post.id} slides=${count} (queued)`);
 
   try {
     await broadcastWithContext("post-carousel-create", () =>

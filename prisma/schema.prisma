@@ -162,6 +162,7 @@ model Post {
   metadataUpdatedAt    DateTime?
   errorMessage         String?
   carouselStage        String?
+  carouselSlideCount   Int?
   carouselFonts        Json?
   carouselColors       Json?
   slides               CarouselSlide[]
