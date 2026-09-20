@@ -27,7 +27,10 @@ const MIN_LAYER_SIZE = 24;
 const ANCHOR_RATIO = 0.008;
 const MIN_ANCHOR_PX = 3;
 const MAX_ANCHOR_PX = 5;
-const MOBILE_ANCHOR_PX = 9;
+const MOBILE_ANCHOR_PX = 6;
+const MOBILE_ANCHOR_HIT_PX = 16;
+const MIN_TEXT_WIDTH_PX = 48;
+const TEXT_CONTROL_PADDING_PX = 2;
 
 /** Text resizes along one axis only: the wrap width. Its height is whatever the copy needs. */
 const TEXT_ANCHORS = ["middle-left", "middle-right"];
@@ -229,7 +232,6 @@ export function DesignStage({
   const editingLayer =
     editingId === selectedId && selectedLayer?.type === "text" ? selectedLayer : null;
   const canvasRootRef = useRef<HTMLDivElement>(null);
-  const canvasOriginRef = useRef<{ left: number; top: number } | null>(null);
   const keyboardBaselineRef = useRef(0);
   const editorHeightRef = useRef(0);
   const [keyboardFocus, setKeyboardFocus] = useState<{
@@ -243,7 +245,8 @@ export function DesignStage({
       editorHeightRef.current = editorHeight;
       const viewport = window.visualViewport;
       const root = canvasRootRef.current;
-      if (!viewport || !root || !editingLayer) return;
+      const textarea = root?.querySelector("textarea");
+      if (!viewport || !root || !textarea || !editingLayer) return;
 
       keyboardBaselineRef.current = Math.max(keyboardBaselineRef.current, viewport.height);
       const keyboardOpen = viewport.height < keyboardBaselineRef.current - 80;
@@ -252,32 +255,43 @@ export function DesignStage({
         return;
       }
 
-      if (!canvasOriginRef.current) {
-        const bounds = root.getBoundingClientRect();
-        canvasOriginRef.current = { left: bounds.left, top: bounds.top };
-      }
-
-      const origin = canvasOriginRef.current;
       const layerWidth = editingLayer.width * scale;
       const layerCenterX = (editingLayer.x + editingLayer.width / 2) * scale;
       const layerCenterY = editingLayer.y * scale + editorHeight / 2;
       const zoom = Math.min(1.35, Math.max(1.15, (viewport.width * 0.82) / layerWidth));
       const targetX = viewport.width / 2;
-      const targetY = viewport.offsetTop + viewport.height / 2;
+      const targetY = viewport.height / 2;
+      const parent = root.parentElement;
+      const parentScale = parent?.offsetWidth
+        ? parent.getBoundingClientRect().width / parent.offsetWidth
+        : 1;
+      const bounds = textarea.getBoundingClientRect();
 
-      const nextFocus = {
-        x: targetX - origin.left - layerCenterX * zoom,
-        y: targetY - origin.top - layerCenterY * zoom,
-        zoom,
-      };
-      setKeyboardFocus((current) =>
-        current &&
-        Math.abs(current.x - nextFocus.x) < 0.5 &&
-        Math.abs(current.y - nextFocus.y) < 0.5 &&
-        Math.abs(current.zoom - nextFocus.zoom) < 0.001
+      setKeyboardFocus((current) => {
+        const currentZoom = current?.zoom ?? 1;
+        const currentX = current?.x ?? 0;
+        const currentY = current?.y ?? 0;
+        // `getBoundingClientRect` is already relative to the visual viewport. Project the
+        // textarea's rendered centre through any zoom change, then translate that actual point
+        // to the viewport centre. This remains correct when iOS scrolls the layout while opening
+        // the keyboard and when the outer canvas has its own pan/zoom transform.
+        const projectedX =
+          bounds.left + bounds.width / 2 + parentScale * (zoom - currentZoom) * layerCenterX;
+        const projectedY =
+          bounds.top + bounds.height / 2 + parentScale * (zoom - currentZoom) * layerCenterY;
+        const nextFocus = {
+          x: currentX + (targetX - projectedX) / parentScale,
+          y: currentY + (targetY - projectedY) / parentScale,
+          zoom,
+        };
+
+        return current &&
+          Math.abs(current.x - nextFocus.x) < 0.5 &&
+          Math.abs(current.y - nextFocus.y) < 0.5 &&
+          Math.abs(current.zoom - nextFocus.zoom) < 0.001
           ? current
-          : nextFocus,
-      );
+          : nextFocus;
+      });
     },
     [editingLayer, scale],
   );
@@ -292,7 +306,6 @@ export function DesignStage({
 
   useEffect(() => {
     if (!editingLayer) {
-      canvasOriginRef.current = null;
       keyboardBaselineRef.current = 0;
       editorHeightRef.current = 0;
       setKeyboardFocus(null);
@@ -324,32 +337,6 @@ export function DesignStage({
       window.removeEventListener("resize", update);
     };
   }, [editingLayer, updateKeyboardFocus]);
-
-  useLayoutEffect(() => {
-    if (!keyboardFocus) return;
-    const frame = requestAnimationFrame(() => {
-      const viewport = window.visualViewport;
-      const root = canvasRootRef.current;
-      const textarea = root?.querySelector("textarea");
-      if (!viewport || !root || !textarea) return;
-
-      const bounds = textarea.getBoundingClientRect();
-      const targetX = viewport.offsetLeft + viewport.width / 2;
-      const targetY = viewport.offsetTop + viewport.height / 2;
-      const parent = root.parentElement;
-      const parentScale = parent?.offsetWidth
-        ? parent.getBoundingClientRect().width / parent.offsetWidth
-        : 1;
-      const correctionX = (targetX - (bounds.left + bounds.width / 2)) / parentScale;
-      const correctionY = (targetY - (bounds.top + bounds.height / 2)) / parentScale;
-      if (Math.abs(correctionX) < 0.5 && Math.abs(correctionY) < 0.5) return;
-
-      setKeyboardFocus((current) =>
-        current ? { ...current, x: current.x + correctionX, y: current.y + correctionY } : current,
-      );
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [keyboardFocus]);
 
   useEffect(() => {
     const transformer = transformerRef.current;
@@ -396,7 +383,10 @@ export function DesignStage({
     const node = nodeRefs.current.get(layer.id);
     if (!node) return;
 
-    const width = Math.max(MIN_LAYER_SIZE, node.width() * node.scaleX());
+    // Keep a practical on-screen distance between the handles at every canvas scale so a
+    // collapsed text box remains possible to grab and recover on both desktop and mobile.
+    const minWidth = Math.max(MIN_LAYER_SIZE, MIN_TEXT_WIDTH_PX / scale);
+    const width = Math.max(minWidth, node.width() * node.scaleX());
     node.setAttrs({ width, scaleX: 1, scaleY: 1 });
 
     if (done) onLayerChange(layer.id, { x: node.x(), y: node.y(), width });
@@ -575,15 +565,55 @@ export function DesignStage({
             name={EDITOR_CHROME_NAME}
             ref={transformerRef}
             rotateEnabled={false}
+            flipEnabled={false}
             enabledAnchors={selectedLayer?.type === "text" ? TEXT_ANCHORS : undefined}
+            padding={selectedLayer?.type === "text" ? TEXT_CONTROL_PADDING_PX / scale : 0}
             ignoreStroke
             borderStrokeWidth={1 / scale}
             anchorSize={anchor / scale}
             anchorStrokeWidth={1 / scale}
             anchorCornerRadius={anchor / 2 / scale}
-            boundBoxFunc={(oldBox, newBox) =>
-              newBox.width < MIN_LAYER_SIZE || newBox.height < MIN_LAYER_SIZE ? oldBox : newBox
+            anchorStyleFunc={
+              mobileHandles
+                ? (handle) => {
+                    const hitSize = MOBILE_ANCHOR_HIT_PX / scale;
+                    handle.hitFunc((context, shape) => {
+                      const insetX = (hitSize - shape.width()) / 2;
+                      const insetY = (hitSize - shape.height()) / 2;
+                      context.beginPath();
+                      context.rect(-insetX, -insetY, hitSize, hitSize);
+                      context.closePath();
+                      context.fillStrokeShape(shape);
+                    });
+                  }
+                : undefined
             }
+            boundBoxFunc={(oldBox, newBox) => {
+              const minRenderedSize = MIN_LAYER_SIZE * scale;
+              const minTextWidth = Math.max(minRenderedSize, MIN_TEXT_WIDTH_PX);
+
+              if (selectedLayer?.type === "text" && newBox.width < minTextWidth) {
+                const activeAnchor = transformerRef.current?.getActiveAnchor();
+                if (activeAnchor === "middle-left") {
+                  const radians = (newBox.rotation * Math.PI) / 180;
+                  const adjustment = newBox.width - minTextWidth;
+                  return {
+                    ...newBox,
+                    x: newBox.x + adjustment * Math.cos(radians),
+                    y: newBox.y + adjustment * Math.sin(radians),
+                    width: minTextWidth,
+                  };
+                }
+
+                return { ...newBox, width: minTextWidth };
+              }
+
+              // Keep an anchor from crossing its opposite edge. Using absolute dimensions here
+              // would make a negative box valid again after the crossing and flip the layer.
+              const tooNarrow = newBox.width < minRenderedSize;
+              const tooShort = newBox.height < minRenderedSize;
+              return tooNarrow || (selectedLayer?.type !== "text" && tooShort) ? oldBox : newBox;
+            }}
           />
         </Layer>
       </Stage>
