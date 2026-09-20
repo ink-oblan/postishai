@@ -188,7 +188,7 @@ test.describe("carousel layout", () => {
     for (const post of posts) {
       await test.step(`${post.platform} — ${post.title}`, async () => {
         await page.goto(`/posts/${post.id}`);
-        await expect(page.getByTestId("slide-stage")).toBeVisible({ timeout: 60_000 });
+        await expect(page.getByTestId("design-stage")).toBeVisible({ timeout: 60_000 });
 
         const slides = page.getByTestId("filmstrip-slide");
         await expect(slides).toHaveCount(post.slideCount);

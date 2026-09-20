@@ -14,7 +14,7 @@ function pngSizeFromDataUrl(dataUrl: string): { width: number; height: number } 
 
 async function exportedSlideSize(page: Page) {
   return page.evaluate(() => {
-    const canvas = document.querySelector<HTMLCanvasElement>("[data-testid=slide-stage] canvas");
+    const canvas = document.querySelector<HTMLCanvasElement>("[data-testid=design-stage] canvas");
     if (!canvas) return null;
     // Konva mirrors every Stage onto `window.Konva.stages` once the module has loaded.
     const konva = (
@@ -77,7 +77,7 @@ test.describe("carousel", () => {
 
     // Approve and wait for the backgrounds
     await page.getByRole("button", { name: /^Approve · generate 3 backgrounds$/ }).click();
-    await expect(page.getByTestId("slide-stage")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId("design-stage")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByTestId("filmstrip-slide")).toHaveCount(3);
     await expect(page.getByRole("button", { name: "Complete post" })).toBeEnabled({
       timeout: 5 * 60 * 1000,
