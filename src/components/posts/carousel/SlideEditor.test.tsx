@@ -228,7 +228,7 @@ describe("SlideEditor saves and exports", () => {
 
     mount();
 
-    await waitFor(() => expect(screen.getByTestId("slide-stage")).toHaveStyle({ width: "390px" }));
+    await waitFor(() => expect(screen.getByTestId("design-stage")).toHaveStyle({ width: "390px" }));
   });
 
   it("keeps slide previews folded until the mobile toggle is opened", async () => {
