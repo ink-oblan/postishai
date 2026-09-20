@@ -1,15 +1,14 @@
 import type { Prisma } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/dal";
-import { type ColorItem, type FontItem, parseList } from "@/lib/brand-fields";
+import { type ColorItem, parseList } from "@/lib/brand-fields";
 import { carouselCanvas } from "@/lib/carousel/platform-spec";
 import { coerceLayout, SCENARIO_PLANNING_ERROR } from "@/lib/carousel/scenario";
 import { queueSlideBackground } from "@/lib/carousel/slide-background";
-import { carouselLayoutTheme } from "@/lib/carousel/theme";
+import { carouselFontPair, carouselLayoutTheme } from "@/lib/carousel/theme";
 import { CAROUSEL_SLIDE_STATUS, CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import type { DesignDocument } from "@/lib/design/document";
-import { pickFontPair } from "@/lib/design/fonts";
 import { expandLayout, layoutAutoLayout } from "@/lib/design/layouts";
 import { PLACEHOLDER_BACKGROUND_COLOR } from "@/lib/design/placeholder";
 import { DEFAULT_IMAGE_MODEL_ID, getImageAdapter } from "@/lib/image-models/registry";
@@ -52,7 +51,7 @@ export const POST = withAuth(async function POST(
   const canvas = carouselCanvas(post.platform);
 
   const colors = parseList<ColorItem>(post.brandProfile?.colors);
-  const fontPair = pickFontPair(parseList<FontItem>(post.brandProfile?.typography));
+  const fontPair = carouselFontPair(post.brandProfile);
   const { fonts: layoutFonts, colors: layoutColors } = carouselLayoutTheme(post.brandProfile);
 
   await prisma.$transaction(async (tx) => {
@@ -87,9 +86,10 @@ export const POST = withAuth(async function POST(
       data: {
         carouselStage: CAROUSEL_STAGE.EDITING,
         status: POST_STATUS.GENERATING,
-        carouselFonts: (fontPair
-          ? { heading: fontPair.heading, body: fontPair.body }
-          : null) as unknown as Prisma.InputJsonValue,
+        carouselFonts: {
+          heading: fontPair.heading,
+          body: fontPair.body,
+        } as unknown as Prisma.InputJsonValue,
         carouselColors: colors as unknown as Prisma.InputJsonValue,
       },
     });
@@ -127,6 +127,23 @@ export const POST = withAuth(async function POST(
         errorMessage: "The background job could not be queued",
       },
     });
+
+    const unsettled = await prisma.carouselSlide.count({
+      where: {
+        postId: post.id,
+        status: { in: [CAROUSEL_SLIDE_STATUS.PENDING, CAROUSEL_SLIDE_STATUS.GENERATING] },
+      },
+    });
+    if (unsettled === 0) {
+      await prisma.post.updateMany({
+        where: {
+          id: post.id,
+          status: POST_STATUS.GENERATING,
+          carouselStage: CAROUSEL_STAGE.EDITING,
+        },
+        data: { status: POST_STATUS.DRAFT },
+      });
+    }
   }
 
   return NextResponse.json({ ok: true, slideCount: post.slides.length });

@@ -1,16 +1,28 @@
 import type { BrandProfile } from "@prisma/client";
 import { type ColorItem, type FontItem, parseList } from "@/lib/brand-fields";
-import { pickFontPair, resolveFont } from "@/lib/design/fonts";
+import { type FontPair, pickFontPair, resolveFont } from "@/lib/design/fonts";
 import type { LayoutColors, LayoutFonts } from "@/lib/design/layouts";
 import { DEFAULT_PLATE_COLOR } from "@/lib/design/plate";
 
 export const DEFAULT_HEADING_COLOR = "#ffffff";
 export const DEFAULT_BODY_COLOR = "#ededed";
-export const DEFAULT_LAYOUT_FONT = "Inter";
+export const DEFAULT_CAROUSEL_FONT_PAIR = {
+  heading: { id: "poppins", name: "Poppins", source: "builtin" },
+  body: { id: "inter", name: "Inter", source: "builtin" },
+} as const satisfies FontPair;
 
 export interface CarouselLayoutTheme {
   fonts: LayoutFonts;
   colors: LayoutColors;
+}
+
+export function carouselFontPair(brand: BrandProfile | null): FontPair {
+  return (
+    pickFontPair(parseList<FontItem>(brand?.typography)) ?? {
+      heading: DEFAULT_CAROUSEL_FONT_PAIR.heading,
+      body: DEFAULT_CAROUSEL_FONT_PAIR.body,
+    }
+  );
 }
 
 /**
@@ -40,14 +52,12 @@ export function darkest(colors: ColorItem[]): string {
 // Font families are resolved to real CSS names in the browser, where the catalogue lives.
 // Uploaded faces must use the same identifier as registerUploadedFont.
 export function carouselLayoutTheme(brand: BrandProfile | null): CarouselLayoutTheme {
-  const fontPair = pickFontPair(parseList<FontItem>(brand?.typography));
+  const fontPair = carouselFontPair(brand);
 
   return {
     fonts: {
-      heading: fontPair
-        ? resolveFont(fontPair.heading, (name) => name).family
-        : DEFAULT_LAYOUT_FONT,
-      body: fontPair ? resolveFont(fontPair.body, (name) => name).family : DEFAULT_LAYOUT_FONT,
+      heading: resolveFont(fontPair.heading, (name) => name).family,
+      body: resolveFont(fontPair.body, (name) => name).family,
     },
     colors: {
       heading: DEFAULT_HEADING_COLOR,
