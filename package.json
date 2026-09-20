@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "test:isolation": "vitest run --maxWorkers=1 --sequence.shuffle.files",
     "test:e2e": "playwright test",
+    "test:e2e:real": "E2E_REAL=1 playwright test",
     "prepare": "husky",
     "app:dev": "next dev 2>&1 | tee dev.log",
     "app:dev:docker": "npx prisma generate && npm run app:dev",
