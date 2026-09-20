@@ -24,7 +24,6 @@ describe("BlockingOverlay", () => {
     expect(status).toHaveAttribute("data-size", "large");
     expect(status.querySelector('[data-slot="logo-loader"]')).toHaveStyle({
       "--logo-loader-size": "256px",
-      "--logo-loader-stroke-scale": "3",
     });
   });
 

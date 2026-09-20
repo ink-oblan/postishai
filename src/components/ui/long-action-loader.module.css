@@ -1,6 +1,5 @@
 .visual {
   --logo-loader-size: 6rem;
-  --logo-loader-stroke-scale: 1;
   position: relative;
   width: var(--logo-loader-size);
   height: var(--logo-loader-size);
@@ -41,12 +40,11 @@
 .track,
 .orbit {
   fill: none;
-  vector-effect: non-scaling-stroke;
 }
 
 .track {
   stroke: color-mix(in oklab, var(--foreground) 9%, transparent);
-  stroke-width: calc(0.8 * var(--logo-loader-stroke-scale));
+  stroke-width: 0.833;
 }
 
 .orbitLayer {
@@ -82,7 +80,7 @@
   stroke: color-mix(in oklab, #e88a24 62%, var(--foreground) 5%);
   stroke-dasharray: 15 85;
   stroke-linecap: round;
-  stroke-width: calc(1.15 * var(--logo-loader-stroke-scale));
+  stroke-width: 1.198;
 }
 
 .logoLayer,

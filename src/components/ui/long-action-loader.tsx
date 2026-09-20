@@ -86,15 +86,13 @@ type LogoLoaderSize = number | string;
 
 type LongActionLoaderSize = "default" | "large";
 
-/** The orbit strokes are non-scaling, so larger visuals need the width scaled up to match. */
 const SIZE_STYLES: Record<
   LongActionLoaderSize,
-  { visual: number; strokeScale: number; body: string; title: string; description: string }
+  { visual: number; body: string; title: string; description: string }
 > = {
-  default: { visual: 96, strokeScale: 1, body: "", title: "text-base", description: "" },
+  default: { visual: 96, body: "", title: "text-base", description: "" },
   large: {
     visual: 256,
-    strokeScale: 3,
     body: "mt-8 space-y-2",
     title: "text-4xl",
     description: "max-w-xl text-lg",
@@ -104,8 +102,6 @@ const SIZE_STYLES: Record<
 interface LogoLoaderProps extends Omit<ComponentProps<"div">, "children" | "role"> {
   /** Pixel value or any valid CSS length. */
   size?: LogoLoaderSize;
-  /** Multiplies the orbit stroke width, which does not scale with `size`. */
-  strokeScale?: number;
   /** Removes status semantics when another element supplies the loading announcement. */
   decorative?: boolean;
 }
@@ -120,7 +116,6 @@ interface LongActionLoaderProps extends Omit<ComponentProps<"div">, "title"> {
 
 type LoaderStyle = CSSProperties & {
   "--logo-loader-size": string;
-  "--logo-loader-stroke-scale": number;
   "--logo-loader-loop-duration": string;
   "--logo-loader-orbit-duration": string;
   "--logo-loader-orbit-ease": string;
@@ -141,7 +136,6 @@ function formatElapsedTime(seconds: number): string {
 
 function LogoLoader({
   size = 96,
-  strokeScale = 1,
   decorative = false,
   className,
   style,
@@ -150,7 +144,6 @@ function LogoLoader({
 }: LogoLoaderProps) {
   const loaderStyle = {
     "--logo-loader-size": toCssSize(size),
-    "--logo-loader-stroke-scale": strokeScale,
     "--logo-loader-loop-duration": `${LOOP_DURATION}s`,
     "--logo-loader-orbit-duration": `${ORBIT_DURATION}s`,
     "--logo-loader-orbit-ease": ORBIT_EASING,
@@ -221,7 +214,7 @@ function LongActionLoader({
       className={cn("flex flex-col items-center justify-center text-center", className)}
       {...props}
     >
-      <LogoLoader decorative size={sizeStyles.visual} strokeScale={sizeStyles.strokeScale} />
+      <LogoLoader decorative size={sizeStyles.visual} />
 
       <div className={cn("mt-4 space-y-1", sizeStyles.body)}>
         <p className={cn("font-medium text-sm", sizeStyles.title)}>{title}</p>
