@@ -45,6 +45,7 @@ function toolbar(layer: Layer | null = null, zoom = 1) {
   render(
     <MobileEditorToolbar
       layer={layer}
+      pageLabel="page"
       busy={false}
       canUndo={true}
       canRedo={false}

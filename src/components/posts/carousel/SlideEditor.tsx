@@ -27,6 +27,9 @@ import {
   resolveFontFamily,
 } from "@/app/(app)/brand/lib/font-catalogue";
 import { LayerInspector } from "@/components/design/LayerInspector";
+import { MobileEditorToolbar } from "@/components/design/MobileEditorToolbar";
+import { MobileFontSheet } from "@/components/design/MobileFontSheet";
+import { PageOptionsSheet } from "@/components/design/PageOptionsSheet";
 import { rasterizeStage, waitForBackground } from "@/components/design/rasterize";
 import { ShortcutDialog } from "@/components/design/ShortcutDialog";
 import { sampleBackgroundRegion } from "@/components/design/sample-background";
@@ -37,11 +40,6 @@ import {
   CarouselPreviewDialog,
   type PreviewSlide,
 } from "@/components/posts/carousel/CarouselPreviewDialog";
-import { MobileEditorToolbar } from "@/components/posts/carousel/MobileEditorToolbar";
-import {
-  MobileFontSheet,
-  MobileOptionsSheet,
-} from "@/components/posts/carousel/MobileOptionsSheet";
 import { type FilmstripSlide, SlideFilmstrip } from "@/components/posts/carousel/SlideFilmstrip";
 import { BlockingOverlay } from "@/components/ui/blocking-overlay";
 import { Button } from "@/components/ui/button";
@@ -1031,6 +1029,7 @@ export function SlideEditor({
             visible={!mobileFilmstripOpen}
             zoom={mobileZoom}
             canAddLogo={Boolean(logoAssetId)}
+            pageLabel={CAROUSEL_LABELS.page}
             onAddText={() => editor.addTextLayer("body", "Inter", "#ffffff")}
             onAddShape={() => editor.addShapeLayer("#000000")}
             onAddLogo={() => logoAssetId && editor.addLogoLayer(logoAssetId)}
@@ -1139,18 +1138,30 @@ export function SlideEditor({
 
           {backgroundPicker}
         </div>
-        <MobileOptionsSheet
+        <PageOptionsSheet
           open={mobileControlsOpen}
           onClose={() => setMobileControlsOpen(false)}
           layer={selectedLayer}
-          busy={busy}
-          platingAll={platingAll}
-          highlightAll={highlighting}
+          pageLabel={CAROUSEL_LABELS.page}
           onChange={(patch) => editor.selectedId && editor.updateLayer(editor.selectedId, patch)}
-          onHighlightAll={(on) => void applyHighlightToAll(on)}
         >
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="mobile-highlight-all"
+                indeterminate={highlighting.some}
+                checked={highlighting.all}
+                disabled={busy || platingAll}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  void applyHighlightToAll(event.target.checked)
+                }
+              />
+              <Label htmlFor="mobile-highlight-all">Highlight text on every slide</Label>
+              {platingAll && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            </div>
+          </div>
           {backgroundPicker}
-        </MobileOptionsSheet>
+        </PageOptionsSheet>
         <MobileFontSheet
           open={mobileFontsOpen && selectedLayer?.type === "text"}
           onClose={() => setMobileFontsOpen(false)}

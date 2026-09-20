@@ -57,6 +57,8 @@ interface MobileEditorToolbarProps {
   visible?: boolean;
   zoom: number;
   canAddLogo: boolean;
+  /** The noun for a page — "slide" in a carousel. */
+  pageLabel: string;
   onAddText: () => void;
   onAddShape: () => void;
   onAddLogo: () => void;
@@ -85,6 +87,7 @@ export function MobileEditorToolbar({
   visible = true,
   zoom,
   canAddLogo,
+  pageLabel,
   onAddText,
   onAddShape,
   onAddLogo,
@@ -134,7 +137,7 @@ export function MobileEditorToolbar({
         <div
           className="flex h-[3.625rem] items-stretch gap-1 overflow-x-auto overscroll-x-contain px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="toolbar"
-          aria-label={layer ? `${layer.type} tools` : "Add and slide tools"}
+          aria-label={layer ? `${layer.type} tools` : `Add and ${pageLabel} tools`}
         >
           {layer ? (
             <SelectedLayerTools
@@ -156,7 +159,12 @@ export function MobileEditorToolbar({
               {canAddLogo && (
                 <ToolButton icon={ImageIcon} label="Logo" onClick={onAddLogo} disabled={busy} />
               )}
-              <ToolButton icon={Settings2} label="Slide" onClick={onOpenDetails} disabled={busy} />
+              <ToolButton
+                icon={Settings2}
+                label={pageLabel}
+                onClick={onOpenDetails}
+                disabled={busy}
+              />
             </>
           )}
         </div>
