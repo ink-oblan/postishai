@@ -1,8 +1,9 @@
 "use client";
 
 import { AlertCircle, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DesignPreview } from "@/components/design/DesignPreview";
+import { SlideThumb, useThumbScrub } from "@/components/posts/carousel/SlideThumb";
 import { CAROUSEL_SLIDE_STATUS } from "@/lib/constants";
 import type { CanvasSpec } from "@/lib/design/canvas-spec";
 import type { DesignDocument } from "@/lib/design/document";
@@ -43,8 +44,10 @@ export function SlideFilmstrip({
   resolveFontFamily,
 }: SlideFilmstripProps) {
   const [desktop, setDesktop] = useState(false);
-  const filmstripRef = useRef<HTMLDivElement | null>(null);
-  const selectedRef = useRef<HTMLButtonElement | null>(null);
+  const { stripRef, stripProps, scrubbing, isScrubbing, shouldIgnoreClick } = useThumbScrub(
+    onSelect,
+    !desktop,
+  );
   const ordered = useMemo(() => [...slides].sort((a, b) => a.order - b.order), [slides]);
   const selectedIndex = Math.max(
     ordered.findIndex((slide) => slide.id === selectedId),
@@ -64,22 +67,18 @@ export function SlideFilmstrip({
   }, []);
 
   const centerSelected = useCallback(() => {
-    const filmstrip = filmstripRef.current;
-    const node = selectedRef.current;
-    if (!desktop && node && filmstrip) {
+    const filmstrip = stripRef.current;
+    const node = filmstrip?.querySelector<HTMLElement>(`[data-thumb="${selectedId}"]`);
+    if (!desktop && !isScrubbing() && node && filmstrip) {
       // Only move the horizontal strip. scrollIntoView would also jump the whole page down to
       // the thumbnails when the editor first mounts on a phone.
       filmstrip.scrollLeft = node.offsetLeft - (filmstrip.clientWidth - node.clientWidth) / 2;
     }
-  }, [desktop]);
+  }, [desktop, isScrubbing, selectedId, stripRef]);
 
-  const captureSelected = useCallback(
-    (node: HTMLButtonElement | null) => {
-      selectedRef.current = node;
-      centerSelected();
-    },
-    [centerSelected],
-  );
+  useEffect(() => {
+    centerSelected();
+  }, [centerSelected]);
 
   useEffect(() => {
     if (desktop || !centerSignal) return;
@@ -93,11 +92,13 @@ export function SlideFilmstrip({
 
   return (
     <div
-      ref={filmstripRef}
+      {...stripProps}
+      role="toolbar"
+      aria-label="Slides"
       className={`relative mx-auto w-full max-w-full shrink-0 ${
         desktop
           ? "overflow-clip [mask-image:linear-gradient(to_right,transparent_0%,#000_18%,#000_82%,transparent_100%)]"
-          : "overflow-x-auto overscroll-x-contain scroll-smooth"
+          : "touch-none overflow-x-auto overscroll-x-contain scroll-smooth"
       }`}
       style={{
         maxWidth: VISIBLE_SLOTS * (THUMB_WIDTH + GAP) - GAP,
@@ -108,24 +109,24 @@ export function SlideFilmstrip({
         className={
           desktop
             ? "absolute top-1 left-1/2 flex transition-transform duration-300 ease-out"
-            : "mx-auto flex w-max snap-x snap-mandatory py-1"
+            : "mx-auto flex w-max py-1"
         }
         style={{ gap: GAP, transform: desktop ? `translateX(-${trackOffset}px)` : undefined }}
       >
         {ordered.map((slide) => (
-          <button
+          <SlideThumb
             key={slide.id}
-            ref={slide.id === selectedId ? captureSelected : undefined}
-            type="button"
-            onClick={() => onSelect(slide.id)}
-            data-testid="filmstrip-slide"
-            className={`relative shrink-0 snap-center overflow-hidden rounded-md border-2 text-left transition-all duration-300 ${
-              selectedId === slide.id
-                ? "border-primary opacity-100"
-                : "border-border opacity-60 hover:opacity-100"
-            }`}
-            style={{ width: thumbWidth }}
+            thumbKey={slide.id}
+            selected={slide.id === selectedId}
+            lifted={scrubbing}
+            width={thumbWidth}
+            badge={slide.order + 1}
+            label={slide.headline ?? `Slide ${slide.order + 1}`}
             title={slide.headline ?? `Slide ${slide.order + 1}`}
+            testId="filmstrip-slide"
+            onClick={() => {
+              if (!shouldIgnoreClick()) onSelect(slide.id);
+            }}
           >
             <div
               className="relative bg-muted"
@@ -148,11 +149,8 @@ export function SlideFilmstrip({
                   <AlertCircle className="h-4 w-4 text-destructive drop-shadow" />
                 ) : null}
               </div>
-              <span className="absolute bottom-0.5 left-1 font-medium text-[10px] text-white drop-shadow">
-                {slide.order + 1}
-              </span>
             </div>
-          </button>
+          </SlideThumb>
         ))}
       </div>
     </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ALargeSmall,
   AlignCenter,
   AlignLeft,
   AlignRight,
@@ -14,7 +13,6 @@ import {
   Italic,
   type LucideIcon,
   Minus,
-  Palette,
   Plus,
   Redo2,
   SendToBack,
@@ -25,7 +23,6 @@ import {
   Type,
   Underline,
   Undo2,
-  X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -38,9 +35,10 @@ import {
 } from "@/lib/design/document";
 import { cn } from "@/lib/utils";
 
-const LONG_PRESS_MS = 280;
+const STYLE_MENU_WIDTH = 176;
 const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 400;
+const OPACITY_STEP = 0.125;
 
 type TextStyle = "bold" | "italic" | "underline" | "lineThrough";
 
@@ -56,6 +54,7 @@ interface MobileEditorToolbarProps {
   busy: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  visible?: boolean;
   zoom: number;
   canAddLogo: boolean;
   onAddText: () => void;
@@ -70,8 +69,8 @@ interface MobileEditorToolbarProps {
   onDelete: () => void;
   onRaise: () => void;
   onLower: () => void;
-  onDeselect: () => void;
   onOpenDetails: () => void;
+  onOpenFonts: () => void;
 }
 
 /**
@@ -83,6 +82,7 @@ export function MobileEditorToolbar({
   busy,
   canUndo,
   canRedo,
+  visible = true,
   zoom,
   canAddLogo,
   onAddText,
@@ -97,12 +97,18 @@ export function MobileEditorToolbar({
   onDelete,
   onRaise,
   onLower,
-  onDeselect,
   onOpenDetails,
+  onOpenFonts,
 }: MobileEditorToolbarProps) {
   return (
-    <div className="pointer-events-none absolute inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-30 lg:hidden">
-      <div className="mb-2 flex">
+    <div
+      inert={!visible}
+      className={cn(
+        "pointer-events-none absolute inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-30 transition-opacity duration-200 lg:hidden",
+        visible ? "opacity-100" : "opacity-0",
+      )}
+    >
+      <div className="mb-2 flex pl-14">
         {zoom !== 1 && (
           <div className="pointer-events-auto flex rounded-full border border-primary-foreground/15 bg-primary/90 p-1 text-primary-foreground shadow-lg backdrop-blur-xl">
             <HistoryButton
@@ -140,8 +146,8 @@ export function MobileEditorToolbar({
               onDelete={onDelete}
               onRaise={onRaise}
               onLower={onLower}
-              onDeselect={onDeselect}
               onOpenDetails={onOpenDetails}
+              onOpenFonts={onOpenFonts}
             />
           ) : (
             <>
@@ -168,8 +174,8 @@ function SelectedLayerTools({
   onDelete,
   onRaise,
   onLower,
-  onDeselect,
   onOpenDetails,
+  onOpenFonts,
 }: Pick<
   MobileEditorToolbarProps,
   | "layer"
@@ -180,17 +186,17 @@ function SelectedLayerTools({
   | "onDelete"
   | "onRaise"
   | "onLower"
-  | "onDeselect"
   | "onOpenDetails"
+  | "onOpenFonts"
 > & { layer: Layer }) {
   const alignments = ["left", "center", "right"] as const;
 
   return (
     <>
-      <ToolButton icon={X} label="Close" onClick={onDeselect} disabled={busy} />
       {layer.type === "text" && (
         <>
-          <TextStyleScrubber layer={layer} busy={busy} onChange={onChange} />
+          <ToolButton icon={Type} label="Font" onClick={onOpenFonts} disabled={busy} />
+          <TextStyleMenu layer={layer} busy={busy} onChange={onChange} />
           <ToolButton
             icon={Minus}
             label="Smaller"
@@ -217,7 +223,6 @@ function SelectedLayerTools({
               onChange({ align: alignments[(index + 1) % alignments.length] });
             }}
             disabled={busy}
-            active={layer.align === "center"}
           />
           <ToolButton
             icon={Highlighter}
@@ -226,7 +231,6 @@ function SelectedLayerTools({
             disabled={busy}
             active={Boolean(layer.background)}
           />
-          <ToolButton icon={ALargeSmall} label="Font" onClick={onOpenDetails} disabled={busy} />
         </>
       )}
       {layer.type === "shape" && (
@@ -238,26 +242,31 @@ function SelectedLayerTools({
             disabled={busy}
           />
           <ToolButton
-            icon={Palette}
-            label="Opacity"
-            onClick={() => onChange({ opacity: layer.opacity <= 0.25 ? 1 : layer.opacity - 0.25 })}
-            disabled={busy}
+            icon={Minus}
+            label="Fade"
+            onClick={() => onChange({ opacity: Math.max(0, layer.opacity - OPACITY_STEP) })}
+            disabled={busy || layer.opacity <= 0}
           />
-          <ToolButton icon={Settings2} label="More" onClick={onOpenDetails} disabled={busy} />
+          <ToolButton
+            icon={Plus}
+            label="Solid"
+            onClick={() => onChange({ opacity: Math.min(1, layer.opacity + OPACITY_STEP) })}
+            disabled={busy || layer.opacity >= 1}
+          />
         </>
       )}
       <ToolButton icon={Copy} label="Duplicate" onClick={onDuplicate} disabled={busy} />
       <ToolButton icon={BringToFront} label="Forward" onClick={onRaise} disabled={busy} />
       <ToolButton icon={SendToBack} label="Backward" onClick={onLower} disabled={busy} />
-      {layer.type === "logo" && (
+      <ToolButton icon={Trash2} label="Delete" onClick={onDelete} disabled={busy} destructive />
+      {(layer.type === "logo" || (layer.type === "text" && Boolean(layer.background))) && (
         <ToolButton icon={Settings2} label="More" onClick={onOpenDetails} disabled={busy} />
       )}
-      <ToolButton icon={Trash2} label="Delete" onClick={onDelete} disabled={busy} destructive />
     </>
   );
 }
 
-function TextStyleScrubber({
+function TextStyleMenu({
   layer,
   busy,
   onChange,
@@ -267,41 +276,38 @@ function TextStyleScrubber({
   onChange: (patch: Partial<Layer>) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [hovered, setHovered] = useState<TextStyle | null>(null);
   const [position, setPosition] = useState<{ left: number; bottom: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const holdingRef = useRef(false);
-  const hoveredRef = useRef<TextStyle | null>(null);
-  const suppressClickRef = useRef(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
+  useEffect(() => {
+    if (!open) return;
+
+    function closeOnOutside(event: PointerEvent) {
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
 
   const toggle = (style: TextStyle) => {
     if (style === "bold") {
       onChange({ fontWeight: isBold(layer.fontWeight) ? REGULAR_WEIGHT : BOLD_WEIGHT });
-      return;
+    } else {
+      onChange({ [style]: !layer[style] });
     }
-    onChange({ [style]: !layer[style] });
-  };
-
-  const finish = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = null;
-    if (holdingRef.current) {
-      if (hoveredRef.current) toggle(hoveredRef.current);
-      suppressClickRef.current = true;
-    }
-    holdingRef.current = false;
-    hoveredRef.current = null;
     setOpen(false);
-    setHovered(null);
-    setPosition(null);
   };
 
   return (
@@ -310,28 +316,28 @@ function TextStyleScrubber({
         position &&
         createPortal(
           <div
+            ref={menuRef}
             role="menu"
-            style={{ left: position.left, bottom: position.bottom }}
-            className="fixed z-[70] flex -translate-x-1/2 flex-col gap-1 rounded-2xl border border-primary-foreground/20 bg-primary/95 p-1.5 text-primary-foreground shadow-2xl backdrop-blur-xl"
+            style={{ left: position.left, bottom: position.bottom, width: STYLE_MENU_WIDTH }}
+            className="fixed z-[70] flex flex-col gap-0.5 rounded-2xl border border-primary-foreground/20 bg-primary/95 p-1.5 text-primary-foreground shadow-2xl backdrop-blur-xl"
           >
             {TEXT_STYLES.map(({ key, label, icon: Icon }) => {
               const active = styleIsActive(layer, key);
               return (
-                <div
+                <button
                   key={key}
-                  data-style-option={key}
+                  type="button"
                   role="menuitemcheckbox"
-                  tabIndex={-1}
-                  aria-label={label}
                   aria-checked={active}
+                  onClick={() => toggle(key)}
                   className={cn(
-                    "flex size-11 items-center justify-center rounded-xl transition-colors [&_svg]:size-5",
-                    hovered === key && "bg-primary-foreground text-primary",
-                    hovered !== key && active && "bg-primary-foreground/20",
+                    "flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-primary-foreground/10 [&_svg]:size-4",
+                    active && "bg-primary-foreground/20",
                   )}
                 >
                   <Icon />
-                </div>
+                  <span>{label}</span>
+                </button>
               );
             })}
           </div>,
@@ -340,45 +346,29 @@ function TextStyleScrubber({
       <button
         ref={buttonRef}
         type="button"
-        aria-label="Style. Tap for bold, hold and slide for more"
-        aria-pressed={isBold(layer.fontWeight)}
         disabled={busy}
-        onPointerDown={(event) => {
-          if (event.pointerType !== "mouse") event.currentTarget.setPointerCapture(event.pointerId);
-          timerRef.current = setTimeout(() => {
-            const rect = buttonRef.current?.getBoundingClientRect();
-            if (!rect) return;
-            setPosition({
-              left: rect.left + rect.width / 2,
-              bottom: window.innerHeight - rect.top + 8,
-            });
-            holdingRef.current = true;
-            setOpen(true);
-          }, LONG_PRESS_MS);
-        }}
-        onPointerMove={(event) => {
-          if (!holdingRef.current) return;
-          const option = document
-            .elementFromPoint(event.clientX, event.clientY)
-            ?.closest<HTMLElement>("[data-style-option]")?.dataset.styleOption as
-            | TextStyle
-            | undefined;
-          hoveredRef.current = option ?? null;
-          setHovered(hoveredRef.current);
-        }}
-        onPointerUp={finish}
-        onPointerCancel={finish}
-        onContextMenu={(event) => event.preventDefault()}
+        aria-haspopup="menu"
+        aria-expanded={open}
         onClick={() => {
-          if (suppressClickRef.current) {
-            suppressClickRef.current = false;
+          if (open) {
+            setOpen(false);
             return;
           }
-          toggle("bold");
+          const rect = buttonRef.current?.getBoundingClientRect();
+          if (!rect) return;
+          setPosition({
+            left: Math.min(
+              Math.max(rect.left + rect.width / 2 - STYLE_MENU_WIDTH / 2, 8),
+              Math.max(window.innerWidth - STYLE_MENU_WIDTH - 8, 8),
+            ),
+            bottom: window.innerHeight - rect.top + 8,
+          });
+          setOpen(true);
         }}
         className={cn(
-          "flex min-w-[4.25rem] touch-none select-none flex-col items-center justify-center gap-1 rounded-xl px-2 text-[10px] transition-colors disabled:opacity-35 [&_svg]:size-5",
-          isBold(layer.fontWeight) && "bg-primary-foreground/15",
+          "flex min-w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-2 text-[10px] transition-colors hover:bg-primary-foreground/10 disabled:opacity-35 [&_svg]:size-5",
+          (open || TEXT_STYLES.some(({ key }) => styleIsActive(layer, key))) &&
+            "bg-primary-foreground/15",
         )}
       >
         <Bold />
@@ -412,7 +402,7 @@ function ToolButton({
       className={cn(
         "flex min-w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-2 text-[10px] transition-colors hover:bg-primary-foreground/10 disabled:opacity-35 [&_svg]:size-5",
         active && "bg-primary-foreground/15",
-        destructive && "text-red-200",
+        destructive && "my-1.5 bg-destructive text-white hover:bg-destructive/90",
       )}
     >
       <Icon />

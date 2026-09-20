@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Layer, TextLayer } from "@/lib/design/document";
 import { MobileEditorToolbar } from "./MobileEditorToolbar";
@@ -40,6 +40,7 @@ function toolbar(layer: Layer | null = null, zoom = 1) {
     onLower: vi.fn(),
     onDeselect: vi.fn(),
     onOpenDetails: vi.fn(),
+    onOpenFonts: vi.fn(),
   };
   render(
     <MobileEditorToolbar
@@ -57,9 +58,7 @@ function toolbar(layer: Layer | null = null, zoom = 1) {
 
 afterEach(() => {
   cleanup();
-  vi.useRealTimers();
   vi.restoreAllMocks();
-  Reflect.deleteProperty(document, "elementFromPoint");
 });
 
 describe("MobileEditorToolbar", () => {
@@ -102,35 +101,30 @@ describe("MobileEditorToolbar", () => {
     expect(handlers.onChange).toHaveBeenCalledWith({ fontSize: 52 });
   });
 
-  it("uses a tap on Style as the quick bold toggle", () => {
-    const handlers = toolbar(textLayer);
-
-    fireEvent.click(screen.getByRole("button", { name: /Style/ }));
-    expect(handlers.onChange).toHaveBeenCalledWith({ fontWeight: 700 });
-  });
-
-  it("opens the vertical style rail on hold and applies the dragged-to option", () => {
-    vi.useFakeTimers();
+  it("opens the style menu on tap and applies the chosen option", () => {
     const handlers = toolbar(textLayer);
     const trigger = screen.getByRole("button", { name: /Style/ });
 
-    fireEvent.pointerDown(trigger, { pointerType: "mouse", pointerId: 1 });
-    act(() => vi.advanceTimersByTime(300));
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 
-    const underline = screen.getByRole("menuitemcheckbox", { name: "Underline" });
-    Object.defineProperty(document, "elementFromPoint", {
-      configurable: true,
-      value: vi.fn(() => underline),
-    });
-    fireEvent.pointerMove(trigger, {
-      pointerType: "mouse",
-      pointerId: 1,
-      clientX: 10,
-      clientY: 10,
-    });
-    fireEvent.pointerUp(trigger, { pointerType: "mouse", pointerId: 1 });
+    fireEvent.click(trigger);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    expect(handlers.onChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Underline" }));
 
     expect(handlers.onChange).toHaveBeenCalledWith({ underline: true });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("closes the style menu when tapping outside it", () => {
+    toolbar(textLayer);
+
+    fireEvent.click(screen.getByRole("button", { name: /Style/ }));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 });

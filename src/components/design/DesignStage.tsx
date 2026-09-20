@@ -111,6 +111,8 @@ interface DesignStageProps {
   onLayerCommit: (id: string, patch: Partial<DesignLayer>) => void;
   /** Closes that streaming run, so the next edit starts a fresh undo step. */
   onGestureEnd: () => void;
+  /** Lets the viewport yield touch gestures to native selection while its textarea is active. */
+  onTextEditingChange?: (editing: boolean) => void;
   stageRef?: React.RefObject<Konva.Stage | null>;
   /** Maps a document's stored font name onto a CSS family the canvas can draw. */
   resolveFontFamily?: (name: string) => string;
@@ -127,6 +129,7 @@ export function DesignStage({
   onLayerChange,
   onLayerCommit,
   onGestureEnd,
+  onTextEditingChange,
   stageRef,
   resolveFontFamily = identityFontFamily,
 }: DesignStageProps) {
@@ -231,6 +234,7 @@ export function DesignStage({
   const selectedLayer = document.layers.find((layer) => layer.id === selectedId) ?? null;
   const editingLayer =
     editingId === selectedId && selectedLayer?.type === "text" ? selectedLayer : null;
+  const isTextEditing = Boolean(editingLayer);
   const canvasRootRef = useRef<HTMLDivElement>(null);
   const keyboardBaselineRef = useRef(0);
   const editorHeightRef = useRef(0);
@@ -239,6 +243,11 @@ export function DesignStage({
     y: number;
     zoom: number;
   } | null>(null);
+
+  useEffect(() => {
+    onTextEditingChange?.(isTextEditing);
+    return () => onTextEditingChange?.(false);
+  }, [isTextEditing, onTextEditingChange]);
 
   const updateKeyboardFocus = useCallback(
     (editorHeight = editorHeightRef.current) => {
@@ -328,12 +337,10 @@ export function DesignStage({
     };
     frame = requestAnimationFrame(followKeyboard);
     viewport.addEventListener("resize", update);
-    viewport.addEventListener("scroll", update);
     window.addEventListener("resize", update);
     return () => {
       cancelAnimationFrame(frame);
       viewport.removeEventListener("resize", update);
-      viewport.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
   }, [editingLayer, updateKeyboardFocus]);
@@ -675,6 +682,7 @@ function TextLayerEditor({
   return (
     <textarea
       ref={ref}
+      data-canvas-text-editor
       value={layer.text}
       spellCheck={false}
       onChange={(event) => onInput(event.target.value)}

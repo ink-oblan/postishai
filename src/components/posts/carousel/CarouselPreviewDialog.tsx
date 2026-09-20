@@ -1,10 +1,11 @@
 "use client";
 
 import { Dialog } from "@base-ui/react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, Pencil, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { SlideThumb, useThumbScrub } from "@/components/posts/carousel/SlideThumb";
 import { Button } from "@/components/ui/button";
-import { wrapIndex } from "@/lib/utils";
+import { cn, wrapIndex } from "@/lib/utils";
 
 function arrowDelta(key: string): number | null {
   if (key === "ArrowRight") return 1;
@@ -15,6 +16,9 @@ function arrowDelta(key: string): number | null {
 const SWIPE_THRESHOLD_PX = 40;
 const DRAG_CAPTURE_PX = 5;
 const EDGE_RESISTANCE = 3;
+const TAP_SLOP_PX = 5;
+const THUMB_WIDTH = 52;
+const CHROME_HINT_MS = 1000;
 
 interface Drag {
   pointerId: number;
@@ -35,6 +39,9 @@ interface CarouselPreviewDialogProps {
   onOpenChange: (open: boolean) => void;
   slides: PreviewSlide[];
   canvas: { width: number; height: number };
+  /** Given, the phone-sized preview offers to finish the post instead of only closing. */
+  onDone?: () => void;
+  doneDisabled?: boolean;
 }
 
 export function CarouselPreviewDialog({
@@ -42,12 +49,26 @@ export function CarouselPreviewDialog({
   onOpenChange,
   slides,
   canvas,
+  onDone,
+  doneDisabled,
 }: CarouselPreviewDialogProps) {
   const [index, setIndex] = useState(0);
+  const [chromeOpen, setChromeOpen] = useState(false);
+
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopHint = useCallback(() => {
+    if (hintTimer.current !== null) clearTimeout(hintTimer.current);
+    hintTimer.current = null;
+  }, []);
 
   useEffect(() => {
-    if (open) setIndex(0);
-  }, [open]);
+    if (!open) return;
+    setIndex(0);
+    setChromeOpen(true);
+    hintTimer.current = setTimeout(() => setChromeOpen(false), CHROME_HINT_MS);
+    return stopHint;
+  }, [open, stopHint]);
 
   const clamped = Math.min(index, Math.max(slides.length - 1, 0));
 
@@ -57,6 +78,19 @@ export function CarouselPreviewDialog({
     },
     [slides.length],
   );
+
+  const scrub = useThumbScrub((key) => {
+    const next = Number(key);
+    if (Number.isInteger(next)) setIndex(next);
+  });
+
+  useEffect(() => {
+    if (scrub.isScrubbing()) return;
+    const strip = scrub.stripRef.current;
+    const thumb = strip?.querySelector<HTMLElement>(`[data-thumb="${clamped}"]`);
+    if (!strip || !thumb) return;
+    strip.scrollLeft = thumb.offsetLeft - (strip.clientWidth - thumb.clientWidth) / 2;
+  }, [clamped, scrub.isScrubbing, scrub.stripRef]);
 
   const [drag, setDrag] = useState<Drag | null>(null);
 
@@ -68,7 +102,11 @@ export function CarouselPreviewDialog({
     }
 
     const dx = event.clientX - drag.x;
-    if (Math.abs(dx) > DRAG_CAPTURE_PX) event.currentTarget.setPointerCapture?.(event.pointerId);
+    if (Math.abs(dx) > DRAG_CAPTURE_PX) {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      stopHint();
+      setChromeOpen(false);
+    }
     setDrag({ ...drag, dx });
   }
 
@@ -78,6 +116,11 @@ export function CarouselPreviewDialog({
 
     const dx = event.clientX - drag.x;
     const dy = event.clientY - drag.y;
+    if (Math.abs(dx) <= TAP_SLOP_PX && Math.abs(dy) <= TAP_SLOP_PX) {
+      stopHint();
+      setChromeOpen((visible) => !visible);
+      return;
+    }
     if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy)) return;
 
     const target = clamped + (dx < 0 ? 1 : -1);
@@ -135,7 +178,7 @@ export function CarouselPreviewDialog({
                 variant="outline"
                 size="icon"
                 aria-label="Close preview"
-                className="absolute top-3 right-3 z-10 rounded-full lg:top-0 lg:right-0"
+                className="absolute top-3 right-3 z-10 hidden rounded-full lg:top-0 lg:right-0 lg:inline-flex"
               />
             }
           >
@@ -162,7 +205,7 @@ export function CarouselPreviewDialog({
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={() => setDrag(null)}
-              className="flex h-full w-full touch-none select-none flex-col items-center justify-center gap-3 overflow-hidden bg-black lg:absolute lg:top-[1.78%] lg:left-[5%] lg:h-[96.44%] lg:w-[90%] lg:rounded-[13.89%/6.34%]"
+              className="flex h-full w-full touch-none select-none flex-col items-center justify-center overflow-hidden bg-black [-webkit-touch-callout:none] lg:absolute lg:top-[1.78%] lg:left-[5%] lg:h-[96.44%] lg:w-[90%] lg:rounded-[13.89%/6.34%]"
             >
               <div
                 data-testid="preview-frame"
@@ -192,22 +235,86 @@ export function CarouselPreviewDialog({
                     />
                   ))}
                 </div>
-              </div>
 
-              <div className="flex justify-center gap-1.5">
-                {slides.map((slide, i) => (
-                  <button
-                    key={slide.id}
-                    type="button"
-                    aria-label={`Go to slide ${i + 1}`}
-                    onClick={() => setIndex(i)}
-                    className={`h-1.5 rounded-full transition-all ${
-                      i === clamped ? "w-4 bg-primary" : "w-1.5 bg-white/35 hover:bg-white/70"
-                    }`}
-                  />
-                ))}
+                <div
+                  {...scrub.stripProps}
+                  onPointerDown={(event) => {
+                    stopHint();
+                    scrub.stripProps.onPointerDown?.(event);
+                  }}
+                  data-testid="preview-strip"
+                  role="toolbar"
+                  aria-label="Slides"
+                  className={cn(
+                    "absolute inset-x-0 bottom-0 z-10 flex touch-none overflow-x-auto overscroll-x-contain scroll-smooth bg-gradient-to-t from-black/70 to-transparent px-3 pt-10 pb-3 transition-opacity duration-200 [scrollbar-width:none] lg:opacity-100 [&::-webkit-scrollbar]:hidden",
+                    chromeOpen
+                      ? "opacity-100"
+                      : "pointer-events-none opacity-0 lg:pointer-events-auto",
+                  )}
+                >
+                  <div className="mx-auto flex w-max gap-2">
+                    {slides.map((slide, i) => (
+                      <SlideThumb
+                        key={slide.id}
+                        thumbKey={String(i)}
+                        selected={i === clamped}
+                        lifted={scrub.scrubbing}
+                        width={THUMB_WIDTH}
+                        badge={i + 1}
+                        label={`Go to slide ${i + 1}`}
+                        tone="overlay"
+                        onClick={() => {
+                          stopHint();
+                          if (!scrub.shouldIgnoreClick()) setIndex(i);
+                        }}
+                      >
+                        {/* biome-ignore lint/performance/noImgElement: blob URL of a freshly rasterised slide */}
+                        <img
+                          src={slide.url}
+                          alt=""
+                          aria-hidden
+                          draggable={false}
+                          className="pointer-events-none block w-full select-none object-cover"
+                          style={{ aspectRatio: `${canvas.width} / ${canvas.height}` }}
+                        />
+                      </SlideThumb>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
+
+            {onDone && (
+              <div
+                data-testid="preview-actions"
+                className={cn(
+                  "absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 bg-gradient-to-b from-black/70 to-transparent px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-10 transition-opacity duration-200 lg:hidden",
+                  chromeOpen ? "opacity-100" : "pointer-events-none opacity-0",
+                )}
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="h-11 rounded-full border-white/30 bg-black/50 px-4 text-white backdrop-blur-md hover:bg-black/70 hover:text-white"
+                >
+                  <Pencil className="mr-1.5 size-4" />
+                  Keep editing
+                </Button>
+                <Button
+                  type="button"
+                  disabled={doneDisabled}
+                  onClick={() => {
+                    onOpenChange(false);
+                    onDone();
+                  }}
+                  className="h-11 rounded-full bg-white px-4 text-black hover:bg-white/90"
+                >
+                  <Check className="mr-1.5 size-4" />
+                  Done
+                </Button>
+              </div>
+            )}
 
             {/* biome-ignore lint/performance/noImgElement: decorative static SVG overlay */}
             <img

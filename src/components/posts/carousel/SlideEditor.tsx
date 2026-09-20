@@ -15,7 +15,6 @@ import {
   SlidersHorizontal,
   Type,
   Undo2,
-  X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -38,6 +37,10 @@ import {
   type PreviewSlide,
 } from "@/components/posts/carousel/CarouselPreviewDialog";
 import { MobileEditorToolbar } from "@/components/posts/carousel/MobileEditorToolbar";
+import {
+  MobileFontSheet,
+  MobileOptionsSheet,
+} from "@/components/posts/carousel/MobileOptionsSheet";
 import { type FilmstripSlide, SlideFilmstrip } from "@/components/posts/carousel/SlideFilmstrip";
 import { BlockingOverlay } from "@/components/ui/blocking-overlay";
 import { Button } from "@/components/ui/button";
@@ -134,10 +137,12 @@ export function SlideEditor({
   const [frozenSelectionId, setFrozenSelectionId] = useState<string | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
+  const [mobileFontsOpen, setMobileFontsOpen] = useState(false);
   const [mobileFilmstripOpen, setMobileFilmstripOpen] = useState(false);
   const [mobileZoom, setMobileZoom] = useState(1);
   const [mobilePan, setMobilePan] = useState({ x: 0, y: 0 });
   const [pinching, setPinching] = useState(false);
+  const [textEditing, setTextEditing] = useState(false);
   const [platingAll, setPlatingAll] = useState(false);
   const stageRef = useRef<Konva.Stage | null>(null);
   const stageAreaRef = useRef<HTMLDivElement | null>(null);
@@ -628,10 +633,32 @@ export function SlideEditor({
     setMobilePan({ x: 0, y: 0 });
   }, []);
 
+  useEffect(() => {
+    if (!textEditing) return;
+    zoomGestureRef.current.points.clear();
+    zoomGestureRef.current.distance = 0;
+    panGestureRef.current = null;
+    setPinching(false);
+  }, [textEditing]);
+
   const handleViewportPointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (event.pointerType !== "touch") return;
       const gesture = zoomGestureRef.current;
+      if (
+        textEditing ||
+        (event.target instanceof Element && event.target.closest("[data-canvas-text-editor]"))
+      ) {
+        // Native selection handles emit touch pointers from the textarea. They belong to the OS
+        // text editor, not the canvas viewport; retaining one here can turn a cursor drag into a
+        // pan or combine it with the next touch and accidentally change the canvas scale.
+        gesture.points.clear();
+        gesture.distance = 0;
+        panGestureRef.current = null;
+        setPinching(false);
+        return;
+      }
+
       gesture.points.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (gesture.points.size === 1 && mobileZoom > 1) {
         panGestureRef.current = null;
@@ -657,13 +684,21 @@ export function SlideEditor({
       gesture.zoom = mobileZoom;
       setPinching(true);
     },
-    [mobilePan, mobileZoom],
+    [mobilePan, mobileZoom, textEditing],
   );
 
   const handleViewportPointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.pointerType !== "touch") return;
       const gesture = zoomGestureRef.current;
-      if (event.pointerType !== "touch" || !gesture.points.has(event.pointerId)) return;
+      if (textEditing) {
+        gesture.points.clear();
+        gesture.distance = 0;
+        panGestureRef.current = null;
+        setPinching(false);
+        return;
+      }
+      if (!gesture.points.has(event.pointerId)) return;
       gesture.points.set(event.pointerId, { x: event.clientX, y: event.clientY });
       const pan = panGestureRef.current;
       if (gesture.points.size === 1 && pan?.pointerId === event.pointerId) {
@@ -689,7 +724,7 @@ export function SlideEditor({
         clampMobileZoom(gesture.zoom * (pointerDistance(gesture.points) / gesture.distance)),
       );
     },
-    [mobileZoom, spec, stageWidth],
+    [mobileZoom, spec, stageWidth, textEditing],
   );
 
   const finishViewportPointer = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
@@ -702,6 +737,38 @@ export function SlideEditor({
       setPinching(false);
     }
   }, []);
+
+  const backgroundPicker = selectedSlide ? (
+    <BackgroundPicker
+      postId={postId}
+      slideId={selectedSlide.id}
+      visualPrompt={selectedSlide.visualPrompt}
+      status={selectedSlide.status}
+      onRegenerated={() =>
+        setSlides((current) =>
+          current.map((slide) =>
+            slide.id === selectedSlide.id
+              ? { ...slide, status: CAROUSEL_SLIDE_STATUS.GENERATING }
+              : slide,
+          ),
+        )
+      }
+      onRestored={(imageVersion) =>
+        setSlides((current) =>
+          current.map((slide) =>
+            slide.id === selectedSlide.id
+              ? {
+                  ...slide,
+                  status: CAROUSEL_SLIDE_STATUS.COMPLETED,
+                  hasImage: true,
+                  imageVersion,
+                }
+              : slide,
+          ),
+        )
+      }
+    />
+  ) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex min-h-0 flex-1 flex-col overflow-hidden bg-black lg:relative lg:inset-auto lg:z-auto lg:gap-4 lg:overflow-visible lg:bg-transparent">
@@ -734,6 +801,15 @@ export function SlideEditor({
             "All changes saved"
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => void handlePreview()}
+          disabled={busy || anyPending || slides.length === 0}
+          aria-label="Preview the carousel"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-black/50 backdrop-blur-md disabled:opacity-40"
+        >
+          {previewing ? <Loader2 className="size-5 animate-spin" /> : <Eye className="size-5" />}
+        </button>
         <Button
           onClick={handlePublish}
           disabled={busy || anyPending || anyFailed || slides.length === 0}
@@ -851,7 +927,7 @@ export function SlideEditor({
 
       <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row lg:gap-6">
         <div
-          inert={busy || mobileControlsOpen}
+          inert={busy || mobileControlsOpen || mobileFontsOpen}
           className="relative flex min-h-0 min-w-0 flex-1 flex-col lg:gap-3"
         >
           {/** biome-ignore lint/a11y/noStaticElementInteractions: deselect mirrors the canvas's own click-away, and Esc already does it from the keyboard */}
@@ -887,16 +963,32 @@ export function SlideEditor({
                 onLayerChange={editor.updateLayer}
                 onLayerCommit={editor.commitLayer}
                 onGestureEnd={editor.endGesture}
+                onTextEditingChange={setTextEditing}
                 resolveFontFamily={resolveFontFamily}
                 stageRef={stageRef}
               />
             </div>
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-[9.75rem] z-20 flex h-12 items-center justify-start overflow-visible px-2 lg:pointer-events-auto lg:static lg:block lg:h-auto lg:p-0">
+          {mobileFilmstripOpen && (
+            <button
+              type="button"
+              aria-label="Close slide previews"
+              onClick={() => setMobileFilmstripOpen(false)}
+              className="fixed inset-0 z-30 cursor-default lg:hidden"
+            />
+          )}
+
+          <div
+            className={`pointer-events-none absolute inset-x-0 z-40 flex items-center justify-start overflow-visible px-2 transition-[height,bottom] duration-300 ease-out lg:pointer-events-auto lg:static lg:z-auto lg:block lg:h-auto lg:p-0 ${
+              mobileFilmstripOpen
+                ? "bottom-[max(0.5rem,env(safe-area-inset-bottom))] h-[7.125rem]"
+                : "bottom-[calc(max(0.5rem,env(safe-area-inset-bottom))+4.125rem)] h-12"
+            }`}
+          >
             <div
-              className={`pointer-events-auto relative flex min-h-12 max-w-full items-center overflow-hidden rounded-2xl bg-black/60 shadow-xl backdrop-blur-xl transition-[width] duration-300 ease-out lg:h-auto lg:min-h-0 lg:w-full lg:overflow-visible lg:rounded-none lg:bg-transparent lg:shadow-none lg:backdrop-blur-none ${
-                mobileFilmstripOpen ? "w-full" : "h-12 w-12"
+              className={`pointer-events-auto relative flex min-h-12 max-w-full items-center overflow-hidden rounded-2xl bg-primary/95 text-primary-foreground shadow-xl backdrop-blur-xl transition-[width,height] duration-300 ease-out lg:h-auto lg:min-h-0 lg:w-full lg:overflow-visible lg:rounded-none lg:bg-transparent lg:text-foreground lg:shadow-none lg:backdrop-blur-none ${
+                mobileFilmstripOpen ? "h-full w-full" : "h-12 w-12"
               }`}
             >
               <button
@@ -904,7 +996,7 @@ export function SlideEditor({
                 aria-label={mobileFilmstripOpen ? "Hide slide previews" : "Show slide previews"}
                 aria-expanded={mobileFilmstripOpen}
                 onClick={() => setMobileFilmstripOpen((open) => !open)}
-                className="absolute top-1/2 left-1 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md transition-colors lg:hidden"
+                className="absolute top-1 left-1 z-10 flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md transition-colors lg:hidden"
               >
                 {mobileFilmstripOpen ? (
                   <ChevronLeft className="size-5" />
@@ -935,6 +1027,7 @@ export function SlideEditor({
             busy={busy || platingAll}
             canUndo={editor.canUndo}
             canRedo={editor.canRedo}
+            visible={!mobileFilmstripOpen}
             zoom={mobileZoom}
             canAddLogo={Boolean(logoAssetId)}
             onAddText={() => editor.addTextLayer("body", "Inter", "#ffffff")}
@@ -949,37 +1042,15 @@ export function SlideEditor({
             onDelete={() => editor.selectedId && editor.deleteLayer(editor.selectedId)}
             onRaise={() => editor.selectedId && editor.raiseLayer(editor.selectedId)}
             onLower={() => editor.selectedId && editor.lowerLayer(editor.selectedId)}
-            onDeselect={() => editor.select(null)}
             onOpenDetails={() => setMobileControlsOpen(true)}
+            onOpenFonts={() => setMobileFontsOpen(true)}
           />
         </div>
 
         <div
           inert={busy}
-          className={`${
-            mobileControlsOpen
-              ? "absolute inset-x-2 top-[max(4.5rem,env(safe-area-inset-top))] bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-30 block"
-              : "hidden"
-          } min-h-0 w-auto flex-1 space-y-5 overflow-y-auto rounded-2xl border bg-background/95 p-4 shadow-2xl backdrop-blur-xl lg:static lg:block lg:w-96 lg:flex-none lg:rounded-none lg:border-y-0 lg:border-r-0 lg:bg-transparent lg:py-0 lg:pr-3 lg:pl-6 lg:shadow-none lg:backdrop-blur-none`}
+          className="hidden min-h-0 w-96 flex-none space-y-5 overflow-y-auto border-l pr-3 pl-6 lg:block"
         >
-          <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex items-center justify-between border-b bg-background px-4 py-3 lg:hidden">
-            <div>
-              <p className="font-semibold text-sm">
-                {selectedLayer ? `${selectedLayer.type} controls` : "Slide controls"}
-              </p>
-              <p className="text-muted-foreground text-xs">Changes appear on the canvas live.</p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Close controls"
-              onClick={() => setMobileControlsOpen(false)}
-              className="size-10 rounded-full"
-            >
-              <X />
-            </Button>
-          </div>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -1064,41 +1135,33 @@ export function SlideEditor({
             </p>
           </div>
 
-          {selectedSlide && (
-            <BackgroundPicker
-              postId={postId}
-              slideId={selectedSlide.id}
-              visualPrompt={selectedSlide.visualPrompt}
-              status={selectedSlide.status}
-              onRegenerated={() =>
-                setSlides((current) =>
-                  current.map((slide) =>
-                    slide.id === selectedSlide.id
-                      ? { ...slide, status: CAROUSEL_SLIDE_STATUS.GENERATING }
-                      : slide,
-                  ),
-                )
-              }
-              onRestored={(imageVersion) =>
-                setSlides((current) =>
-                  current.map((slide) =>
-                    slide.id === selectedSlide.id
-                      ? {
-                          ...slide,
-                          status: CAROUSEL_SLIDE_STATUS.COMPLETED,
-                          hasImage: true,
-                          imageVersion,
-                        }
-                      : slide,
-                  ),
-                )
-              }
-            />
-          )}
+          {backgroundPicker}
         </div>
+        <MobileOptionsSheet
+          open={mobileControlsOpen}
+          onClose={() => setMobileControlsOpen(false)}
+          layer={selectedLayer}
+          busy={busy}
+          platingAll={platingAll}
+          highlightAll={highlighting}
+          onChange={(patch) => editor.selectedId && editor.updateLayer(editor.selectedId, patch)}
+          onHighlightAll={(on) => void applyHighlightToAll(on)}
+        >
+          {backgroundPicker}
+        </MobileOptionsSheet>
+        <MobileFontSheet
+          open={mobileFontsOpen && selectedLayer?.type === "text"}
+          onClose={() => setMobileFontsOpen(false)}
+          value={selectedLayer?.type === "text" ? selectedLayer.fontFamily : ""}
+          fonts={fonts}
+          onSelect={(fontFamily) =>
+            editor.selectedId && editor.updateLayer(editor.selectedId, { fontFamily })
+          }
+        />
       </div>
       <BlockingOverlay
         active={busy}
+        className="z-50"
         title={
           initializing
             ? "Preparing slide layouts…"
@@ -1116,6 +1179,8 @@ export function SlideEditor({
       <CarouselPreviewDialog
         open={previewOpen}
         onOpenChange={setPreviewOpen}
+        onDone={() => void handlePublish()}
+        doneDisabled={anyPending || anyFailed || slides.length === 0}
         slides={previewSlides}
         canvas={spec}
       />

@@ -13,6 +13,7 @@ import {
   Trash2,
   Underline,
 } from "lucide-react";
+import { resolveFontFamily } from "@/components/design/font-catalogue";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -83,11 +84,7 @@ export function LayerInspector({
   onLower,
   onTogglePlate,
 }: LayerInspectorProps) {
-  if (!layer) {
-    return (
-      <p className="text-muted-foreground text-sm">Select something on the slide to edit it.</p>
-    );
-  }
+  if (!layer) return null;
 
   return (
     <div className="space-y-4">
@@ -135,11 +132,6 @@ export function LayerInspector({
 
       {layer.type === "text" && (
         <>
-          <p className="text-muted-foreground text-xs">
-            Double-click the text on the slide to edit it there. The side handles set the width it
-            wraps at; the height follows the copy.
-          </p>
-
           <div className="space-y-2">
             <Label>Font</Label>
             <Select
@@ -147,13 +139,17 @@ export function LayerInspector({
               onValueChange={(value: string | null) => value && onChange({ fontFamily: value })}
             >
               <SelectTrigger>
-                <SelectValue>
+                <SelectValue style={{ fontFamily: resolveFontFamily(layer.fontFamily) }}>
                   {fonts.find((font) => font.family === layer.fontFamily)?.name ?? layer.fontFamily}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent className="max-w-[calc(100vw-2rem)]">
+              <SelectContent className="max-h-[min(16rem,var(--available-height))] max-w-[calc(100vw-2rem)]">
                 {fonts.map((font) => (
-                  <SelectItem key={font.family} value={font.family}>
+                  <SelectItem
+                    key={font.family}
+                    value={font.family}
+                    style={{ fontFamily: resolveFontFamily(font.family) }}
+                  >
                     {font.name}
                   </SelectItem>
                 ))}

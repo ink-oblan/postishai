@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ export function BackgroundPicker({
   const [prompt, setPrompt] = useState(visualPrompt);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [busy, setBusy] = useState(false);
+  const promptId = useId();
 
   const generating =
     status === CAROUSEL_SLIDE_STATUS.GENERATING || status === CAROUSEL_SLIDE_STATUS.PENDING;
@@ -98,9 +99,9 @@ export function BackgroundPicker({
 
   return (
     <div className="space-y-3 border-t pt-4">
-      <Label htmlFor="visual-prompt">Background</Label>
+      <Label htmlFor={promptId}>Background</Label>
       <Textarea
-        id="visual-prompt"
+        id={promptId}
         value={prompt}
         rows={3}
         disabled={generating}
