@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="900" viewBox="0 0 440 900" fill="none">
+  <defs>
+    <linearGradient id="edge" x1="0" y1="0" x2="440" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6b6b70"/>
+      <stop offset="0.5" stop-color="#3a3a3d"/>
+      <stop offset="1" stop-color="#5c5c61"/>
+    </linearGradient>
+    <mask id="screen">
+      <rect width="440" height="900" fill="#fff"/>
+      <rect x="22" y="16" width="396" height="868" rx="55" fill="#000"/>
+    </mask>
+  </defs>
+  <rect x="3" y="150" width="6" height="34" rx="2" fill="#48484c"/>
+  <rect x="3" y="214" width="6" height="64" rx="2" fill="#48484c"/>
+  <rect x="3" y="294" width="6" height="64" rx="2" fill="#48484c"/>
+  <rect x="431" y="244" width="6" height="100" rx="2" fill="#48484c"/>
+  <g mask="url(#screen)">
+    <rect x="6" y="0" width="428" height="900" rx="70" fill="url(#edge)"/>
+    <rect x="9" y="3" width="422" height="894" rx="67" fill="#0a0a0b"/>
+  </g>
+  <rect x="160" y="28" width="120" height="34" rx="17" fill="#000"/>
+</svg>
