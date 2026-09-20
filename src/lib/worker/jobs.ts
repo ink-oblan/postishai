@@ -120,6 +120,13 @@ export function enqueuePostMetadataGenerateJob(payload: PostMetadataGeneratePayl
   return enqueueJob("post.metadata.generate", payload);
 }
 
+export function enqueuePostMetadataGenerateJobInDb(
+  db: WorkerDb,
+  payload: PostMetadataGeneratePayload,
+) {
+  return enqueueJobInDb(db, "post.metadata.generate", payload);
+}
+
 export function enqueuePostGenerateJob(payload: PostGeneratePayload) {
   return enqueueJob("post.generate", payload);
 }

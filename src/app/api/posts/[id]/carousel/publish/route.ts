@@ -7,7 +7,7 @@ import { CAROUSEL_STAGE, METADATA_STATUS, POST_STATUS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { archiveFile, writeFile } from "@/lib/storage";
-import { enqueuePostMetadataGenerateJob } from "@/lib/worker/jobs";
+import { enqueuePostMetadataGenerateJobInDb } from "@/lib/worker/jobs";
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -82,24 +82,31 @@ export const POST = withAuth(async function POST(
 
   await Promise.all(buffers.map((buffer, index) => writeFile(paths[index], buffer)));
 
-  await prisma.$transaction(async (tx) => {
-    await tx.postMedia.deleteMany({ where: { postId: post.id } });
-    await tx.postMedia.createMany({
-      data: paths.map((path, order) => ({ postId: post.id, type: "IMAGE", path, order })),
-    });
-    await tx.post.update({
-      where: { id: post.id },
+  const claimed = await prisma.$transaction(async (tx) => {
+    const claim = await tx.post.updateMany({
+      where: { id: post.id, carouselStage: CAROUSEL_STAGE.EDITING },
       data: {
         carouselStage: CAROUSEL_STAGE.COMPLETED,
         status: POST_STATUS.COMPLETED,
         metadataStatus: METADATA_STATUS.GENERATING,
       },
     });
+    if (claim.count === 0) return false;
+
+    await tx.postMedia.deleteMany({ where: { postId: post.id } });
+    await tx.postMedia.createMany({
+      data: paths.map((path, order) => ({ postId: post.id, type: "IMAGE", path, order })),
+    });
+    await enqueuePostMetadataGenerateJobInDb(tx, { postId: post.id });
+
+    return true;
   });
 
-  debugLog(`[carousel/publish] postId=${post.id} wrote ${paths.length} slides`);
+  if (!claimed) {
+    return NextResponse.json({ error: "This carousel is not ready to complete" }, { status: 409 });
+  }
 
-  await enqueuePostMetadataGenerateJob({ postId: post.id });
+  debugLog(`[carousel/publish] postId=${post.id} wrote ${paths.length} slides`);
 
   try {
     await broadcastWithContext("carousel-publish", () =>
