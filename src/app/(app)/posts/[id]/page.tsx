@@ -10,7 +10,7 @@ import { extractAssetIds } from "@/lib/brand-assets";
 import { type FontItem, parseList } from "@/lib/brand-fields";
 import { slideImageState } from "@/lib/carousel/slide-view";
 import { carouselLayoutTheme } from "@/lib/carousel/theme";
-import { CAROUSEL_STAGE, POST_STATUS } from "@/lib/constants";
+import { CAROUSEL_STAGE } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { listVoices } from "@/lib/heygen/client";
 import { getLLMModelInfo } from "@/lib/llm-models/registry";
@@ -204,8 +204,6 @@ export default async function PostDetailPage({
               voiceName: voice?.name ?? null,
               createdAtLabel: formatDistanceToNow(post.createdAt),
               status: post.status,
-              downloadUrl:
-                post.status === POST_STATUS.COMPLETED ? `/api/posts/${post.id}/download` : null,
               metadata,
               metadataStatus: post.metadataStatus,
               metadataErrorMessage: post.metadataErrorMessage,
