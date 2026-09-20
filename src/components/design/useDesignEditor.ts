@@ -11,6 +11,7 @@ import {
   type TextLayer,
 } from "@/lib/design/document";
 import { BODY_LINE_HEIGHT, HEADING_LINE_HEIGHT } from "@/lib/design/layouts";
+import { type MeasureText, reflowAutoLayout } from "@/lib/design/reflow";
 
 const MAX_HISTORY = 50;
 const DUPLICATE_OFFSET = 24;
@@ -283,7 +284,11 @@ export interface DesignEditorState {
   markSaved: (documents: PageDocuments) => void;
 }
 
-export function useDesignEditor(init: DesignEditorInit, spec: CanvasSpec): DesignEditorState {
+export function useDesignEditor(
+  init: DesignEditorInit,
+  spec: CanvasSpec,
+  measure?: MeasureText,
+): DesignEditorState {
   const [state, dispatch] = useReducer(reduce, init, initialState);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const area = useMemo(() => safeArea(spec), [spec]);
@@ -297,19 +302,26 @@ export function useDesignEditor(init: DesignEditorInit, spec: CanvasSpec): Desig
 
   const patchLayer = useCallback(
     (id: string, patch: Partial<Layer>, coalesce: boolean) => {
+      // Restyling or retyping a generated block still wants restacking; dragging it does not.
+      const keepAutoLayout = !movesLayer(patch);
+
       mutate(
-        (doc) => ({
-          ...doc,
-          layers: doc.layers.map((layer) =>
-            layer.id === id ? ({ ...layer, ...patch } as Layer) : layer,
-          ),
-        }),
+        (doc) => {
+          const patched = {
+            ...doc,
+            layers: doc.layers.map((layer) =>
+              layer.id === id ? ({ ...layer, ...patch } as Layer) : layer,
+            ),
+          };
+          if (!keepAutoLayout || !measure) return patched;
+
+          return reflowAutoLayout(patched, area, measure) ?? patched;
+        },
         coalesce,
-        // Restyling or retyping a generated block still wants restacking; dragging it does not.
-        !movesLayer(patch),
+        keepAutoLayout,
       );
     },
-    [mutate],
+    [area, measure, mutate],
   );
 
   const updateLayer = useCallback(

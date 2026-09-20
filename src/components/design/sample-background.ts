@@ -6,6 +6,9 @@ import type { Rgb } from "@/lib/design/color";
 /** Enough pixels to average a region fairly, few enough that a whole carousel stays instant. */
 const SAMPLE_SIZE = 24;
 
+/** A carousel's worth of decoded backgrounds, oldest dropped first rather than held forever. */
+const MAX_CACHED_IMAGES = 24;
+
 const cache = new Map<string, Promise<HTMLImageElement>>();
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -21,8 +24,19 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     element.src = url;
   });
 
-  cache.set(url, pending);
-  return pending;
+  // A failure must not be remembered, or one blocked request flattens every later plate on it.
+  const tracked = pending.catch((err: unknown) => {
+    cache.delete(url);
+    throw err;
+  });
+
+  if (cache.size >= MAX_CACHED_IMAGES) {
+    const oldest = cache.keys().next();
+    if (!oldest.done) cache.delete(oldest.value);
+  }
+
+  cache.set(url, tracked);
+  return tracked;
 }
 
 /**

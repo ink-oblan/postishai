@@ -6,7 +6,8 @@ import {
   useDesignEditor,
 } from "@/components/design/useDesignEditor";
 import type { CanvasSpec } from "@/lib/design/canvas-spec";
-import type { DesignDocument, Layer } from "@/lib/design/document";
+import type { DesignDocument, Layer, TextLayer } from "@/lib/design/document";
+import type { MeasureText } from "@/lib/design/reflow";
 
 const spec: CanvasSpec = {
   width: 1080,
@@ -44,8 +45,9 @@ const otherInitial: DesignDocument = {
 function setup(
   documents: PageDocuments = { [SLIDE]: initial, [OTHER]: otherInitial },
   pageId: string | null = SLIDE,
+  measure?: MeasureText,
 ) {
-  return renderHook(() => useDesignEditor({ documents, pageId }, spec));
+  return renderHook(() => useDesignEditor({ documents, pageId }, spec, measure));
 }
 
 describe("useDesignEditor", () => {
@@ -294,6 +296,59 @@ describe("useDesignEditor", () => {
       act(() => edit(result.current));
 
       expect(result.current.document.autoLayout).toBeUndefined();
+    });
+
+    describe("restacking a generated page", () => {
+      const text = (id: string, fontSize: number): TextLayer => ({
+        id,
+        type: "text",
+        x: 80,
+        y: 0,
+        width: 920,
+        height: 0,
+        rotation: 0,
+        text: "Copy",
+        role: id === "heading" ? "heading" : "body",
+        fontFamily: "Inter",
+        fontSize,
+        fontWeight: 400,
+        italic: false,
+        underline: false,
+        lineThrough: false,
+        lineHeight: 1.2,
+        align: "left",
+        color: "#ffffff",
+      });
+
+      const generated: DesignDocument = {
+        background: { kind: "solid", color: "#111111" },
+        autoLayout: { anchor: "top", gap: 40 },
+        layers: [text("heading", 60), text("body", 30)],
+      };
+
+      // Height follows the font size, which is what makes a restyle move the block below it.
+      const measure: MeasureText = (layer) => layer.fontSize * 2;
+
+      it("moves the block below out of the way when a restyle grows the one above", () => {
+        const { result } = setup({ [SLIDE]: generated }, SLIDE, measure);
+
+        act(() => result.current.updateLayer("heading", { fontSize: 100 }));
+
+        const [heading, body] = result.current.document.layers;
+        expect(heading.height).toBe(200);
+        expect(body.y).toBe(340);
+        expect(result.current.document.autoLayout).toEqual({ anchor: "top", gap: 40 });
+      });
+
+      it("leaves the stack alone once a drag has handed the layout over", () => {
+        const { result } = setup({ [SLIDE]: generated }, SLIDE, measure);
+
+        act(() => result.current.updateLayer("heading", { y: 900 }));
+        act(() => result.current.updateLayer("heading", { fontSize: 100 }));
+
+        expect(result.current.document.autoLayout).toBeUndefined();
+        expect(result.current.document.layers[0].y).toBe(900);
+      });
     });
 
     it("restacks without touching the history or the dirty flag", () => {

@@ -32,6 +32,7 @@ import { useStartupReflow } from "@/components/design/useStartupReflow";
 import { BlockingOverlay } from "@/components/ui/blocking-overlay";
 import { Button } from "@/components/ui/button";
 import { EMPTY_DOCUMENT } from "@/lib/design/document";
+import { textMeasurer } from "@/lib/design/measure-text";
 import { wrapIndex } from "@/lib/utils";
 
 // Konva reaches for `window` at import time, so it must never enter the server graph.
@@ -82,9 +83,12 @@ export function DesignEditor({
   const viewport = useStageViewport(spec, stageRef, textEditing);
   const { stageWidth } = viewport;
 
+  const measure = useMemo(() => textMeasurer(assets.resolveFontFamily), [assets.resolveFontFamily]);
+
   const editor = useDesignEditor(
     { documents: initialDocuments, pageId: initialPageId ?? pages[0]?.id ?? null },
     spec,
+    measure,
   );
   const { select, openPage, applyReflow } = editor;
   const editorRef = useRef(editor);

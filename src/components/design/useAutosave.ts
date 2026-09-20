@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DesignEditorState, PageDocuments } from "@/components/design/useDesignEditor";
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 1000;
@@ -100,7 +100,9 @@ export function useAutosave(
 
   useEffect(() => () => void flush(), [flush]);
 
-  useEffect(() => {
+  // Keep the browser guard in lockstep with the rendered save state. A passive effect can leave
+  // the old listener alive briefly after React has already rendered "Saved".
+  useLayoutEffect(() => {
     if (!editor.dirty) return;
 
     function warnBeforeUnload(event: BeforeUnloadEvent) {
