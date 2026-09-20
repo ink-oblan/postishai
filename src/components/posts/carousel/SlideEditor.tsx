@@ -26,15 +26,18 @@ import {
   registerBrandFont,
   resolveFontFamily,
 } from "@/app/(app)/brand/lib/font-catalogue";
+import { exportPages } from "@/components/design/export-pages";
 import { LayerInspector } from "@/components/design/LayerInspector";
 import { MobileEditorToolbar } from "@/components/design/MobileEditorToolbar";
 import { MobileFontSheet } from "@/components/design/MobileFontSheet";
 import { PageOptionsSheet } from "@/components/design/PageOptionsSheet";
-import { rasterizeStage, waitForBackground } from "@/components/design/rasterize";
 import { ShortcutDialog } from "@/components/design/ShortcutDialog";
-import { sampleBackgroundRegion } from "@/components/design/sample-background";
+import { useAutosave } from "@/components/design/useAutosave";
 import { type PageDocuments, useDesignEditor } from "@/components/design/useDesignEditor";
 import { editorShortcutGroups, useEditorShortcuts } from "@/components/design/useEditorShortcuts";
+import { usePlate } from "@/components/design/usePlate";
+import { useStageViewport } from "@/components/design/useStageViewport";
+import { useStartupReflow } from "@/components/design/useStartupReflow";
 import { BackgroundPicker } from "@/components/posts/carousel/BackgroundPicker";
 import {
   CarouselPreviewDialog,
@@ -47,24 +50,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { carouselCanvas } from "@/lib/carousel/platform-spec";
 import { CAROUSEL_SLIDE_STATUS } from "@/lib/constants";
-import { safeArea } from "@/lib/design/canvas-spec";
-import {
-  type DesignDocument,
-  documentFrom,
-  EMPTY_DOCUMENT,
-  type TextBackground,
-} from "@/lib/design/document";
-import { ensureFontsLoaded, facesUsedBy, uploadedFontFamily } from "@/lib/design/fonts";
-import { textMeasurer } from "@/lib/design/measure-text";
-import {
-  defaultTextPlate,
-  inferPlateColor,
-  platedRegion,
-  platePaddingForGap,
-  textColorsOf,
-  withTextPlates,
-} from "@/lib/design/plate";
-import { reflowAutoLayout } from "@/lib/design/reflow";
+import { type DesignDocument, documentFrom, EMPTY_DOCUMENT } from "@/lib/design/document";
+import { uploadedFontFamily } from "@/lib/design/fonts";
 import { POLLING } from "@/lib/polling-config";
 import { responseError, wrapIndex } from "@/lib/utils";
 
@@ -103,11 +90,8 @@ interface SlideEditorProps {
 
 const CAROUSEL_LABELS = { page: "slide", pages: "Slides" };
 
-const INITIAL_STAGE_WIDTH = 420;
 const AUTOSAVE_DELAY_MS = 1000;
 const SAVE_TOAST_ID = "slide-save";
-const MIN_MOBILE_ZOOM = 0.75;
-const MAX_MOBILE_ZOOM = 2.5;
 
 export function SlideEditor({
   postId,
@@ -119,9 +103,6 @@ export function SlideEditor({
   const router = useRouter();
   const spec = useMemo(() => carouselCanvas(platform), [platform]);
   const [slides, setSlides] = useState(initialSlides);
-  const [saving, setSaving] = useState(false);
-  const [saveFailed, setSaveFailed] = useState(false);
-  const [initializing, setInitializing] = useState(true);
   const operation = useRef(false);
   const [publishing, setPublishing] = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -135,24 +116,10 @@ export function SlideEditor({
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const [mobileFontsOpen, setMobileFontsOpen] = useState(false);
   const [mobileFilmstripOpen, setMobileFilmstripOpen] = useState(false);
-  const [mobileZoom, setMobileZoom] = useState(1);
-  const [mobilePan, setMobilePan] = useState({ x: 0, y: 0 });
-  const [pinching, setPinching] = useState(false);
   const [textEditing, setTextEditing] = useState(false);
-  const [platingAll, setPlatingAll] = useState(false);
   const stageRef = useRef<Konva.Stage | null>(null);
-  const stageAreaRef = useRef<HTMLDivElement | null>(null);
-  const zoomGestureRef = useRef({
-    points: new Map<number, { x: number; y: number }>(),
-    distance: 0,
-    zoom: 1,
-  });
-  const panGestureRef = useRef<{
-    pointerId: number;
-    start: { x: number; y: number };
-    origin: { x: number; y: number };
-  } | null>(null);
-  const stageWidth = useFittedStageWidth(stageAreaRef, spec);
+  const viewport = useStageViewport(spec, stageRef, textEditing);
+  const { stageWidth } = viewport;
 
   const initialDocuments = useMemo(
     () =>
@@ -278,81 +245,32 @@ export function SlideEditor({
     [postId],
   );
 
-  const writeSlides = useCallback(
-    async (ids: string[]) => {
-      const saved: PageDocuments = {};
-      try {
-        for (const id of ids) {
-          const document = editorRef.current.documents[id];
-          if (!document) continue;
-          await persistDesign(id, document);
-          saved[id] = document;
-        }
-        setSaveFailed(false);
-        return true;
-      } catch (err) {
-        setSaveFailed(true);
-        toast.error(err instanceof Error ? err.message : "Failed to save slide", {
-          id: SAVE_TOAST_ID,
-        });
-        return false;
-      } finally {
-        if (Object.keys(saved).length > 0) editorRef.current.markSaved(saved);
-      }
-    },
-    [persistDesign],
-  );
+  const initializing = useStartupReflow({
+    initialDocuments,
+    spec,
+    resolveFontFamily,
+    loadFonts: () =>
+      Promise.all(uploadedFonts.map((font) => registerBrandFont(font.assetId))).then(() => {}),
+    applyReflow,
+    savePage: persistDesign,
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Failed to prepare slide layouts"),
+  });
 
-  const writes = useRef<Promise<boolean>>(Promise.resolve(true));
-
-  const flush = useCallback(
-    (ids?: string[]) => {
-      const run = writes.current.then(() => writeSlides(ids ?? editorRef.current.dirtyPageIds));
-      writes.current = run.catch(() => false);
-      return run;
-    },
-    [writeSlides],
-  );
-
-  const saveDirty = useCallback(async () => {
-    if (editorRef.current.dirtyPageIds.length === 0) return true;
-    setSaving(true);
-    try {
-      return await flush();
-    } finally {
-      setSaving(false);
-    }
-  }, [flush]);
-
-  useEffect(() => {
-    if (initializing) return;
-
-    const pending = editor.dirtyPageIds.filter((id) => id !== editor.pageId);
-    if (pending.length > 0) void flush(pending);
-  }, [editor.dirtyPageIds, editor.pageId, flush, initializing]);
-
-  const openSlideDirty = editor.pageId !== null && editor.dirtyPageIds.includes(editor.pageId);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the document so every edit pushes the save back
-  useEffect(() => {
-    if (initializing || !openSlideDirty) return;
-
-    const timer = setTimeout(() => void flush(), AUTOSAVE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [editor.document, flush, initializing, openSlideDirty]);
-
-  useEffect(() => () => void flush(), [flush]);
-
-  useEffect(() => {
-    if (!editor.dirty) return;
-
-    function warnBeforeUnload(event: BeforeUnloadEvent) {
-      event.preventDefault();
-    }
-
-    window.addEventListener("beforeunload", warnBeforeUnload);
-    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
-  }, [editor.dirty]);
+  const {
+    saving,
+    failed: saveFailed,
+    flush,
+    saveDirty,
+  } = useAutosave(editor, {
+    savePage: persistDesign,
+    enabled: !initializing,
+    autosaveDelayMs: AUTOSAVE_DELAY_MS,
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Failed to save slide", {
+        id: SAVE_TOAST_ID,
+      }),
+  });
 
   const selectSlide = useCallback(
     (id: string) => {
@@ -371,160 +289,46 @@ export function SlideEditor({
     [orderedSlides, selectSlide, selectedSlideId],
   );
 
-  /**
-   * A plate colour is per slide, not per carousel: it is read off the photograph behind that
-   * slide's own copy, so each one gets a band that belongs to its picture. A slide still waiting
-   * on its background has nothing to read, and falls back to the neutral plate.
-   */
-  const inferPlateFor = useCallback(
-    async (slide: EditorSlide, document: DesignDocument): Promise<TextBackground> => {
-      const url = slideBackgroundUrl(slide);
-      const region = platedRegion(document);
-      const textColors = textColorsOf(document);
-      if (!url || !region || textColors.length === 0) return defaultTextPlate();
-
-      try {
-        const sample = await sampleBackgroundRegion(url, spec, region);
-        if (!sample) return defaultTextPlate();
-        return defaultTextPlate(inferPlateColor({ sample, textColors }));
-      } catch {
-        return defaultTextPlate();
-      }
+  const plate = usePlate(editor, {
+    pageIds: orderedSlides.map((slide) => slide.id),
+    backgroundUrl: (pageId) => {
+      const slide = slideById(orderedSlides, pageId);
+      return slide ? slideBackgroundUrl(slide) : null;
     },
-    [slideBackgroundUrl, spec],
-  );
-
-  const togglePlate = useCallback(
-    async (on: boolean) => {
-      const id = editor.selectedId;
-      if (!id) return;
-      if (!on) {
-        editor.updateLayer(id, { background: undefined });
-        return;
-      }
-
-      const plate = selectedSlide
-        ? await inferPlateFor(selectedSlide, editor.document)
-        : defaultTextPlate();
-      const padding = editor.document.autoLayout
-        ? platePaddingForGap(editor.document.autoLayout.gap)
-        : plate.padding;
-
-      editor.updateLayer(id, { background: { ...plate, padding } });
-    },
-    [editor, inferPlateFor, selectedSlide],
-  );
-
-  const applyHighlightToAll = useCallback(
-    async (adding: boolean) => {
-      if (initializing || operation.current) return;
-      operation.current = true;
-      setPlatingAll(true);
-      try {
-        const documents = Object.fromEntries(
-          await Promise.all(
-            orderedSlides.map(async (slide): Promise<[string, DesignDocument]> => {
-              const document = editorRef.current.documents[slide.id] ?? EMPTY_DOCUMENT;
-              const plate = adding ? await inferPlateFor(slide, document) : null;
-              return [slide.id, withTextPlates(document, plate)];
-            }),
-          ),
-        );
-
-        editorRef.current.restylePages(documents);
-        toast.success(
-          adding ? "Highlighted every text block to match its photo" : "Removed every highlight",
-        );
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to update every slide");
-      } finally {
-        setPlatingAll(false);
-        operation.current = false;
-      }
-    },
-    [inferPlateFor, initializing, orderedSlides],
-  );
-
-  /**
-   * The generator stacks a slide's text against a guess at how the copy will wrap — it has no
-   * font metrics on the server — and that guess undercounts lines for wide glyphs, which is what
-   * leaves a body paragraph sitting inside the headline above it. The browser can measure the
-   * real thing, so restack every generated slide here and write the corrections back: doing it
-   * up front, over all slides rather than just the open one, keeps preview and publish reading
-   * corrected documents instead of racing the editor for them.
-   *
-   * Editing and export stay blocked until these corrections have been saved.
-   * Deliberately without an abort: the ref is what keeps this to one run, and a correction that
-   * lands after a remount is still worth saving. Cancelling on teardown would instead mean Strict
-   * Mode's double mount aborts the only run there is.
-   */
-  const restacked = useRef(false);
-
-  useEffect(() => {
-    if (restacked.current) return;
-    restacked.current = true;
-
-    void (async () => {
-      await Promise.all(uploadedFonts.map((font) => registerBrandFont(font.assetId)));
-
-      const documents = Object.entries(initialDocuments);
-      await ensureFontsLoaded(
-        documents.flatMap(([, document]) => facesUsedBy(document, resolveFontFamily)),
-      );
-
-      const measure = textMeasurer(resolveFontFamily);
-      const area = safeArea(spec);
-      const corrected: PageDocuments = {};
-      for (const [id, document] of documents) {
-        const next = reflowAutoLayout(document, area, measure);
-        if (next) corrected[id] = next;
-      }
-      if (Object.keys(corrected).length === 0) return;
-
-      applyReflow(corrected);
-
-      // Best effort: a slide that fails to save is simply restacked again on the next visit.
-      await Promise.all(
-        Object.entries(corrected).map(([id, document]) =>
-          persistDesign(id, document).catch(() => {}),
-        ),
-      );
-    })()
-      .catch((err) => {
-        toast.error(err instanceof Error ? err.message : "Failed to prepare slide layouts");
-      })
-      .finally(() => setInitializing(false));
-  }, [applyReflow, initialDocuments, persistDesign, spec, uploadedFonts]);
+    spec,
+    enabled: !initializing,
+    operation,
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Failed to update every slide"),
+    onApplied: (adding) =>
+      toast.success(
+        adding ? "Highlighted every text block to match its photo" : "Removed every highlight",
+      ),
+  });
 
   // Every slide has to be drawn to export it, and only one stage exists — so each slide is
   // selected in turn and rasterised once the stage has actually rendered it.
-  const renderSlides = useCallback(async () => {
-    const rendered: { slide: EditorSlide; blob: Blob }[] = [];
-
-    for (const [index, slide] of orderedSlides.entries()) {
-      setRenderProgress({ current: index + 1, total: orderedSlides.length });
-      openPage(slide.id);
-      const document = editorRef.current.documents[slide.id] ?? EMPTY_DOCUMENT;
-      await nextPaint();
-
-      const stage = stageRef.current;
-      if (!stage) throw new Error("The editor canvas is not ready");
-
-      await waitForBackground(stage, slideBackgroundUrl(slide));
-      rendered.push({
-        slide,
-        blob: await rasterizeStage(stage, document, spec, {
-          resolveFontFamily,
-          assetUrl: brandAssetUrl,
-        }),
-      });
-    }
-
-    return rendered;
-  }, [openPage, orderedSlides, slideBackgroundUrl, spec]);
+  const renderSlides = useCallback(
+    () =>
+      exportPages({
+        pageIds: orderedSlides.map((slide) => slide.id),
+        stage: () => stageRef.current,
+        spec,
+        documents: () => editorRef.current.documents,
+        backgroundUrl: (pageId) => {
+          const slide = orderedSlides.find((candidate) => candidate.id === pageId);
+          return slide ? slideBackgroundUrl(slide) : null;
+        },
+        openPage,
+        assets: { resolveFontFamily, assetUrl: brandAssetUrl },
+        onProgress: (current, total) => setRenderProgress({ current, total }),
+      }),
+    [openPage, orderedSlides, slideBackgroundUrl, spec],
+  );
 
   useEditorShortcuts(editor, {
-    enabled: !initializing && !saving && !publishing && !previewing && !previewOpen && !platingAll,
+    enabled:
+      !initializing && !saving && !publishing && !previewing && !previewOpen && !plate.pending,
     onSave: () => void flush(),
     onNextPage: () => stepSlide(1),
     onPreviousPage: () => stepSlide(-1),
@@ -552,12 +356,15 @@ export function SlideEditor({
       const rendered = await renderSlides();
 
       setPreviewSlides(
-        rendered.map(({ slide, blob }) => ({
-          id: slide.id,
-          order: slide.order,
-          headline: slide.headline,
-          url: URL.createObjectURL(blob),
-        })),
+        rendered.map(({ pageId, blob }) => {
+          const slide = slideById(orderedSlides, pageId);
+          return {
+            id: pageId,
+            order: slide?.order ?? 0,
+            headline: slide?.headline ?? null,
+            url: URL.createObjectURL(blob),
+          };
+        }),
       );
       setPreviewOpen(true);
     } catch (err) {
@@ -580,8 +387,9 @@ export function SlideEditor({
         return;
       }
       const form = new FormData();
-      for (const { slide, blob } of await renderSlides()) {
-        form.append("slides", blob, `${slide.order + 1}.png`);
+      for (const { pageId, blob } of await renderSlides()) {
+        const slide = slideById(orderedSlides, pageId);
+        form.append("slides", blob, `${(slide?.order ?? 0) + 1}.png`);
       }
       setRenderProgress(null);
 
@@ -615,127 +423,6 @@ export function SlideEditor({
 
   const rendering = previewing || publishing;
   const busy = initializing || saving || rendering;
-
-  useEffect(() => {
-    setMobilePan((current) =>
-      clampViewportPan(current, mobileZoom, stageAreaRef.current, stageWidth, spec),
-    );
-  }, [mobileZoom, spec, stageWidth]);
-
-  const resetMobileViewport = useCallback(() => {
-    zoomGestureRef.current.points.clear();
-    zoomGestureRef.current.distance = 0;
-    zoomGestureRef.current.zoom = 1;
-    panGestureRef.current = null;
-    setPinching(false);
-    setMobileZoom(1);
-    setMobilePan({ x: 0, y: 0 });
-  }, []);
-
-  useEffect(() => {
-    if (!textEditing) return;
-    zoomGestureRef.current.points.clear();
-    zoomGestureRef.current.distance = 0;
-    panGestureRef.current = null;
-    setPinching(false);
-  }, [textEditing]);
-
-  const handleViewportPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (event.pointerType !== "touch") return;
-      const gesture = zoomGestureRef.current;
-      if (
-        textEditing ||
-        (event.target instanceof Element && event.target.closest("[data-canvas-text-editor]"))
-      ) {
-        // Native selection handles emit touch pointers from the textarea. They belong to the OS
-        // text editor, not the canvas viewport; retaining one here can turn a cursor drag into a
-        // pan or combine it with the next touch and accidentally change the canvas scale.
-        gesture.points.clear();
-        gesture.distance = 0;
-        panGestureRef.current = null;
-        setPinching(false);
-        return;
-      }
-
-      gesture.points.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      if (gesture.points.size === 1 && mobileZoom > 1) {
-        panGestureRef.current = null;
-        const stage = stageRef.current;
-        const point = stage?.getPointerPosition();
-        // The background layer does not listen for input, so any hit is an editable layer or
-        // transformer handle. Empty pixels are therefore safe to use for moving the viewport.
-        const hitLayer = Boolean(point && stage?.getIntersection(point));
-        if (!hitLayer) {
-          panGestureRef.current = {
-            pointerId: event.pointerId,
-            start: { x: event.clientX, y: event.clientY },
-            origin: mobilePan,
-          };
-          setPinching(true);
-        }
-        return;
-      }
-      if (gesture.points.size !== 2) return;
-
-      panGestureRef.current = null;
-      gesture.distance = pointerDistance(gesture.points);
-      gesture.zoom = mobileZoom;
-      setPinching(true);
-    },
-    [mobilePan, mobileZoom, textEditing],
-  );
-
-  const handleViewportPointerMove = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (event.pointerType !== "touch") return;
-      const gesture = zoomGestureRef.current;
-      if (textEditing) {
-        gesture.points.clear();
-        gesture.distance = 0;
-        panGestureRef.current = null;
-        setPinching(false);
-        return;
-      }
-      if (!gesture.points.has(event.pointerId)) return;
-      gesture.points.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      const pan = panGestureRef.current;
-      if (gesture.points.size === 1 && pan?.pointerId === event.pointerId) {
-        event.preventDefault();
-        setMobilePan(
-          clampViewportPan(
-            {
-              x: pan.origin.x + event.clientX - pan.start.x,
-              y: pan.origin.y + event.clientY - pan.start.y,
-            },
-            mobileZoom,
-            stageAreaRef.current,
-            stageWidth,
-            spec,
-          ),
-        );
-        return;
-      }
-      if (gesture.points.size !== 2 || gesture.distance <= 0) return;
-
-      event.preventDefault();
-      setMobileZoom(
-        clampMobileZoom(gesture.zoom * (pointerDistance(gesture.points) / gesture.distance)),
-      );
-    },
-    [mobileZoom, spec, stageWidth, textEditing],
-  );
-
-  const finishViewportPointer = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType !== "touch") return;
-    const gesture = zoomGestureRef.current;
-    gesture.points.delete(event.pointerId);
-    if (panGestureRef.current?.pointerId === event.pointerId) panGestureRef.current = null;
-    if (gesture.points.size < 2) {
-      gesture.distance = 0;
-      setPinching(false);
-    }
-  }, []);
 
   const backgroundPicker = selectedSlide ? (
     <BackgroundPicker
@@ -931,23 +618,20 @@ export function SlideEditor({
         >
           {/** biome-ignore lint/a11y/noStaticElementInteractions: deselect mirrors the canvas's own click-away, and Esc already does it from the keyboard */}
           <div
-            ref={stageAreaRef}
+            ref={viewport.areaRef}
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) editor.select(null);
             }}
-            onPointerDown={handleViewportPointerDown}
-            onPointerMove={handleViewportPointerMove}
-            onPointerUp={finishViewportPointer}
-            onPointerCancel={finishViewportPointer}
+            {...viewport.handlers}
             className="absolute inset-0 flex min-h-0 min-w-0 flex-1 touch-none items-center justify-center overflow-hidden lg:relative lg:touch-auto"
           >
             <div
               className={`lg:!transform-none shrink-0 origin-center overflow-hidden lg:rounded-lg ${
-                pinching ? "" : "transition-transform duration-150 ease-out"
+                viewport.pinching ? "" : "transition-transform duration-150 ease-out"
               }`}
               style={{
                 width: stageWidth,
-                transform: `translate3d(${mobilePan.x}px, ${mobilePan.y}px, 0) scale(${mobileZoom})`,
+                transform: `translate3d(${viewport.pan.x}px, ${viewport.pan.y}px, 0) scale(${viewport.zoom})`,
               }}
               data-testid="slide-stage"
             >
@@ -1023,11 +707,11 @@ export function SlideEditor({
 
           <MobileEditorToolbar
             layer={selectedLayer}
-            busy={busy || platingAll}
+            busy={busy || plate.pending}
             canUndo={editor.canUndo}
             canRedo={editor.canRedo}
             visible={!mobileFilmstripOpen}
-            zoom={mobileZoom}
+            zoom={viewport.zoom}
             canAddLogo={Boolean(logoAssetId)}
             pageLabel={CAROUSEL_LABELS.page}
             onAddText={() => editor.addTextLayer("body", "Inter", "#ffffff")}
@@ -1035,9 +719,9 @@ export function SlideEditor({
             onAddLogo={() => logoAssetId && editor.addLogoLayer(logoAssetId)}
             onUndo={editor.undo}
             onRedo={editor.redo}
-            onResetZoom={resetMobileViewport}
+            onResetZoom={viewport.reset}
             onChange={(patch) => editor.selectedId && editor.updateLayer(editor.selectedId, patch)}
-            onToggleHighlight={(on) => void togglePlate(on)}
+            onToggleHighlight={(on) => void plate.toggle(on)}
             onDuplicate={() => editor.selectedId && editor.duplicateLayer(editor.selectedId)}
             onDelete={() => editor.selectedId && editor.deleteLayer(editor.selectedId)}
             onRaise={() => editor.selectedId && editor.raiseLayer(editor.selectedId)}
@@ -1087,7 +771,7 @@ export function SlideEditor({
               size="sm"
               title="Undo (Ctrl+Z)"
               onClick={editor.undo}
-              disabled={!editor.canUndo || platingAll}
+              disabled={!editor.canUndo || plate.pending}
             >
               <Undo2 className="mr-1.5 h-3.5 w-3.5" />
               Undo
@@ -1098,7 +782,7 @@ export function SlideEditor({
               size="sm"
               title="Redo (Ctrl+Shift+Z)"
               onClick={editor.redo}
-              disabled={!editor.canRedo || platingAll}
+              disabled={!editor.canRedo || plate.pending}
             >
               <Redo2 className="mr-1.5 h-3.5 w-3.5" />
               Redo
@@ -1114,7 +798,7 @@ export function SlideEditor({
             onDelete={() => editor.selectedId && editor.deleteLayer(editor.selectedId)}
             onRaise={() => editor.selectedId && editor.raiseLayer(editor.selectedId)}
             onLower={() => editor.selectedId && editor.lowerLayer(editor.selectedId)}
-            onTogglePlate={(on) => void togglePlate(on)}
+            onTogglePlate={(on) => void plate.toggle(on)}
           />
 
           <div className="space-y-2 border-t pt-4">
@@ -1123,13 +807,13 @@ export function SlideEditor({
                 id="highlight-all"
                 indeterminate={highlighting.some}
                 checked={highlighting.all}
-                disabled={busy || platingAll}
+                disabled={busy || plate.pending}
                 onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                  void applyHighlightToAll(event.target.checked)
+                  void plate.applyToAll(event.target.checked)
                 }
               />
               <Label htmlFor="highlight-all">Highlight text on every slide</Label>
-              {platingAll && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {plate.pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             </div>
             <p className="text-muted-foreground text-xs">
               Applies to every text block in the carousel.
@@ -1151,13 +835,13 @@ export function SlideEditor({
                 id="mobile-highlight-all"
                 indeterminate={highlighting.some}
                 checked={highlighting.all}
-                disabled={busy || platingAll}
+                disabled={busy || plate.pending}
                 onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                  void applyHighlightToAll(event.target.checked)
+                  void plate.applyToAll(event.target.checked)
                 }
               />
               <Label htmlFor="mobile-highlight-all">Highlight text on every slide</Label>
-              {platingAll && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {plate.pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             </div>
           </div>
           {backgroundPicker}
@@ -1208,56 +892,8 @@ export function SlideEditor({
   );
 }
 
-function clampMobileZoom(value: number): number {
-  return Math.min(MAX_MOBILE_ZOOM, Math.max(MIN_MOBILE_ZOOM, Math.round(value * 100) / 100));
-}
-
-function clampViewportPan(
-  pan: { x: number; y: number },
-  zoom: number,
-  area: HTMLDivElement | null,
-  stageWidth: number,
-  spec: { width: number; height: number },
-): { x: number; y: number } {
-  if (!area || zoom <= 1) return { x: 0, y: 0 };
-
-  const box = area.getBoundingClientRect();
-  const stageHeight = (stageWidth * spec.height) / spec.width;
-  const maxX = Math.max(0, (stageWidth * zoom - box.width) / 2);
-  const maxY = Math.max(0, (stageHeight * zoom - box.height) / 2);
-  return {
-    x: Math.min(maxX, Math.max(-maxX, pan.x)),
-    y: Math.min(maxY, Math.max(-maxY, pan.y)),
-  };
-}
-
-function pointerDistance(points: Map<number, { x: number; y: number }>): number {
-  const [first, second] = [...points.values()];
-  return first && second ? Math.hypot(second.x - first.x, second.y - first.y) : 0;
-}
-
-function useFittedStageWidth(
-  areaRef: React.RefObject<HTMLDivElement | null>,
-  spec: { width: number; height: number },
-): number {
-  const [width, setWidth] = useState(INITIAL_STAGE_WIDTH);
-
-  useEffect(() => {
-    const area = areaRef.current;
-    if (!area) return;
-
-    const resizeStage = (box: { width: number; height: number }) => {
-      const widthForHeight = (box.height * spec.width) / spec.height;
-      const fitted = Math.min(box.width, widthForHeight);
-      setWidth(Math.max(1, Math.floor(fitted)));
-    };
-    const observer = new ResizeObserver(([entry]) => resizeStage(entry.contentRect));
-    observer.observe(area);
-
-    return () => observer.disconnect();
-  }, [areaRef, spec.width, spec.height]);
-
-  return width;
+function slideById(slides: EditorSlide[], id: string): EditorSlide | undefined {
+  return slides.find((slide) => slide.id === id);
 }
 
 /**
@@ -1266,11 +902,4 @@ function useFittedStageWidth(
  */
 function documentFor(slide: EditorSlide): DesignDocument {
   return documentFrom(slide.design);
-}
-
-/** Two frames: one for React to commit the new document, one for Konva to draw it. */
-function nextPaint(): Promise<void> {
-  return new Promise((resolve) =>
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-  );
 }
