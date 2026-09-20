@@ -76,10 +76,11 @@ export const POST = withAuth(async function POST(
   }
 
   const paths = buffers.map((_, index) => `posts/${post.id}/carousel/${index + 1}.png`);
-  await Promise.all(buffers.map((buffer, index) => writeFile(paths[index], buffer)));
 
   // Republishing replaces the previous export rather than appending a second copy of the post.
   await Promise.all(post.media.map((media) => archiveFile(media.path).catch(() => null)));
+
+  await Promise.all(buffers.map((buffer, index) => writeFile(paths[index], buffer)));
 
   await prisma.$transaction(async (tx) => {
     await tx.postMedia.deleteMany({ where: { postId: post.id } });
