@@ -7,6 +7,12 @@ import { runFfmpeg, runFfprobe } from "@/lib/ffmpeg";
 import { convertToJpeg } from "@/lib/image-convert";
 import { getLLMAdapter } from "@/lib/llm-models/registry";
 import type { LLMModelAdapter } from "@/lib/llm-models/types";
+import {
+  type CarouselSlideSource,
+  describeCarouselSlide,
+  slideBackground,
+  slideCopy,
+} from "@/lib/metadata/carousel";
 import { generateMetadata } from "@/lib/metadata/generator";
 import type { PlatformMetadata } from "@/lib/metadata/types";
 import { isMockEnabled, MOCK_TIMINGS } from "@/lib/mock-config";
@@ -121,6 +127,37 @@ async function extractVideoMedia(buffer: Buffer): Promise<VideoMedia> {
   }
 }
 
+async function describeStill(adapter: LLMModelAdapter, buffer: Buffer): Promise<string> {
+  const jpeg = await convertToJpeg(buffer);
+  const imageDescriptionPrompt = await renderPromptTemplate("describe-media-prompt.txt");
+  return adapter.describeImage(imageDescriptionPrompt, jpeg.toString("base64"), "image/jpeg");
+}
+
+async function describeCarousel(
+  adapter: LLMModelAdapter,
+  slides: CarouselSlideSource[],
+  media: { path: string }[],
+): Promise<string[]> {
+  return Promise.all(
+    slides.map(async (slide, index) => {
+      const background = slideBackground(slide);
+      if (background.kind !== "unknown") {
+        return describeCarouselSlide({
+          number: index + 1,
+          total: slides.length,
+          copy: slideCopy(slide),
+          background,
+        });
+      }
+
+      debugLog(
+        `[post.metadata.generate] slide ${index + 1} background has no matching prompt, describing its image`,
+      );
+      return describeStill(adapter, await readFileStorage(media[index].path));
+    }),
+  );
+}
+
 async function describeMedia(
   adapter: LLMModelAdapter,
   media: Buffer[],
@@ -151,13 +188,7 @@ async function describeMedia(
       );
       descriptions.push(description);
     } else {
-      const jpeg = await convertToJpeg(buffer);
-      const imageDescriptionPrompt = await renderPromptTemplate("describe-media-prompt.txt");
-      const description = await adapter.describeImage(
-        imageDescriptionPrompt,
-        jpeg.toString("base64"),
-        "image/jpeg",
-      );
+      const description = await describeStill(adapter, buffer);
       debugLog(
         `[post.metadata.generate] media ${i + 1} described (descriptionLength=${description.length})`,
       );
@@ -196,7 +227,13 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
 
     const post = await ctx.db.post.findUnique({
       where: { id: payload.postId },
-      include: { media: { orderBy: { order: "asc" } } },
+      include: {
+        media: { orderBy: { order: "asc" } },
+        slides: {
+          orderBy: { order: "asc" },
+          include: { images: { select: { imagePath: true, createdAt: true } } },
+        },
+      },
     });
 
     if (!post) throw new Error(`Post ${payload.postId} not found`);
@@ -237,6 +274,30 @@ export const postMetadataGenerateJob: JobDefinition<"post.metadata.generate", Pl
     }
 
     const adapter = getLLMAdapter(post.llmModelId);
+
+    if (
+      mode === "media" &&
+      post.type === "CAROUSEL" &&
+      post.slides.length > 0 &&
+      post.slides.length === post.media.length
+    ) {
+      ctx.log(
+        `[post.metadata.generate] describing ${post.slides.length} carousel slides from slide data`,
+      );
+      const visualDescriptions = await describeCarousel(adapter, post.slides, post.media);
+
+      const carouselResult = await generateMetadata(
+        post.platform,
+        {
+          visualDescriptions,
+          title: post.title,
+          details: post.details ?? undefined,
+        },
+        post.llmModelId,
+      );
+      ctx.log(`[post.metadata.generate] metadata generated for platform=${post.platform}`);
+      return carouselResult;
+    }
 
     if (mode === "media") {
       ctx.log(

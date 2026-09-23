@@ -1,0 +1,11 @@
+Carousel slide {{number}} of {{total}}.
+{{#each copy}}
+{{role}} text on the slide: "{{text}}"
+{{else}}
+No text on the slide.
+{{/each}}
+{{#if subject}}
+Background image: {{subject}}
+{{else}}
+Background: plain colour, no image.
+{{/if}}
