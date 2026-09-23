@@ -34,6 +34,11 @@ interface BrandProfile {
 
 const NO_BRAND = "__none__";
 
+function clampSlideCount(count: number, spec: { minSlides: number; maxSlides: number }) {
+  if (!Number.isFinite(count) || count < 1) return spec.minSlides;
+  return Math.min(spec.maxSlides, Math.max(spec.minSlides, Math.round(count)));
+}
+
 export function CarouselWizard() {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -43,10 +48,11 @@ export function CarouselWizard() {
   const [llmModelId, setLlmModelId] = useState(DEFAULT_LLM_MODEL_ID);
   const [llmModels, setLLMModels] = useState<LLMModel[]>([]);
   const [brands, setBrands] = useState<BrandProfile[]>([]);
-  const [slideCount, setSlideCount] = useState(5);
+  const [slideCountInput, setSlideCountInput] = useState("5");
   const [submitting, setSubmitting] = useState(false);
 
   const spec = carouselSpec(platform);
+  const slideCount = clampSlideCount(Number(slideCountInput), spec);
 
   useEffect(() => {
     fetch("/api/llm-models")
@@ -65,8 +71,8 @@ export function CarouselWizard() {
   // Each platform allows a different range, so a count that was fine on one can be out of
   // bounds on the next — TikTok's floor of four is the one that bites.
   useEffect(() => {
-    setSlideCount((count) => Math.min(spec.maxSlides, Math.max(spec.minSlides, count)));
-  }, [spec.minSlides, spec.maxSlides]);
+    setSlideCountInput((input) => String(clampSlideCount(Number(input), spec)));
+  }, [spec]);
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -135,10 +141,9 @@ export function CarouselWizard() {
           type="number"
           min={spec.minSlides}
           max={spec.maxSlides}
-          value={slideCount}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setSlideCount(Number(e.target.value) || spec.minSlides)
-          }
+          value={slideCountInput}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSlideCountInput(e.target.value)}
+          onBlur={() => setSlideCountInput(String(slideCount))}
         />
         <p className="text-muted-foreground text-xs">
           {PLATFORM_LABELS[platform]} allows {spec.minSlides}–{spec.maxSlides} slides
