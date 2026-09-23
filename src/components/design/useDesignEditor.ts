@@ -262,7 +262,7 @@ export interface DesignEditorState {
   endGesture: () => void;
   addTextLayer: (role: TextLayer["role"], fontFamily: string, color: string) => void;
   addShapeLayer: (fill: string) => void;
-  addLogoLayer: (assetId: string) => void;
+  addLogoLayer: (assetId: string, aspectRatio?: number) => void;
   /** Drops a copied layer in under a fresh id, in place unless a position is given. */
   pasteLayer: (layer: Layer, at?: { x: number; y: number }) => void;
   alignLayer: (id: string, edge: AlignEdge) => void;
@@ -407,15 +407,16 @@ export function useDesignEditor(
   );
 
   const addLogoLayer = useCallback(
-    (assetId: string) => {
-      const size = Math.round(spec.width * 0.16);
+    (assetId: string, aspectRatio = 1) => {
+      const size = spec.width * 0.16;
+      const width = Math.min(area.width, size * Math.sqrt(aspectRatio));
       append({
         id: newLayerId(),
         type: "logo",
         x: area.x,
         y: area.y,
-        width: size,
-        height: size,
+        width: Math.round(width),
+        height: Math.round(width / aspectRatio),
         rotation: 0,
         assetId,
       });

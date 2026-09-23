@@ -28,6 +28,19 @@ export function safeArea(spec: CanvasSpec): Box {
   };
 }
 
+export function containBox(sourceWidth: number, sourceHeight: number, box: Box): Box {
+  const scale = Math.min(box.width / sourceWidth, box.height / sourceHeight);
+  const width = sourceWidth * scale;
+  const height = sourceHeight * scale;
+
+  return {
+    x: box.x + (box.width - width) / 2,
+    y: box.y + (box.height - height) / 2,
+    width,
+    height,
+  };
+}
+
 export function coverCrop(sourceWidth: number, sourceHeight: number, spec: CanvasSpec): Box {
   const scale = Math.max(spec.width / sourceWidth, spec.height / sourceHeight);
   const width = spec.width / scale;

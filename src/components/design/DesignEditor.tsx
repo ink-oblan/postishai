@@ -53,6 +53,17 @@ const NEW_TEXT_FONT = "Inter";
 const NEW_TEXT_COLOR = "#ffffff";
 const NEW_SHAPE_FILL = "#000000";
 
+function imageAspectRatio(url: string): Promise<number> {
+  return new Promise((resolve) => {
+    const image = new window.Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () =>
+      resolve(image.naturalHeight > 0 ? image.naturalWidth / image.naturalHeight : 1);
+    image.onerror = () => resolve(1);
+    image.src = url;
+  });
+}
+
 export function DesignEditor({
   pages,
   initialDocuments,
@@ -210,6 +221,14 @@ export function DesignEditor({
       ref.current = null;
     };
   }, [ref, flush, runExport, selectPage]);
+
+  const addLogo = useCallback(async () => {
+    const assetId = assets.logoAssetId;
+    if (!assetId) return;
+
+    const aspectRatio = await imageAspectRatio(assets.assetUrl(assetId));
+    editorRef.current.addLogoLayer(assetId, aspectRatio);
+  }, [assets.logoAssetId, assets.assetUrl]);
 
   useEditorShortcuts(editor, {
     enabled: !busy,
@@ -398,7 +417,7 @@ export function DesignEditor({
             pageLabel={pageLabel}
             onAddText={() => editor.addTextLayer("body", NEW_TEXT_FONT, NEW_TEXT_COLOR)}
             onAddShape={() => editor.addShapeLayer(NEW_SHAPE_FILL)}
-            onAddLogo={() => assets.logoAssetId && editor.addLogoLayer(assets.logoAssetId)}
+            onAddLogo={() => void addLogo()}
             onUndo={editor.undo}
             onRedo={editor.redo}
             onResetZoom={viewport.reset}
@@ -437,12 +456,7 @@ export function DesignEditor({
               Shape
             </Button>
             {assets.logoAssetId && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => assets.logoAssetId && editor.addLogoLayer(assets.logoAssetId)}
-              >
+              <Button type="button" variant="outline" size="sm" onClick={() => void addLogo()}>
                 <ImageIcon className="mr-1.5 h-3.5 w-3.5" />
                 Logo
               </Button>

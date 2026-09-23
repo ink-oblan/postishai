@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 import { Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } from "react-konva";
-import { type CanvasSpec, coverCrop } from "@/lib/design/canvas-spec";
+import { type CanvasSpec, containBox, coverCrop } from "@/lib/design/canvas-spec";
 import {
   type DesignDocument,
   type Layer as DesignLayer,
@@ -34,6 +34,14 @@ const TEXT_CONTROL_PADDING_PX = 2;
 
 /** Text resizes along one axis only: the wrap width. Its height is whatever the copy needs. */
 const TEXT_ANCHORS = ["middle-left", "middle-right"];
+
+const LOGO_ANCHORS = ["top-left", "top-right", "bottom-left", "bottom-right"];
+
+function anchorsFor(layer: DesignLayer | null) {
+  if (layer?.type === "text") return TEXT_ANCHORS;
+  if (layer?.type === "logo") return LOGO_ANCHORS;
+  return undefined;
+}
 
 /** Nodes the editor draws for itself, which must never appear in an exported image. */
 export const EDITOR_CHROME_NAME = "editor-chrome";
@@ -573,7 +581,8 @@ export function DesignStage({
             ref={transformerRef}
             rotateEnabled={false}
             flipEnabled={false}
-            enabledAnchors={selectedLayer?.type === "text" ? TEXT_ANCHORS : undefined}
+            enabledAnchors={anchorsFor(selectedLayer)}
+            keepRatio={selectedLayer?.type === "logo"}
             padding={selectedLayer?.type === "text" ? TEXT_CONTROL_PADDING_PX / scale : 0}
             ignoreStroke
             borderStrokeWidth={1 / scale}
@@ -765,28 +774,41 @@ function LogoLayer({
 }) {
   const { image, status } = useImage(url);
 
-  if (!image) {
-    return (
-      <Rect
-        {...common}
-        imageLoadStatus={status}
-        ref={register}
-        width={layer.width}
-        height={layer.height}
-        fill="#ffffff"
-        opacity={0.15}
-      />
-    );
-  }
-
   return (
     <KonvaImage
       {...common}
       imageLoadStatus={status}
       ref={register}
-      image={image}
+      image={image ?? undefined}
       width={layer.width}
       height={layer.height}
+      fill="#ffffff"
+      opacity={image ? 1 : 0.15}
+      sceneFunc={(context, shape) => {
+        if (!image) {
+          context.beginPath();
+          context.rect(0, 0, shape.width(), shape.height());
+          context.closePath();
+          context.fillShape(shape);
+          return;
+        }
+
+        const scaleX = shape.scaleX();
+        const scaleY = shape.scaleY();
+        const fit = containBox(image.naturalWidth, image.naturalHeight, {
+          x: 0,
+          y: 0,
+          width: shape.width() * scaleX,
+          height: shape.height() * scaleY,
+        });
+        context.drawImage(
+          image,
+          fit.x / scaleX,
+          fit.y / scaleY,
+          fit.width / scaleX,
+          fit.height / scaleY,
+        );
+      }}
     />
   );
 }

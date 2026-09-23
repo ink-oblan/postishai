@@ -6,7 +6,7 @@ import {
   isValidSlideCount,
   slideCountError,
 } from "@/lib/carousel/platform-spec";
-import { coverCrop, safeArea } from "@/lib/design/canvas-spec";
+import { containBox, coverCrop, safeArea } from "@/lib/design/canvas-spec";
 
 const PLATFORMS = Object.keys(CAROUSEL_PLATFORM_SPECS) as Platform[];
 
@@ -76,5 +76,22 @@ describe("coverCrop", () => {
     expect(crop.height).toBeCloseTo(1350);
     expect(crop.width).toBeCloseTo(1080);
     expect(crop.x).toBeCloseTo(460);
+  });
+});
+
+describe("containBox", () => {
+  it("centres a tall source horizontally without stretching it", () => {
+    const fit = containBox(262, 300, { x: 100, y: 200, width: 173, height: 173 });
+
+    expect(fit.height).toBeCloseTo(173);
+    expect(fit.width).toBeCloseTo((262 * 173) / 300);
+    expect(fit.x).toBeCloseTo(100 + (173 - fit.width) / 2);
+    expect(fit.y).toBeCloseTo(200);
+  });
+
+  it("centres a wide source vertically without stretching it", () => {
+    const fit = containBox(400, 100, { x: 0, y: 0, width: 200, height: 200 });
+
+    expect(fit).toMatchObject({ x: 0, y: 75, width: 200, height: 50 });
   });
 });
