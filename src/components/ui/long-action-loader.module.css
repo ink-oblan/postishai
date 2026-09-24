@@ -87,6 +87,11 @@
 .sweepMask {
   position: absolute;
   inset: 11.75%;
+  transform: scale(0.96);
+  animation-name: logoPulse;
+  animation-duration: var(--logo-loader-loop-duration);
+  animation-timing-function: var(--logo-loader-pulse-ease);
+  animation-iteration-count: infinite;
 }
 
 .logoLayer {
@@ -96,12 +101,7 @@
     0 calc(var(--logo-loader-size) * 0.025) calc(var(--logo-loader-size) * 0.055)
       color-mix(in oklab, var(--foreground) 10%, transparent)
   );
-  transform: scale(0.96);
   will-change: filter, transform;
-  animation-name: logoPulse;
-  animation-duration: var(--logo-loader-loop-duration);
-  animation-timing-function: var(--logo-loader-pulse-ease);
-  animation-iteration-count: infinite;
 }
 
 @keyframes logoPulse {
@@ -126,6 +126,8 @@
 
 .sweepMask {
   overflow: hidden;
+  translate: var(--logo-loader-optical-shift) 0;
+  will-change: transform;
   opacity: 0.52;
   mask-image: url("/static/logo.svg");
   mask-position: center;
@@ -149,32 +151,27 @@
   opacity: 0;
   transform: translateX(-105%);
   will-change: opacity, transform;
-  animation-name: sweepAcross;
-  animation-duration: var(--logo-loader-loop-duration);
-  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-name: sweepMove, sweepFade;
+  animation-duration: var(--logo-loader-sweep-duration);
+  animation-timing-function: var(--logo-loader-sweep-move-ease), var(--logo-loader-sweep-fade-ease);
   animation-iteration-count: infinite;
 }
 
-@keyframes sweepAcross {
-  0% {
-    opacity: 0;
+@keyframes sweepMove {
+  from {
     transform: translateX(-105%);
   }
-  14% {
-    opacity: 0;
-    transform: translateX(-105%);
+  to {
+    transform: translateX(105%);
   }
-  42% {
+}
+
+@keyframes sweepFade {
+  from {
+    opacity: 0;
+  }
+  to {
     opacity: 0.5;
-    transform: translateX(5%);
-  }
-  68% {
-    opacity: 0;
-    transform: translateX(105%);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(105%);
   }
 }
 
@@ -190,7 +187,8 @@
     transform: rotate(-117deg);
   }
 
-  .logoLayer {
+  .logoLayer,
+  .sweepMask {
     animation: none;
     transform: scale(1);
   }

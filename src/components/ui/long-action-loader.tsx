@@ -12,6 +12,12 @@ const ORBIT_MIN_SPEED = 0.08;
 const ORBIT_BRAKE_START =
   (3 * (1 + ORBIT_MIN_SPEED) + ORBIT_LAUNCH * (1 - ORBIT_MIN_SPEED)) / (5 + 3 * ORBIT_MIN_SPEED);
 const ORBIT_DURATION = LOOP_DURATION * (1 - ORBIT_BRAKE_START / 2);
+// The sweep starts where braking begins and repeats every SWEEP_ORBITS orbits, so it must end
+// before SWEEP_ORBITS * ORBIT_DURATION has passed.
+const SWEEP_START = ORBIT_BRAKE_START / 2 / (1 - ORBIT_BRAKE_START / 2);
+const SWEEP_DURATION = 1.8;
+const SWEEP_ORBITS = 2;
+const SWEEP_CYCLE_DURATION = ORBIT_DURATION * SWEEP_ORBITS;
 // [cycle progress, relative speed]: quick launch, steady travel, gradual braking.
 const ORBIT_SPEED_STAGES = [
   [ORBIT_LAUNCH, 1],
@@ -19,6 +25,8 @@ const ORBIT_SPEED_STAGES = [
   [1, ORBIT_MIN_SPEED],
 ] as const;
 const EASING_RESOLUTION_MS = 10;
+const LOGO_VIEWBOX_SIZE = 591;
+const LOGO_OPTICAL_SHIFT = 35;
 
 // Integrate a cosine speed ramp so velocity and acceleration join smoothly.
 function rampDistance(time: number, duration: number, from: number, to: number): number {
@@ -69,6 +77,20 @@ function pulseEase(progress: number): number {
   return (1 - Math.cos(Math.PI * progress)) / 2;
 }
 
+function sweepWindow(progress: number): number {
+  const start = SWEEP_START / SWEEP_ORBITS;
+  const window = ((((progress - start) % 1) + 1) % 1) / (SWEEP_DURATION / SWEEP_CYCLE_DURATION);
+  return window > 1 ? 0 : window;
+}
+
+function sweepMoveEase(progress: number): number {
+  return pulseEase(sweepWindow(progress));
+}
+
+function sweepFadeEase(progress: number): number {
+  return (1 - Math.cos(2 * Math.PI * sweepWindow(progress))) / 2;
+}
+
 function toLinearEasing(easing: (progress: number) => number, durationSeconds: number): string {
   const count = Math.max(Math.round((durationSeconds * 1000) / EASING_RESOLUTION_MS), 2);
   const points: number[] = [];
@@ -81,6 +103,8 @@ function toLinearEasing(easing: (progress: number) => number, durationSeconds: n
 
 const ORBIT_EASING = toLinearEasing(orbitEase, ORBIT_DURATION);
 const PULSE_EASING = toLinearEasing(pulseEase, LOOP_DURATION);
+const SWEEP_MOVE_EASING = toLinearEasing(sweepMoveEase, SWEEP_CYCLE_DURATION);
+const SWEEP_FADE_EASING = toLinearEasing(sweepFadeEase, SWEEP_CYCLE_DURATION);
 
 type LogoLoaderSize = number | string;
 
@@ -120,6 +144,10 @@ type LoaderStyle = CSSProperties & {
   "--logo-loader-orbit-duration": string;
   "--logo-loader-orbit-ease": string;
   "--logo-loader-pulse-ease": string;
+  "--logo-loader-sweep-duration": string;
+  "--logo-loader-sweep-move-ease": string;
+  "--logo-loader-sweep-fade-ease": string;
+  "--logo-loader-optical-shift": string;
 };
 
 function toCssSize(size: LogoLoaderSize): string {
@@ -148,6 +176,10 @@ function LogoLoader({
     "--logo-loader-orbit-duration": `${ORBIT_DURATION}s`,
     "--logo-loader-orbit-ease": ORBIT_EASING,
     "--logo-loader-pulse-ease": PULSE_EASING,
+    "--logo-loader-sweep-duration": `${SWEEP_CYCLE_DURATION}s`,
+    "--logo-loader-sweep-move-ease": SWEEP_MOVE_EASING,
+    "--logo-loader-sweep-fade-ease": SWEEP_FADE_EASING,
+    "--logo-loader-optical-shift": `${(LOGO_OPTICAL_SHIFT / LOGO_VIEWBOX_SIZE) * 100}%`,
     ...style,
   } as LoaderStyle;
 
@@ -182,7 +214,7 @@ function LogoLoader({
         <BrandLogoMark
           className={styles.logoMark}
           style={{ height: "100%", width: "100%" }}
-          viewBox="-35 0 591 591"
+          viewBox={`${-LOGO_OPTICAL_SHIFT} 0 ${LOGO_VIEWBOX_SIZE} ${LOGO_VIEWBOX_SIZE}`}
         />
       </div>
 
