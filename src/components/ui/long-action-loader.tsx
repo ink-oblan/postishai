@@ -182,7 +182,7 @@ function LogoLoader({
         <BrandLogoMark
           className={styles.logoMark}
           style={{ height: "100%", width: "100%" }}
-          viewBox="0 0 591 591"
+          viewBox="-35 0 591 591"
         />
       </div>
 
