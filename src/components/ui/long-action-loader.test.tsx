@@ -16,6 +16,38 @@ describe("LogoLoader", () => {
     expect(loader).toHaveStyle({ "--logo-loader-size": "7rem" });
     expect(loader.querySelector("svg")).not.toBeNull();
   });
+
+  it("drives the orbit from a sampled CSS linear() easing", () => {
+    render(<LogoLoader aria-label="Preparing preview" />);
+
+    const orbitEasing = screen
+      .getByRole("status")
+      .style.getPropertyValue("--logo-loader-orbit-ease");
+    const points = orbitEasing.slice("linear(".length, -1).split(", ").map(Number);
+
+    expect(points.length).toBeGreaterThan(100);
+    expect(points.every((point) => Number.isFinite(point))).toBe(true);
+    expect(points.at(0)).toBe(0);
+    expect(points.at(-1)).toBe(1);
+    // Monotonic, or the orbit would visibly reverse mid-loop.
+    expect(points.every((point, i) => i === 0 || point >= (points[i - 1] ?? 0))).toBe(true);
+  });
+
+  it("finishes each shine sweep before the next one starts", () => {
+    render(<LogoLoader aria-label="Preparing preview" />);
+
+    const style = screen.getByRole("status").style;
+    const pointsOf = (name: string) =>
+      style.getPropertyValue(name).slice("linear(".length, -1).split(", ").map(Number);
+    const move = pointsOf("--logo-loader-sweep-move-ease");
+    const fade = pointsOf("--logo-loader-sweep-fade-ease");
+
+    expect(fade.some((point) => point === 0)).toBe(true);
+    expect(Math.max(...fade)).toBeCloseTo(1, 2);
+    expect(Math.max(...move)).toBeCloseTo(1, 2);
+    expect(fade.at(0)).toBe(fade.at(-1));
+    expect(move.at(0)).toBe(move.at(-1));
+  });
 });
 
 describe("LongActionLoader", () => {

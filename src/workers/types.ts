@@ -1,4 +1,5 @@
 import type { Job, Prisma, PrismaClient } from "@prisma/client";
+import type { AspectRatio } from "@/lib/image-models/types";
 
 export type AvatarGeneratePayload = {
   avatarId: string;
@@ -25,12 +26,26 @@ export type PostMetadataGeneratePayload = {
   postId: string;
 };
 
+export type CarouselScenarioPayload = {
+  postId: string;
+  slideCount: number;
+};
+
+export type CarouselSlideImagePayload = {
+  slideId: string;
+  prompt: string;
+  imageModel: string;
+  aspectRatio: AspectRatio;
+};
+
 export type JobPayloadMap = {
   "avatar.generate": AvatarGeneratePayload;
   "avatar.variation.generate": AvatarVariationGeneratePayload;
   "avatar.analyze": AvatarAnalyzePayload;
   "post.metadata.generate": PostMetadataGeneratePayload;
   "post.generate": PostGeneratePayload;
+  "carousel.scenario.generate": CarouselScenarioPayload;
+  "carousel.slide.image.generate": CarouselSlideImagePayload;
 };
 
 export type JobType = keyof JobPayloadMap;

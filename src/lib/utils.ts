@@ -12,6 +12,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Wraps an index around both ends of a list, so stepping past the last lands on the first. */
+export function wrapIndex(index: number, length: number): number {
+  if (length <= 0) return 0;
+  return ((index % length) + length) % length;
+}
+
+/**
+ * Turns a failed API response into the error to throw, preferring the handler's own `error`
+ * message over the caller's fallback.
+ */
+export async function responseError(res: Response, fallback: string): Promise<Error> {
+  const body = (await res.json().catch(() => null)) as { error?: string } | null;
+  return new Error(body?.error ?? fallback);
+}
+
 export function formatDistanceToNow(date: Date): string {
   const now = Date.now();
   const diff = now - new Date(date).getTime();

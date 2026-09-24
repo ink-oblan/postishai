@@ -38,6 +38,24 @@ export const METADATA_STATUS = {
 
 export type MetadataStatusValue = (typeof METADATA_STATUS)[keyof typeof METADATA_STATUS];
 
+export const CAROUSEL_SLIDE_STATUS = {
+  PENDING: "PENDING",
+  GENERATING: "GENERATING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+} as const;
+
+export type CarouselSlideStatusValue =
+  (typeof CAROUSEL_SLIDE_STATUS)[keyof typeof CAROUSEL_SLIDE_STATUS];
+
+export const CAROUSEL_STAGE = {
+  SCENARIO: "SCENARIO",
+  EDITING: "EDITING",
+  COMPLETED: "COMPLETED",
+} as const;
+
+export type CarouselStageValue = (typeof CAROUSEL_STAGE)[keyof typeof CAROUSEL_STAGE];
+
 export const JOB_STATUS = {
   PENDING: "PENDING",
   PROCESSING: "PROCESSING",

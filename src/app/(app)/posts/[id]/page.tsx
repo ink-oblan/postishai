@@ -2,10 +2,15 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CaptionPostPanel } from "@/components/posts/CaptionPostPanel";
+import { CarouselPostView } from "@/components/posts/carousel/CarouselPostView";
 import { PostDetailClient } from "@/components/posts/PostDetailClient";
 import { PostEditPanel } from "@/components/posts/PostEditPanel";
 import { VideoSection } from "@/components/posts/VideoSection";
-import { POST_STATUS } from "@/lib/constants";
+import { extractAssetIds } from "@/lib/brand-assets";
+import { type FontItem, parseList } from "@/lib/brand-fields";
+import { slideImageState } from "@/lib/carousel/slide-view";
+import { carouselLayoutTheme } from "@/lib/carousel/theme";
+import { CAROUSEL_STAGE } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { listVoices } from "@/lib/heygen/client";
 import { getLLMModelInfo } from "@/lib/llm-models/registry";
@@ -31,7 +36,80 @@ export default async function PostDetailPage({
   ]);
   if (!post) notFound();
 
-  if (post.type === "CAPTION") {
+  if (post.type === "CAROUSEL" && post.carouselStage !== CAROUSEL_STAGE.COMPLETED) {
+    const [slides, brand] = await Promise.all([
+      prisma.carouselSlide.findMany({ where: { postId: post.id }, orderBy: { order: "asc" } }),
+      post.brandProfileId
+        ? prisma.brandProfile.findUnique({ where: { id: post.brandProfileId } })
+        : null,
+    ]);
+    const designing = post.carouselStage === CAROUSEL_STAGE.EDITING;
+    const logoAssetId = extractAssetIds(brand?.logoPath)[0] ?? null;
+    const uploadedFonts = parseList<FontItem>(brand?.typography)
+      .filter((font) => font.source === "uploaded" && font.assetId)
+      .map((font) => ({ assetId: font.assetId as string, name: font.name }));
+
+    return (
+      <div
+        className={
+          designing
+            ? "flex h-full min-h-0 flex-col overflow-hidden lg:gap-4 lg:px-10 lg:py-6"
+            : "space-y-6 px-6 py-8 sm:px-10"
+        }
+      >
+        <PostDetailClient postId={post.id} />
+        <div className="hidden shrink-0 items-center gap-3 lg:flex">
+          <Link
+            href="/posts"
+            className="inline-flex items-center text-muted-foreground text-sm hover:text-foreground"
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back
+          </Link>
+        </div>
+
+        <div className="hidden min-w-0 shrink-0 lg:block">
+          <h1 className="truncate font-semibold text-lg sm:text-xl">{post.title}</h1>
+          <p className="text-muted-foreground text-xs sm:mt-1 sm:text-sm">
+            {PLATFORM_LABELS[post.platform]} carousel ·{" "}
+            {post.carouselStage === CAROUSEL_STAGE.SCENARIO ? "Plan" : "Design"}
+          </p>
+        </div>
+
+        <CarouselPostView
+          postId={post.id}
+          platform={post.platform}
+          platformLabel={PLATFORM_LABELS[post.platform]}
+          carouselStage={post.carouselStage}
+          status={post.status}
+          slideCount={post.carouselSlideCount}
+          errorMessage={post.errorMessage}
+          generationStartedAt={post.generationStartedAt?.toISOString() ?? null}
+          scenarioSlides={slides.map((slide) => ({
+            id: slide.id,
+            headline: slide.headline ?? "",
+            body: slide.body ?? "",
+            visualPrompt: slide.visualPrompt,
+            layout: slide.layout,
+          }))}
+          editorSlides={slides.map((slide) => ({
+            id: slide.id,
+            order: slide.order,
+            headline: slide.headline,
+            visualPrompt: slide.visualPrompt,
+            status: slide.status,
+            design: slide.design,
+            ...slideImageState(slide),
+          }))}
+          layoutTheme={carouselLayoutTheme(brand)}
+          logoAssetId={logoAssetId}
+          uploadedFonts={uploadedFonts}
+        />
+      </div>
+    );
+  }
+
+  if (post.type === "CAPTION" || post.type === "CAROUSEL") {
     return (
       <div className="space-y-6 px-6 py-8 sm:px-10">
         <PostDetailClient postId={post.id} />
@@ -126,8 +204,6 @@ export default async function PostDetailPage({
               voiceName: voice?.name ?? null,
               createdAtLabel: formatDistanceToNow(post.createdAt),
               status: post.status,
-              downloadUrl:
-                post.status === POST_STATUS.COMPLETED ? `/api/posts/${post.id}/download` : null,
               metadata,
               metadataStatus: post.metadataStatus,
               metadataErrorMessage: post.metadataErrorMessage,

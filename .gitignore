@@ -66,3 +66,6 @@ backups/
 # Local-only experimental dev tooling and compose setup
 docker-compose.override.yml
 .local/
+
+# Playwright authenticated session state
+e2e/.auth/

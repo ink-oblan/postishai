@@ -7,11 +7,7 @@ import { Button } from "@/components/ui/button";
 import { formatDistanceToNow, PLATFORM_LABELS, STATUS_CONFIG } from "@/lib/utils";
 
 interface PostsContentProps {
-  posts: Array<
-    Post & {
-      avatar: { id: string; name: string } | null;
-    }
-  >;
+  posts: Post[];
 }
 
 export function PostsContent({ posts }: PostsContentProps) {
@@ -71,9 +67,6 @@ export function PostsContent({ posts }: PostsContentProps) {
                     Title
                   </th>
                   <th className="px-5 py-3.5 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
-                    Avatar
-                  </th>
-                  <th className="px-5 py-3.5 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
                     Platform
                   </th>
                   <th className="px-5 py-3.5 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
@@ -97,9 +90,6 @@ export function PostsContent({ posts }: PostsContentProps) {
                         >
                           {post.title}
                         </Link>
-                      </td>
-                      <td className="px-5 py-4 text-muted-foreground text-sm">
-                        <div className="max-w-48 break-words">{post.avatar?.name ?? "—"}</div>
                       </td>
                       <td className="px-5 py-4">
                         <Badge variant="outline">{PLATFORM_LABELS[post.platform]}</Badge>
@@ -157,8 +147,6 @@ export function PostsContent({ posts }: PostsContentProps) {
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground text-xs">
-                    <span className="min-w-0 truncate">{post.avatar?.name ?? "—"}</span>
-                    <span className="shrink-0">·</span>
                     <Badge variant="outline" className="font-semibold text-xs">
                       {PLATFORM_LABELS[post.platform]}
                     </Badge>

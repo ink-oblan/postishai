@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   turbopack: {},
-  allowedDevOrigins: ["127.0.0.1"],
+  allowedDevOrigins: ["127.0.0.1", "192.168.*.*"],
   experimental: {
     proxyClientMaxBodySize: "512mb",
   },

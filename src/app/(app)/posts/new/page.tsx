@@ -29,8 +29,8 @@ const POST_TYPES = [
     href: "/posts/new/carousel",
     icon: SquareStack,
     title: "Carousel",
-    description: "Create a carousel post from your images.",
-    available: false,
+    description: "Plan, generate and design a multi-slide carousel.",
+    available: true,
   },
 ] as const;
 

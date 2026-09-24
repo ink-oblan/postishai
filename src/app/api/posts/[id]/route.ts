@@ -98,6 +98,8 @@ export const PATCH = withAuth(async function PATCH(
     hashtags?: unknown;
     tags?: unknown;
   };
+  const isCaptionEditablePost =
+    post.type === "CAPTION" || (post.type === "CAROUSEL" && post.status === POST_STATUS.COMPLETED);
 
   if (archive) {
     // Archive the post and broadcast to all tabs
@@ -117,7 +119,7 @@ export const PATCH = withAuth(async function PATCH(
       }
     };
 
-    if (post.type === "CAPTION") {
+    if (isCaptionEditablePost) {
       await archiveAndBroadcast();
       return new NextResponse(null, { status: 204 });
     }
@@ -129,7 +131,7 @@ export const PATCH = withAuth(async function PATCH(
     return new NextResponse(null, { status: 204 });
   }
 
-  if (post.type === "CAPTION") {
+  if (isCaptionEditablePost) {
     if (!title?.trim()) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }

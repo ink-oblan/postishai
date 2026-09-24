@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertDialog } from "@base-ui/react";
-import { AlertTriangle, Download, Loader2, Pencil, RefreshCw } from "lucide-react";
+import { AlertTriangle, Loader2, Pencil, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -75,7 +75,6 @@ interface PostData {
   avatarVariationImageUrl: string | null;
   createdAtLabel: string;
   status: string;
-  downloadUrl: string | null;
   metadata: PlatformMetadata | null;
   metadataStatus: string;
   metadataErrorMessage: string | null;
@@ -457,14 +456,6 @@ export function PostEditPanel({
                     <Pencil className="mr-1.5 h-3.5 w-3.5" />
                     Edit
                   </Button>
-                )}
-                {post.downloadUrl && (
-                  <a href={post.downloadUrl} download>
-                    <Button type="button" size="sm">
-                      <Download className="mr-1.5 h-3.5 w-3.5" />
-                      Download
-                    </Button>
-                  </a>
                 )}
               </div>
             )}

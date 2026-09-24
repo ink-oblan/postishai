@@ -7,7 +7,6 @@ export default async function PostsPage() {
   const posts = await prisma.post.findMany({
     where: { archivedAt: null, userId },
     orderBy: { createdAt: "desc" },
-    include: { avatar: { select: { id: true, name: true } } },
   });
 
   return <PostsClient initialPosts={posts} />;

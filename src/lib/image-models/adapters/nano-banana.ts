@@ -32,7 +32,13 @@ async function generateWithGeminiImage(
 
   const generateConfig = options.sourceImage
     ? { responseModalities: ["IMAGE"] as ["IMAGE"] }
-    : { responseModalities: ["IMAGE"] as ["IMAGE"], imageConfig: { aspectRatio } };
+    : {
+        responseModalities: ["IMAGE"] as ["IMAGE"],
+        imageConfig: {
+          aspectRatio,
+          ...(options.imageSize ? { imageSize: options.imageSize } : {}),
+        },
+      };
 
   const response = await client.models.generateContent({
     model: modelId,
