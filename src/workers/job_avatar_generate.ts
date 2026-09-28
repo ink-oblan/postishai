@@ -53,7 +53,7 @@ export const avatarGenerateJob: JobDefinition<"avatar.generate", AvatarGenerateR
       // Mock mode: simulate generation with a placeholder image
       ctx.log(`[avatar.generate] MOCK MODE: waiting ${MOCK_TIMINGS.AVATAR_IMAGE}ms`);
       await new Promise((resolve) => setTimeout(resolve, MOCK_TIMINGS.AVATAR_IMAGE));
-      buffer = await generateMockAvatarImage(avatarId);
+      buffer = await generateMockAvatarImage();
       ctx.log(`[avatar.generate] MOCK MODE: generated placeholder`);
     } else {
       // Real generation

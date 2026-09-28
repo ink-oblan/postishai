@@ -173,10 +173,10 @@ export function PostWizard() {
         has_avatar_variation: !!data.avatarVariationId,
       });
       toast.success("Post created! Metadata generation started.");
+      // Navigation is asynchronous; keep the form busy until the details page mounts.
       router.push(`/posts/${post.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create post");
-    } finally {
       setSubmitting(false);
     }
   }
@@ -424,7 +424,7 @@ export function PostWizard() {
       {/* Navigation */}
       <div className="flex justify-between pt-2">
         {step > 1 ? (
-          <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
+          <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled={submitting}>
             <ChevronLeft className="mr-1 h-4 w-4" />
             Back
           </Button>
